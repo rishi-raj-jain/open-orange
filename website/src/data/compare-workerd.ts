@@ -15,9 +15,11 @@
 //   application server", "Serving in production", "Local Worker development
 //   with wrangler".
 // - Wrangler fields: README "Configuring workerd".
+// - No tooling moves data into or out of workerd.
 // - License: Apache 2.0 (LICENSE).
 // OpenOrange claims come from site.ts (SERVICE_MAP, DEPLOY_TARGETS, FAQ),
-// the /architecture/ and /enterprise/ pages, and README.md (Node.js 22).
+// the /architecture/ and /enterprise/ pages, README.md (Node.js 22) and
+// docs/migrate.mdx. Forking is Rivet's: rivet.dev/actors/docs/forking/.
 
 // Text in backticks renders as code.
 
@@ -26,15 +28,16 @@ export const WORKERD_AS_OF = { iso: '2026-11-12', label: 'November 12, 2026' } a
 export const WORKERD_COMPARE = {
 	headline: 'OpenOrange runs your app. workerd runs a Worker.',
 	workerd:
-		"Cloudflare's core runtime: it executes a Worker, and it's what `wrangler dev` runs on your laptop. It doesn't run Durable Objects across machines, it has no KV, D1, Queues or Workflows of its own, and it isn't a production storage system.",
+		"Cloudflare's core runtime: it executes a Worker, and it's what `wrangler dev` runs on your laptop. It doesn't run Durable Objects across machines, and it has no KV, D1, Queues or Workflows of its own. Its storage is for development, not data you keep.",
 	openorange:
-		'Runs your whole Cloudflare project in production. Your Workers run on Node.js, and Rivet runs Durable Objects, KV, D1, Queues, Workflows and the rest across your machines.',
+		'Runs your whole Cloudflare project in production. Your Workers run on Node.js, and Rivet runs Durable Objects, KV, D1, Queues, Workflows and the rest across your machines. Cloudflare locks your data in. OpenOrange opens it up and live-migrates it, with zero downtime for Durable Objects.',
 	useOpenOrange: [
 		'You run a Cloudflare project in production on your own cloud.',
 		'You need Durable Objects, Queues or Workflows across machines.',
 		'You need production storage, not a SQLite file on one disk.',
 		'You want stock Node.js, not the `nodejs_compat` subset.',
-		"You're moving a live app off Cloudflare.",
+		"You're live-migrating an app off Cloudflare, or between OpenOrange clusters.",
+		'You want to fork an Actor and its state.',
 	],
 	useWorkerd: [
 		"You deploy to Cloudflare and want its exact runtime on your machine to test a Worker.",
@@ -56,6 +59,11 @@ export const WORKERD_MATRIX: MatrixRow[] = [
 		openorange: { mark: 'yes', text: 'Your code and wrangler config, unchanged.' },
 	},
 	{
+		label: 'Live migration of your data',
+		workerd: { mark: 'no', text: 'No tooling.' },
+		openorange: { mark: 'yes', text: 'Off Cloudflare or between OpenOrange clusters, with zero downtime for Durable Objects.' },
+	},
+	{
 		label: 'Production-ready',
 		workerd: { mark: 'partial', text: 'For stateless Workers only.' },
 		openorange: { mark: 'yes', text: 'Durable Objects and storage included.' },
@@ -66,8 +74,13 @@ export const WORKERD_MATRIX: MatrixRow[] = [
 		openorange: { mark: 'yes', text: 'Rivet places them across your machines.' },
 	},
 	{
+		label: 'Fork an Actor or Durable Object with its state',
+		workerd: { mark: 'no', text: 'No.' },
+		openorange: { mark: 'yes', text: 'Yes, with Rivet Actors beside your Workers.' },
+	},
+	{
 		label: 'Storage',
-		workerd: { mark: 'no', text: 'SQLite files on one disk, marked experimental.' },
+		workerd: { mark: 'no', text: 'For development. Experimental SQLite on one disk.' },
 		openorange: { mark: 'yes', text: "Rivet's durable store, in the region you choose." },
 	},
 	{
@@ -99,11 +112,6 @@ export const WORKERD_MATRIX: MatrixRow[] = [
 		label: 'Managed option',
 		workerd: { mark: 'no', text: 'None, outside Cloudflare itself.' },
 		openorange: { mark: 'yes', text: 'Rivet Cloud, or BYOC in your account.' },
-	},
-	{
-		label: 'Migrate a live app off Cloudflare',
-		workerd: { mark: 'no', text: 'No tooling.' },
-		openorange: { mark: 'yes', text: '`orange migrate` moves Durable Objects with no downtime.' },
 	},
 	{
 		label: 'License',

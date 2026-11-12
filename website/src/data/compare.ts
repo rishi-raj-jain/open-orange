@@ -82,11 +82,11 @@ const celld: Comparison = {
 	them: {
 		name: 'celld',
 		badge: { text: 'No release since Oct 21, 2026', tone: 'muted' },
-		body: 'Self-hosted Workers and Durable Objects, built by Deno. It runs its own Workers runtime on V8 and keeps each active cell’s SQLite file on local disk, replicated to a bucket. Cloudflare acquired Deno in October 2026.',
+		body: 'Self-hosted Workers and Durable Objects, built by Deno. It runs its own Workers runtime on V8 and keeps each active cell’s SQLite file on local disk, replicated to a bucket. It imports KV and D1, but not your Durable Object data. Cloudflare acquired Deno in October 2026.',
 	},
 	us: {
 		name: SITE.name,
-		body: 'Your Cloudflare project in production, on your own cloud. The Workers API runs on Node.js. Rivet places every Durable Object across your machines, and WarpDrive stores its data on S3 behind an SSD tier.',
+		body: 'Your Cloudflare project in production, on your own cloud. The Workers API runs on Node.js. Rivet places every Durable Object across your machines, and WarpDrive stores its data on S3 behind an SSD tier. Cloudflare locks your data in. OpenOrange opens it up and live-migrates it, with zero downtime for Durable Objects.',
 	},
 	picks: [
 		{
@@ -96,7 +96,7 @@ const celld: Comparison = {
 				'You run Cloudflare code in production.',
 				'You need storage that’s fast, bottomless and online through S3 outages.',
 				'You want a maintained project with support behind it.',
-				'You’re moving a live app off Cloudflare without downtime.',
+				'You’re live-migrating an app off Cloudflare, or between OpenOrange clusters.',
 			],
 		},
 		{
@@ -140,6 +140,11 @@ const celld: Comparison = {
 				us: { text: 'Yes. Rivet places Actors across your machines', mark: 'yes' },
 			},
 			{
+				label: 'Fork an Actor or Durable Object with its state',
+				them: { text: 'No', mark: 'no' },
+				us: { text: 'Yes, with Rivet Actors beside your Workers', mark: 'yes' },
+			},
+			{
 				label: 'Storage',
 				them: { text: 'A local SQLite file per active cell, replicated to peers and a bucket' },
 				us: { text: WARPDRIVE.short },
@@ -179,9 +184,13 @@ const celld: Comparison = {
 				us: { text: 'Rivet Cloud, or BYOC in your account', mark: 'yes' },
 			},
 			{
-				label: 'Migrate a live app off Cloudflare',
-				them: { text: 'Imports KV exports and D1 SQL', mark: 'partial', note: 'No Durable Object data import.' },
-				us: MIGRATE,
+				label: 'Live migration of your data',
+				them: {
+					text: 'No. Imports KV exports and D1 SQL only',
+					mark: 'no',
+					note: 'No Durable Object data import. Some v0.6.0 upgrades meant stopping the whole fleet.',
+				},
+				us: { ...MIGRATE, note: 'Off Cloudflare, or between OpenOrange clusters.' },
 			},
 			{
 				label: 'License',
@@ -244,6 +253,9 @@ const celld: Comparison = {
 		{ label: 'celld limitations', href: `${CELLD_DOCS}/limitations.md` },
 		{ label: 'celld guarantees', href: `${CELLD_DOCS}/guarantees.md` },
 		{ label: 'celld Cloudflare compatibility', href: `${CELLD_DOCS}/cloudflare-compat.md` },
+		{ label: 'celld v0.6.0 release', href: 'https://github.com/denoland/celld/releases/tag/v0.6.0' },
+		{ label: 'Rivet: forking', href: `${SITE.rivet}/actors/docs/forking/` },
+		{ label: 'OpenOrange: migrate from Cloudflare', href: SITE.docsMigrate },
 	],
 	cta: {
 		title: 'Same Wrangler project. Built for production.',
