@@ -1,20 +1,52 @@
 ---
-// The OpenOrange launch walkthrough, embedded from YouTube.
+// The launch walkthrough. A poster with our own frame and play button stands
+// in for YouTube until someone clicks it; then the player loads and starts.
+// Without JS the button is a plain link to the video on YouTube.
 const VIDEO_ID = 'ykeVET4LtA4';
+const watch = `https://www.youtube.com/watch?v=${VIDEO_ID}`;
 ---
 
 <section id="walkthrough" class="scroll-mt-20 rule">
 	<div class="container-x section-tight">
-		<div class="aspect-video w-full overflow-hidden rounded-2xl bg-plate">
-			<iframe
-				class="h-full w-full"
-				src={`https://www.youtube.com/embed/${VIDEO_ID}?rel=0`}
-				title="Introducing OpenOrange"
-				loading="lazy"
-				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-				referrerpolicy="strict-origin-when-cross-origin"
-				allowfullscreen
-			></iframe>
+		<div class="video-frame rounded-[22px] bg-paper-mid p-2 ring-1 ring-line md:p-3">
+			<div class="relative aspect-video w-full overflow-hidden rounded-2xl bg-plate" data-video={VIDEO_ID}>
+				<a href={watch} class="group absolute inset-0 block focus-visible:outline-none" aria-label="Play the OpenOrange walkthrough" data-play>
+					<img
+						src={`https://i.ytimg.com/vi/${VIDEO_ID}/maxresdefault.jpg`}
+						alt=""
+						class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.015] motion-reduce:transition-none"
+						loading="lazy"
+						decoding="async"
+						onerror={`this.onerror=null;this.src='https://i.ytimg.com/vi/${VIDEO_ID}/hqdefault.jpg'`}
+					/>
+					<span class="absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/[0.04] motion-reduce:transition-none" aria-hidden="true"></span>
+					<!-- In the strip under the poster's headline, left edge on the headline's (6.2% in), clear of the title and the box. -->
+					<span class="play absolute bottom-[8%] left-[6.2%] flex items-center gap-1.5 rounded-full bg-orange py-[3px] pl-[3px] pr-2.5 text-[10px] leading-none font-semibold text-white shadow-[0_4px_12px_rgb(242_107_29/0.35)] ring-2 ring-orange/20 transition-transform duration-200 group-hover:scale-[1.04] group-focus-visible:scale-[1.04] group-focus-visible:ring-orange/50 motion-reduce:transition-none md:bottom-[10%] md:gap-3 md:py-2.5 md:pl-2.5 md:pr-6 md:text-[16px] md:shadow-[0_8px_24px_rgb(242_107_29/0.35)] md:ring-4" aria-hidden="true">
+						<span class="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white text-orange md:h-9 md:w-9">
+							<svg class="ml-px h-2 w-2 md:ml-0.5 md:h-4 md:w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z" /></svg>
+						</span>
+						Watch the walkthrough
+					</span>
+				</a>
+			</div>
 		</div>
 	</div>
 </section>
+
+<script>
+	for (const box of document.querySelectorAll<HTMLElement>('[data-video]')) {
+		const play = box.querySelector<HTMLAnchorElement>('[data-play]');
+		play?.addEventListener('click', (event) => {
+			event.preventDefault();
+			const iframe = document.createElement('iframe');
+			iframe.src = `https://www.youtube.com/embed/${box.dataset.video}?autoplay=1&rel=0&playsinline=1&modestbranding=1`;
+			iframe.title = 'Introducing OpenOrange';
+			iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+			iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+			iframe.allowFullscreen = true;
+			iframe.className = 'absolute inset-0 h-full w-full';
+			box.replaceChildren(iframe);
+			iframe.focus();
+		});
+	}
+</script>
