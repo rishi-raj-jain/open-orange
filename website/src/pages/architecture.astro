@@ -1,125 +1,202 @@
 ---
+// How OpenOrange works, in the order of the launch walkthrough: Rivet and its
+// S3-backed storage, the Docker containers `orange deploy` ships, the binding
+// → service map, and Node.js. Detail stays collapsed. The short map is
+// BINDING_ROUTES (src/data/architecture.ts); the full table is SERVICE_MAP.
 import Base from '@/layouts/Base.astro';
 import ArchitectureDiagram from '@/components/ArchitectureDiagram.astro';
 import ServiceTable from '@/components/ServiceTable.astro';
 import Cta from '@/components/Cta.astro';
-import { SITE } from '@/data/site';
+import { DEPLOY_TARGETS, SITE, WORKERD_LIMITS } from '@/data/site';
+import { BINDING_ROUTES, NOT_SUPPORTED } from '@/data/architecture';
 
-const sections = [
-	{
-		id: 'runtime',
-		title: 'The runtime: Workers APIs on Node.js',
-		body: [
-			'A Cloudflare Worker is a module with a fetch handler, some optional scheduled, queue and email handlers, and an env object full of bindings. OpenOrange starts a Node.js process for each Worker, loads your module, and hands it an env whose bindings are backed by OpenOrange instead of Cloudflare.',
-			'Request, Response, fetch, WebSocketPair, Cache, waitUntil and the rest of the Workers globals are installed by the runtime. Most node: imports are stock Node.js; the few modules whose behaviour differs on Cloudflare, such as node:process and node:buffer, are swapped for workerd-shaped versions so your code behaves the same.',
-			'Configuration comes from the wrangler.toml or wrangler.jsonc you already have. Bindings, Durable Object classes and migrations, cron triggers, queues and vars are read from it. Environment-specific overrides map to OpenOrange environments.',
-		],
-	},
-	{
-		id: 'durable-objects',
-		title: 'Durable Objects become Rivet Actors',
-		body: [
-			'A Durable Object is a class with a globally unique ID, single-threaded execution, transactional storage, alarms and WebSocket hibernation. A Rivet Actor has the same shape, so each Durable Object runs as one Rivet Actor.',
-			'Rivet is an open-source control plane. When your Worker calls env.ROOM.get(id).fetch(), Rivet locates the Actor for that ID, wakes it on one of your instances if it is asleep, and routes the request. The storage API, SQLite storage and alarms are backed by Rivet durable state. WebSocket hibernation is emulated: after 10 idle seconds the object leaves memory and its sockets stay open, and the next message builds a new instance. The Actor keeps running while a socket is open.',
-			'Actors share the memory of the machine they run on, and you can inspect their state and connections from the Rivet dashboard.',
-		],
-	},
-	{
-		id: 'stateless',
-		title: 'KV, Queues, Workflows, D1 and cron',
-		body: [
-			'Each of these is a thin binding over Actors. Each KV namespace is one Actor, which makes it strongly consistent rather than eventually. Each queue is one Actor; retries and dead-letter queues follow Cloudflare, and a queue delivers one batch at a time. Workflows run on Cloudflare\'s own Workflows engine, with one Actor per instance: durable steps, sleeps and retries without a per-step CPU budget. Cron triggers become Actor schedules. Each D1 database is one Actor\'s SQLite database.',
-		],
-	},
-	{
-		id: 'pluggable',
-		title: 'R2, Workers AI, Sandboxes, Browser Run and Email plug into your providers',
-		body: [
-			'Some Cloudflare services are front doors to things you can already buy elsewhere. An R2 bucket is an Actor by default, and one environment variable points it at any S3-compatible store, such as Amazon S3, Google Cloud Storage or MinIO. The AI binding calls any OpenAI-compatible endpoint, OpenRouter by default. The sandbox binding targets E2B, Daytona, Freestyle, an agentOS VM or a local directory. Browser Run drives your Chrome or a hosted browser over the DevTools Protocol, and Send Email goes through your SMTP server.',
-		],
-	},
-	{
-		id: 'persistence',
-		title: 'Where state lives',
-		body: [
-			'On Rivet Cloud and BYOC, Rivet operates the durable store for you. Self-hosted, Rivet persists Actor state to Postgres or FoundationDB that you run. In every case the data is in the cloud account and region you chose, reachable only inside your network unless you expose it.',
-		],
-	},
-	{
-		id: 'operations',
-		title: 'Deploys, upgrades and observability',
-		body: [
-			'openorange deploy builds a container image of your project and the runtime, pushes it, and rolls it out through Rivet. When a runtime stops, it closes each accepted WebSocket with 1012 Service Restart so that clients reconnect, and its Actors wake on the new version. You choose when a deploy happens.',
-			'RivetKit serves metrics on RIVETKIT_METRICS_PORT. The Rivet dashboard adds an Actor list, a state inspector, a connection inspector and an RPC debugger.',
-		],
-	},
-	{
-		id: 'rivet',
-		title: 'What you need to know about Rivet',
-		body: [
-			'Not much. Rivet is the engine underneath; OpenOrange is the Cloudflare-shaped interface on top of it. You interact with the openorange CLI and your wrangler config. Rivet shows up when you choose where to deploy (Rivet Cloud, your VPC, or self-hosted) and when you open the dashboard.',
-			'If you want to go further, every Durable Object you migrate is now a Rivet Actor, and the rest of the Rivet ecosystem (the Actors SDK, Workflows, agent runtimes) is available alongside your Workers code.',
-		],
-	},
-] as const;
+// The runtime rows that compare OpenOrange with Cloudflare directly.
+const RUNTIME_ROWS = ['Memory per Worker', 'CPU time per request', 'Subrequests per request', 'Alarm wall time', 'Node.js APIs', 'Native npm modules'];
+const limits = WORKERD_LIMITS.filter((row) => RUNTIME_ROWS.includes(row.label));
+
+const rivetActors = 'https://rivet.dev/docs/actors/';
 ---
 
 <Base
-	title={`Architecture — ${SITE.name}`}
-	description="How OpenOrange runs Cloudflare Workers, Durable Objects, KV, Queues and Workflows on your own cloud: a Node.js Workers runtime with Rivet as the control plane."
+	title={`How it works — ${SITE.name}`}
+	description="How OpenOrange runs your Cloudflare project: standard Docker containers in any cloud, scaled by the Rivet control plane, with state in S3 behind an SSD layer."
 >
 	<section>
-		<div class="container-x pt-20 pb-14 md:pt-32 md:pb-16">
-			<h1 class="h-hero max-w-4xl">
-				What runs when you type <span class="whitespace-nowrap font-mono text-[0.82em] tracking-[-0.04em]"><span class="text-ink-faint select-none">$ </span>openorange deploy</span>
-			</h1>
-			<p class="lede mt-7 max-w-xl">
-				Three layers: your code, a runtime that speaks the Workers API, and Rivet for everything stateful. All of it runs in your cloud account.
+		<div class="container-x pt-16 pb-12 md:pt-28 md:pb-16">
+			<p class="label">Architecture</p>
+			<h1 class="h-hero mt-4 max-w-4xl">How {SITE.name} works.</h1>
+			<p class="lede mt-7 max-w-2xl">
+				{SITE.name} is powered by <a href={SITE.rivet} class="link">Rivet</a>, a scalable control plane that runs your Cloudflare workloads. Your code ships as standard Docker containers, so it runs anywhere Docker runs.
 			</p>
 		</div>
 	</section>
 
-	<section>
-		<div class="container-x pb-20 md:pb-28">
-			<figure class="card p-5 md:p-10">
-				<ArchitectureDiagram class="h-auto w-full" />
+	<section aria-labelledby="diagram-caption">
+		<div class="container-x pb-16 md:pb-24">
+			<figure class="card p-4 sm:p-6 md:p-10">
+				<ArchitectureDiagram class="mx-auto max-w-4xl" />
+				<figcaption id="diagram-caption" class="sr-only">Your Docker containers, in any cloud, connect out to the Rivet control plane, which is backed by S3 with an SSD layer in front.</figcaption>
 			</figure>
 		</div>
 	</section>
 
-	<section id="services" class="scroll-mt-20 rule">
-		<div class="container-x section">
-			<h2 class="h-section">Service map</h2>
-			<div class="mt-10"><ServiceTable /></div>
-		</div>
-	</section>
-
-	<section class="rule">
-		<div class="container-x section grid gap-12 lg:grid-cols-[240px_1fr] lg:gap-20">
-			<nav aria-label="On this page" class="hidden lg:block">
-				<ol class="sticky top-24 space-y-1 border-l border-line">
-					{sections.map((section) => (
-						<li><a href={`#${section.id}`} class="-ml-px block border-l border-transparent py-1.5 pl-4 text-[13px] leading-snug text-ink-soft hover:border-ink hover:text-ink">{section.title}</a></li>
-					))}
-				</ol>
-			</nav>
-			<div class="divide-y divide-line">
-				{sections.map((section, i) => (
-					<article id={section.id} class={`scroll-mt-20 ${i === 0 ? 'pb-12 md:pb-16' : 'py-12 md:py-16'}`}>
-						<h2 class="h-sub">{section.title}</h2>
-						<div class="max-w-2xl">
-							{section.body.map((paragraph) => (
-								<p class="body-copy mt-5 text-ink-soft">{paragraph}</p>
-							))}
-						</div>
-					</article>
-				))}
-				<p class="pt-8 text-[14px] text-ink-soft">
-					Deeper reading: <a href={`${SITE.rivet}/actors/docs/`} class="link">Rivet Actors</a>, <a href={`${SITE.rivet}/docs/deploy/`} class="link">Rivet deployment</a>, <a href={`${SITE.rivet}/actors/compare/rivet-actors-vs-cloudflare-durable-objects/`} class="link">Rivet Actors vs Durable Objects</a>, <a href="/vs-workerd/" class="link">workerd vs OpenOrange</a>, <a href="/compatibility/" class="link">compatibility scores</a>, <a href="/docs/bindings/" class="link">bindings</a>.
+	<!-- 1. Rivet, and the storage under it. -->
+	<section id="rivet" class="scroll-mt-20 rule">
+		<div class="container-x section-tight split-head">
+			<div>
+				<p class="font-mono text-[13px] text-orange-deep">01</p>
+				<h2 class="h-sub mt-3 max-w-md text-balance">Powered by Rivet, backed by S3.</h2>
+			</div>
+			<div class="max-w-xl">
+				<p class="body-copy text-ink-soft">
+					Rivet is an open-source control plane. Each Durable Object runs as a Rivet Actor: Rivet finds it, wakes it on one of your containers, and routes each request to it.
 				</p>
+				<p class="body-copy mt-4 text-ink-soft">
+					Rivet keeps state in S3, which is cheap, durable and scalable, with an SSD layer in front so reads and writes stay fast. Scaling out is a matter of adding machines.
+				</p>
+				<p class="mt-5 text-[15px]"><a href={rivetActors} class="link">Rivet Actors <span aria-hidden="true">→</span></a></p>
 			</div>
 		</div>
 	</section>
 
-	<Cta />
+	<!-- 2. orange deploy ships Docker containers; Rivet spreads the load across them. -->
+	<section id="containers" class="scroll-mt-20 rule">
+		<div class="container-x section-tight split-head">
+			<div>
+				<p class="font-mono text-[13px] text-orange-deep">02</p>
+				<h2 class="h-sub mt-3 max-w-md text-balance">Standard Docker containers, in any cloud.</h2>
+			</div>
+			<div class="max-w-xl">
+				<p class="body-copy text-ink-soft">
+					<code class="code-chip">orange deploy</code> builds your Worker and the {SITE.name} runtime into a standard Docker image, so it runs anywhere Docker runs.
+				</p>
+				<p class="body-copy mt-4 text-ink-soft">
+					Each container holds your Workers, Durable Objects, Workflows and the rest of your Cloudflare code. The containers connect out to Rivet, which spreads the load across them. To add capacity, add containers.
+				</p>
+				<ul class="mt-6 divide-y divide-line border-y border-line text-[14px]">
+					{DEPLOY_TARGETS.map((target) => (
+						<li class="grid gap-x-4 gap-y-0.5 py-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
+							<span class="font-semibold">{target.label}</span>
+							<span class="text-ink-soft">{target.runsOn}</span>
+						</li>
+					))}
+				</ul>
+				<p class="mt-5 text-[15px]"><a href={SITE.docsDeploy} class="link">Deploy and self-host <span aria-hidden="true">→</span></a></p>
+			</div>
+		</div>
+	</section>
+
+	<!-- 3. Binding → service. #services is linked from elsewhere on the site. -->
+	<section id="services" class="scroll-mt-20 rule">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<div>
+					<p class="font-mono text-[13px] text-orange-deep">03</p>
+					<h2 class="h-sub mt-3 max-w-md text-balance">Each binding maps to the best-fit service.</h2>
+				</div>
+				<p class="body-copy max-w-xl text-ink-soft">
+					Your bindings and your code stay the same. Stateful bindings run on Rivet Actors. The rest plug into services you already use.
+				</p>
+			</div>
+
+			<ul class="card mt-10 divide-y divide-line">
+				{BINDING_ROUTES.map((route) => (
+					<li class="grid gap-x-6 gap-y-2 px-4 py-4 sm:px-5 md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1.1fr)] md:items-start">
+						<ul class="flex flex-wrap gap-1.5">
+							{route.bindings.map((b) => (
+								<li>
+									<a href={b.href} class="inline-flex items-center rounded-md border border-line bg-paper-mid px-2 py-0.5 text-[13px] font-medium text-ink no-underline transition-colors hover:border-ink-faint motion-reduce:transition-none">{b.label}</a>
+								</li>
+							))}
+						</ul>
+						<span class="hidden pt-0.5 text-ink-faint md:block" aria-hidden="true">→</span>
+						<div>
+							<p class="flex items-center gap-2 text-[15px] font-semibold leading-snug">
+								<span class="text-ink-faint md:hidden" aria-hidden="true">→</span>
+								{route.rivet ? <span class="size-2.5 shrink-0 rounded-[2px] bg-orange" aria-hidden="true" /> : null}
+								{route.service}
+							</p>
+							<p class="mt-1 text-[13.5px] leading-snug text-ink-soft">{route.detail}</p>
+						</div>
+					</li>
+				))}
+			</ul>
+			{NOT_SUPPORTED.length ? (
+				<p class="caption mt-4">
+					Not supported yet: {NOT_SUPPORTED.join(', ')}. These bindings load, and each call throws.
+				</p>
+			) : null}
+
+			<div class="mt-8 border-y border-line">
+				<details class="group">
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 [&::-webkit-details-marker]:hidden">
+						<span>
+							<span class="block text-[17px] font-medium">Full service map</span>
+							<span class="mt-0.5 block text-[14px] text-ink-faint">Every Cloudflare service, with its status and what differs.</span>
+						</span>
+						<span class="text-xl leading-none text-ink-faint transition-transform duration-200 group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
+					</summary>
+					<div class="pb-8 pt-1">
+						<ServiceTable />
+					</div>
+				</details>
+			</div>
+			<p class="mt-6 text-[15px]"><a href={SITE.docsBindings} class="link">Bindings documentation <span aria-hidden="true">→</span></a></p>
+		</div>
+	</section>
+
+	<!-- 4. Node.js, not the Workers runtime. -->
+	<section id="nodejs" class="scroll-mt-20 rule">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<div>
+					<p class="font-mono text-[13px] text-orange-deep">04</p>
+					<h2 class="h-sub mt-3 max-w-md text-balance">Real Node.js, not the Workers runtime.</h2>
+				</div>
+				<div class="max-w-xl">
+					<p class="body-copy text-ink-soft">
+						Your Worker runs in a Node.js process, so you're not limited to the part of Node.js that the Workers runtime supports. Node.js APIs are always on, without <code class="code-chip">nodejs_compat</code>, and the machines you choose set the memory and CPU time.
+					</p>
+					<p class="body-copy mt-4 text-ink-soft">That opens up the Node.js ecosystem: npm packages that need Node.js APIs the Workers runtime doesn't have.</p>
+				</div>
+			</div>
+
+			{limits.length ? (
+				<div class="mt-10 border-y border-line">
+					<details class="group">
+						<summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 [&::-webkit-details-marker]:hidden">
+							<span>
+								<span class="block text-[17px] font-medium">Runtime limits, compared</span>
+								<span class="mt-0.5 block text-[14px] text-ink-faint">{SITE.name} next to Cloudflare's Workers Paid plan.</span>
+							</span>
+							<span class="text-xl leading-none text-ink-faint transition-transform duration-200 group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
+						</summary>
+						<div class="pb-8 pt-1">
+							<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+								{limits.map((row) => (
+									<li class="card p-5">
+										<h3 class="text-[15px] font-semibold">{row.label}</h3>
+										<dl class="mt-3 divide-y divide-line text-[13.5px]">
+											<div class="flex gap-4 py-2 font-semibold">
+												<dt class="w-24 shrink-0 text-orange-deep">{SITE.name}</dt>
+												<dd class="min-w-0">{row.openorange}</dd>
+											</div>
+											<div class="flex gap-4 py-2">
+												<dt class="w-24 shrink-0 text-ink-faint">Cloudflare</dt>
+												<dd class="min-w-0 text-ink-faint">{row.cloudflare}</dd>
+											</div>
+										</dl>
+									</li>
+								))}
+							</ul>
+							<p class="caption mt-6">Cloudflare figures checked {SITE.verified}.</p>
+						</div>
+					</details>
+				</div>
+			) : null}
+			<p class="mt-6 text-[15px]"><a href="/vs-workerd/" class="link">workerd vs {SITE.name} <span aria-hidden="true">→</span></a></p>
+		</div>
+	</section>
+
+	<Cta title="All of it is open source." body={`${SITE.name} and Rivet are open source, and built to be as easy to self-host as possible.`} />
 </Base>
