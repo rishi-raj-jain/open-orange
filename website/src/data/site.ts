@@ -534,6 +534,11 @@ export const FAQ = [
 		a: 'No. OpenOrange implements the Workers API on Node.js and maps each Cloudflare service onto Rivet. It uses Wrangler to read your configuration, and it reuses some MIT-licensed Cloudflare code, such as the Workflows engine. It does not run workerd.',
 	},
 	{
+		q: 'Why not just run workerd directly?',
+		a: "workerd is Cloudflare's runtime, not its platform. It runs your fetch handler, but KV, D1, R2, Queues, Workflows and the Cache API are bindings that call services you have to build, and Durable Objects keep their data on one machine with nothing to place, replicate or scale them. It also keeps limits designed around Cloudflare's network rather than your servers: only the nodejs_compat subset of Node.js, no native npm modules, and alarms capped at 15 minutes. OpenOrange runs your Worker on Node.js with real SQLite, and Rivet provides the services, so your code keeps working on infrastructure you control.",
+		more: { label: 'Compare workerd and OpenOrange', href: '/vs-workerd/' },
+	},
+	{
 		q: 'Do I need to learn Rivet?',
 		a: 'No. Rivet is the control plane underneath. You use the orange CLI and your Wrangler configuration.',
 	},

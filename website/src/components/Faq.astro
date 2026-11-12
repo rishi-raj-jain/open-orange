@@ -23,7 +23,15 @@ const jsonLd = {
 						<span class="text-xl leading-none text-ink-faint transition-transform duration-200 group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
 					</summary>
 					<div class="faq-body overflow-hidden">
-						<p class="body-copy max-w-2xl pb-6 text-ink-soft">{item.a}</p>
+						<p class="body-copy max-w-2xl pb-6 text-ink-soft">
+							{item.a}
+							{'more' in item && item.more && (
+								<>
+									{' '}
+									<a class="link" href={item.more.href}>{item.more.label} <span aria-hidden="true">→</span></a>
+								</>
+							)}
+						</p>
 					</div>
 				</details>
 			))}
