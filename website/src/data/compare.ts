@@ -21,7 +21,8 @@ const CLOUDFLARE_APIS = MODULES.filter((m) => m.doc !== 'globals').length;
 /** How a matrix cell reads at a glance. */
 export type Mark = 'yes' | 'partial' | 'no';
 export type Cell = { text: string; mark?: Mark; note?: string };
-export type MatrixRow = { label: string; them: Cell; us: Cell } | { label: string; same: string };
+/** A row, a row the same on both, or a heading over the rows that follow it. */
+export type MatrixRow = { label: string; them: Cell; us: Cell } | { label: string; same: string } | { group: string };
 
 export type Product = {
 	name: string;
@@ -44,6 +45,13 @@ export type Stat = { value: string; label: string; body: string };
 /** A sentence quoted from the other product's docs, with when it applies. */
 export type Quote = { quote: string; when: string; href: string };
 export type Link = { label: string; href: string };
+/** One reason to pick OpenOrange: a short heading and one or two sentences. */
+export type Reason = {
+	title: string;
+	body: string;
+	/** Sourced facts that back the reason, shown under it. */
+	evidence?: string;
+};
 
 export type Comparison = {
 	slug: string;
@@ -55,6 +63,8 @@ export type Comparison = {
 	lede: string;
 	them: Product;
 	us: Product;
+	/** Shown right after the head-to-head cards. */
+	reasons?: { title: string; lede?: string; items: Reason[] };
 	picks: Pick[];
 	matrix: { title: string; rows: MatrixRow[]; caption?: string };
 	timeline?: { title: string; lede: string; events: TimelineEvent[] };
@@ -86,6 +96,17 @@ const NEXT_TO_DB = { text: 'In your VPC, next to it', mark: 'yes' } as const;
 
 const CELLD_DOCS = 'https://github.com/denoland/celld/blob/8702f6d186c77698dbfb30cf29e3b1922a88f008/docs';
 
+// The case against celld, in the order Rivet makes it. Each reason heads its
+// rows in the matrix too.
+const CELLD_POINTS = {
+	features: 'Rivet ships faster',
+	runtime: 'No runtime limitations',
+	architecture: 'Years of scaling Actors',
+	migration: 'Live migrations',
+	ecosystem: 'Proven integrations and features',
+	support: 'Support and longevity',
+} as const;
+
 const celld: Comparison = {
 	slug: 'celld',
 	name: 'celld',
@@ -97,11 +118,44 @@ const celld: Comparison = {
 	them: {
 		name: 'celld',
 		badge: { text: 'No release since Oct 21, 2026', tone: 'muted' },
-		body: 'Self-hosted Workers and Durable Objects, built by Deno. It runs its own Workers runtime on V8 and keeps each active cell’s SQLite file on local disk, replicated to a bucket. It imports KV and D1, but not your Durable Object data. Cloudflare acquired Deno in October 2026.',
+		body: 'Self-hosted Workers and Durable Objects, built by Deno. It runs its own Workers runtime on V8 and keeps each active cell’s SQLite file on local disk, replicated to a bucket. Cloudflare acquired Deno in October 2026.',
 	},
 	us: {
 		name: SITE.name,
 		body: 'Your Cloudflare project in production, on your own cloud. The Workers API runs on Node.js. Rivet places every Durable Object across your machines, and WarpDrive stores its data on S3 behind an SSD tier. Cloudflare locks your data in. OpenOrange opens it up and live-migrates it, with zero downtime for Durable Objects.',
+	},
+	reasons: {
+		title: 'Why OpenOrange',
+		lede: 'Six reasons to run your Durable Objects on OpenOrange instead of celld.',
+		items: [
+			{
+				title: CELLD_POINTS.features,
+				body: 'Rivet ships features faster than Cloudflare, such as Actor forking, bottomless disk and agentOS, which runs code in lightweight VMs. We believe that makes Rivet a better foundation for Durable Objects than celld.',
+			},
+			{
+				title: CELLD_POINTS.runtime,
+				body: 'OpenOrange is built to remove the runtime limitations of celld and Cloudflare. It has no 128 MB memory limit, runs vanilla Node.js, and has bottomless SQLite storage.',
+			},
+			{
+				title: CELLD_POINTS.architecture,
+				body: 'Rivet’s architecture is significantly different from celld’s, built from years of experience scaling Actors. OpenOrange has better SSD cache hits, lower storage costs and better performance.',
+			},
+			{
+				title: CELLD_POINTS.migration,
+				body: 'OpenOrange invests in live migrations from Cloudflare infrastructure, and between OpenOrange deployments.',
+				evidence: 'celld imports no Durable Object data, and some of its upgrades meant stopping the whole fleet.',
+			},
+			{
+				title: CELLD_POINTS.ecosystem,
+				body: 'OpenOrange focuses on proven ecosystem integrations, such as OpenRouter, Browserbase, Amazon SES, E2B, Daytona and Freestyle, instead of Cloudflare’s walled-garden services. It also runs Workers AI, Email, Hyperdrive, Browser Rendering, Rate Limiting and Tail Workers, with more coming soon.',
+				evidence: 'celld runs none of those six.',
+			},
+			{
+				title: CELLD_POINTS.support,
+				body: 'Cloudflare doesn’t make money from celld and has no incentive to support it beyond hobbyist and marketing use cases. Rivet supports OpenOrange professionally, because it’s tied to Rivet’s revenue.',
+				evidence: 'celld’s last release was Oct 21. Its pull requests are disabled, and only the latest release gets security fixes.',
+			},
+		],
 	},
 	picks: [
 		{
@@ -109,10 +163,10 @@ const celld: Comparison = {
 			highlight: true,
 			items: [
 				'You run Cloudflare code in production.',
-				'You need storage that’s fast, bottomless and online through S3 outages.',
+				'You need storage that’s fast and stays online through S3 outages.',
+				'You’re live-migrating an app off Cloudflare, or between OpenOrange deployments.',
+				'You want proven integrations, not Cloudflare’s walled garden.',
 				'You want a maintained project with support behind it.',
-				'You run untrusted code in sandboxes on E2B, Daytona, Freestyle or agentOS.',
-				'You’re live-migrating an app off Cloudflare, or between OpenOrange clusters.',
 			],
 		},
 		{
@@ -127,59 +181,47 @@ const celld: Comparison = {
 	matrix: {
 		title: 'Side by side',
 		rows: [
+			{ group: CELLD_POINTS.features },
 			{
-				label: 'Maintained',
-				them: { text: 'No release, commit or maintainer reply since Oct 21, 2026', mark: 'no' },
-				us: { text: 'Yes, by Rivet, with paid support', mark: 'yes', note: 'Rivet has invested in this platform since December 2024.' },
+				label: 'Actor forking',
+				them: { text: 'No', mark: 'no' },
+				us: { text: 'Yes, with Rivet Actors beside your Workers', mark: 'yes' },
 			},
 			{
-				label: 'Security fixes',
-				them: { text: 'Latest release only, and none since Oct 21', mark: 'no', note: '“Only the latest release receives security fixes.”' },
-				us: { text: 'Yes, from Rivet', mark: 'yes' },
+				label: 'Bottomless storage',
+				them: { text: 'No. Bound by the node’s disk', mark: 'no', note: 'No per-cell quota.' },
+				us: { text: 'Yes. SQLite isn’t capped by host disk', mark: 'yes' },
 			},
 			{
-				label: 'Production-ready',
-				them: { text: 'Beta, by its own docs', mark: 'partial' },
-				us: { text: 'Built for production on Rivet', mark: 'yes' },
-			},
-			{
-				label: 'Runs your Cloudflare code as is',
+				label: 'Lightweight VMs for dynamic code',
 				them: {
-					text: 'Workers, Durable Objects, KV, D1, R2, Queues, Workflows and Cron',
-					mark: 'partial',
-					note: 'No Workers AI, Hyperdrive, Browser Rendering or Email.',
+					text: 'No. A Dynamic Worker runs in the loader’s process',
+					mark: 'no',
+					note: '“It is not a second process or a virtual machine.”',
 				},
-				us: { text: `${CLOUDFLARE_APIS} Cloudflare APIs`, mark: 'yes', note: 'Workers AI, Hyperdrive, Browser Rendering and Email run on providers you choose.' },
+				us: { text: 'Worker Loader runs each dynamic Worker in an agentOS VM', mark: 'yes', note: 'Sandboxes can run in one too.' },
+			},
+			{ group: CELLD_POINTS.runtime },
+			{
+				label: 'Memory',
+				them: { text: '128 MB heap per isolate by default', mark: 'partial', note: 'Configurable. Over 90%, new hibernatable WebSockets are refused.' },
+				us: { ...MEMORY, text: 'No 128 MB cap: your machine’s memory' },
 			},
 			{
 				label: 'Node.js',
 				them: { text: 'A listed subset of node: modules', mark: 'partial', note: 'Other node: modules import, then throw on first call.' },
-				us: NODE,
-			},
-			{
-				label: 'Sandboxes for untrusted code',
-				them: { text: 'Docker or Podman on each node', mark: 'partial', note: 'By default a container shares the node’s kernel. Experimental.' },
-				us: { text: 'E2B, Daytona, Freestyle or agentOS', mark: 'yes', note: 'E2B, Freestyle and agentOS run each sandbox in a VM.' },
-			},
-			{
-				label: 'Memory',
-				them: { text: '128 MB heap per isolate by default', mark: 'partial', note: 'Configurable. Over 90%, new hibernatable WebSockets are refused.' },
-				us: MEMORY,
+				us: { ...NODE, text: 'Vanilla Node.js 22 or later' },
 			},
 			{
 				label: 'CPU and alarm time',
 				them: { text: 'Not documented' },
 				us: { text: 'No cap', mark: 'yes' },
 			},
+			{ group: CELLD_POINTS.architecture },
 			{
 				label: 'Durable Objects across machines',
 				them: { text: 'Yes. Only hibernated cells move, placed by CPU count', mark: 'partial' },
 				us: { text: 'Yes. Rivet places Actors across your machines', mark: 'yes' },
-			},
-			{
-				label: 'Fork an Actor or Durable Object with its state',
-				them: { text: 'No', mark: 'no' },
-				us: { text: 'Yes, with Rivet Actors beside your Workers', mark: 'yes' },
 			},
 			{
 				label: 'Storage',
@@ -196,16 +238,6 @@ const celld: Comparison = {
 				us: { text: WARPDRIVE.latency, mark: 'yes' },
 			},
 			{
-				label: 'Latency to your database',
-				them: { text: 'On your servers, without Hyperdrive', mark: 'partial', note: 'Workers that reach their database through Hyperdrive need changes.' },
-				us: { ...NEXT_TO_DB, note: 'Hyperdrive works unchanged.' },
-			},
-			{
-				label: 'Database size',
-				them: { text: 'Bound by the node’s disk', mark: 'partial', note: 'No per-cell quota.' },
-				us: { text: 'Not capped by host disk', mark: 'yes' },
-			},
-			{
 				label: 'S3 outage',
 				them: { text: 'The bucket holds every node lease and cell ownership record' },
 				us: { text: 'Hot and new Actors stay online', mark: 'yes' },
@@ -220,19 +252,82 @@ const celld: Comparison = {
 				them: { text: 'Your servers, plus an S3, GCS or Azure bucket' },
 				us: { text: DEPLOY, mark: 'yes' },
 			},
-			{
-				label: 'Managed option',
-				them: { text: 'Self-hosted only', mark: 'no' },
-				us: { text: 'Rivet Cloud, or BYOC in your account', mark: 'yes' },
-			},
+			{ group: CELLD_POINTS.migration },
 			{
 				label: 'Live migration of your data',
 				them: {
 					text: 'No. Imports KV exports and D1 SQL only',
 					mark: 'no',
-					note: 'No Durable Object data import. Some v0.6.0 upgrades meant stopping the whole fleet.',
+					note: 'Some v0.6.0 upgrades meant stopping the whole fleet.',
 				},
-				us: { ...MIGRATE, note: 'Off Cloudflare, or between OpenOrange clusters.' },
+				us: { ...MIGRATE, note: 'Off Cloudflare, or between OpenOrange deployments.' },
+			},
+			{ group: CELLD_POINTS.ecosystem },
+			{
+				label: 'Ecosystem integrations',
+				them: { text: 'Cloudflare’s own services only', mark: 'no', note: 'No providers for AI, browsers or email.' },
+				us: { text: 'Services you choose, for AI, browsers, email and sandboxes', mark: 'yes', note: 'Any OpenAI-compatible, Chrome DevTools or SMTP endpoint.' },
+			},
+			{
+				label: 'Sandboxes for untrusted code',
+				them: { text: 'Docker or Podman on each node', mark: 'partial', note: 'By default a container shares the node’s kernel. Experimental.' },
+				us: { text: 'E2B, Daytona, Freestyle or agentOS', mark: 'yes', note: 'E2B, Freestyle and agentOS run each sandbox in a VM.' },
+			},
+			{
+				label: 'Runs your Cloudflare code as is',
+				them: { text: 'Workers, Durable Objects, KV, D1, R2, Queues, Workflows and Cron', mark: 'partial' },
+				us: { text: `${CLOUDFLARE_APIS} Cloudflare APIs`, mark: 'yes' },
+			},
+			{
+				label: 'Workers AI',
+				them: { text: 'No', mark: 'no' },
+				us: { text: 'Text and embedding models, on OpenRouter or any OpenAI-compatible API', mark: 'yes' },
+			},
+			{
+				label: 'Email',
+				them: { text: 'No', mark: 'no' },
+				us: { text: 'Send and receive, through Amazon SES or any SMTP server', mark: 'yes' },
+			},
+			{
+				label: 'Hyperdrive',
+				them: { text: 'No', mark: 'no', note: 'Workers that use it need changes.' },
+				us: { text: 'Works unchanged, straight to your database', mark: 'yes' },
+			},
+			{
+				label: 'Browser Rendering',
+				them: { text: 'No', mark: 'no' },
+				us: { text: 'Your Puppeteer code, on Browserbase or any Chrome DevTools endpoint', mark: 'yes' },
+			},
+			{
+				label: 'Rate Limiting',
+				them: { text: 'No', mark: 'no' },
+				us: { text: 'Yes, one exact counter per namespace', mark: 'yes' },
+			},
+			{
+				label: 'Tail Workers',
+				them: { text: 'No. The tail() handler is unavailable', mark: 'no' },
+				us: { text: 'Yes, through Rivet Durable Streams', mark: 'yes' },
+			},
+			{ group: CELLD_POINTS.support },
+			{
+				label: 'Support model',
+				them: { text: 'No paid support. Cloudflare doesn’t make money from it', mark: 'no' },
+				us: { text: 'Professional support from Rivet, tied to its revenue', mark: 'yes', note: 'Rivet has invested in this platform since December 2024.' },
+			},
+			{
+				label: 'Production-ready',
+				them: { text: 'Beta, by its own docs', mark: 'partial' },
+				us: { text: 'Built for production on Rivet', mark: 'yes' },
+			},
+			{
+				label: 'Security fixes',
+				them: { text: 'Latest release only', mark: 'no', note: '“Only the latest release receives security fixes.”' },
+				us: { text: 'Yes, from Rivet', mark: 'yes' },
+			},
+			{
+				label: 'Managed option',
+				them: { text: 'Self-hosted only', mark: 'no' },
+				us: { text: 'Rivet Cloud, or BYOC in your account', mark: 'yes' },
 			},
 			{
 				label: 'License',
@@ -282,7 +377,6 @@ const celld: Comparison = {
 		lede: 'OpenOrange keeps every Durable Object, KV namespace, D1 database, Queue and Workflow on WarpDrive, Rivet’s storage engine. It’s backed by S3 and runs at SSD speed.',
 		items: [
 			{ value: '0.6 ms', label: 'Storage latency', body: 'S3 takes 50–200 ms. WarpDrive’s SSD tier answers in 0.6 ms.' },
-			{ value: 'Bottomless', label: 'Database size', body: 'SQLite isn’t capped by the disk of the machine it runs on.' },
 			{ value: 'Beyond S3’s 99.9%', label: 'Availability', body: 'The SSD layer keeps hot and new Actors online when S3 is down.' },
 			{ value: 'Orders of magnitude', label: 'Lower S3 request cost', body: 'SSD tiering spreads each S3 request across many writes.' },
 		],
@@ -296,9 +390,11 @@ const celld: Comparison = {
 		{ label: 'celld guarantees', href: `${CELLD_DOCS}/guarantees.md` },
 		{ label: 'celld Cloudflare compatibility', href: `${CELLD_DOCS}/cloudflare-compat.md` },
 		{ label: 'celld containers', href: `${CELLD_DOCS}/services/containers.md` },
+		{ label: 'celld Dynamic Workers', href: `${CELLD_DOCS}/services/dynamic-workers.md` },
 		{ label: 'celld README: memory limits', href: `${CELLD_DOCS.replace(/\/docs$/, '')}/README.md#operate-a-fleet` },
 		{ label: 'celld v0.6.0 release', href: 'https://github.com/denoland/celld/releases/tag/v0.6.0' },
 		{ label: 'Rivet: forking', href: `${SITE.rivet}/actors/docs/forking/` },
+		{ label: 'Rivet: agentOS', href: 'https://github.com/rivet-dev/agentos' },
 		{ label: 'OpenOrange: migrate from Cloudflare', href: SITE.docsMigrate },
 	],
 	cta: {
