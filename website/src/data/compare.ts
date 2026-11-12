@@ -644,6 +644,7 @@ const durableObjects: Comparison = {
 		{
 			title: 'Use OpenOrange when…',
 			highlight: true,
+			lead: 'Most teams that grow end up on AWS, for compliance, data residency, latency to their database, cost at scale and what enterprise customers require. Durable Objects can’t move with them. OpenOrange takes them along.',
 			items: [
 				'Your database runs in AWS, GCP or Azure, and p99s matter.',
 				'You’ve outgrown 128 MB of memory, 5 minutes of CPU or 10 GB per object.',
@@ -656,9 +657,10 @@ const durableObjects: Comparison = {
 		{
 			title: 'Use Durable Objects when…',
 			items: [
-				'You have no infrastructure of your own, and don’t want any.',
-				'Your objects fit in 128 MB of memory and 10 GB of storage.',
-				'You have no strict latency, uptime or data-residency needs.',
+				'You don’t plan to grow into a full AWS, GCP or Azure deployment.',
+				'You’ll never need to deploy into your customers’ clouds or on-prem.',
+				'Your data can live on Cloudflare’s network, in Cloudflare’s jurisdictions.',
+				'You can live with 128 MB per object and Cloudflare’s deploy schedule.',
 			],
 		},
 	],
