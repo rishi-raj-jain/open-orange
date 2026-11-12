@@ -465,6 +465,11 @@ export const GET_STARTED = [
 		body: 'Builds an image of your Worker and rolls it out to your own cloud (AWS, GCP, Azure) or on-prem servers. Or use Rivet Cloud: fully managed, on a dedicated cluster in the provider and region you choose.',
 		commands: ['orange login', 'orange link --cluster <name>', 'orange deploy'],
 		output: { mark: '✓', status: 'Deployed my-worker', note: '', rows: [['URL', 'https://api.example.com']] },
+		// The commands above deploy to a Rivet cluster; self-hosting runs the image on your own Engine.
+		links: [
+			{ label: 'Deploy guide', href: SITE.docsDeploy },
+			{ label: 'Self-host it', href: `${SITE.docsDeploy}#self-host` },
+		],
 	},
 ] as const;
 

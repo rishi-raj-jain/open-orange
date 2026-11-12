@@ -80,20 +80,51 @@ const jsonLd = structuredData.length
 		</main>
 		<Footer />
 		<script>
-			// Copy buttons: any element with data-copy copies its value.
+			// Copy buttons: any element with data-copy copies its value. Only after the
+			// copy succeeds does its [data-copy-label] read "Copied" and the element
+			// get data-copied (for styling), both for 1.5 s.
+			const copyTimers = new WeakMap<HTMLElement, number>();
+			const writeClipboard = async (value: string) => {
+				try {
+					await navigator.clipboard.writeText(value);
+					return true;
+				} catch {
+					// No Clipboard API outside a secure context, such as the dev server
+					// opened by IP address: fall back to a selected textarea.
+				}
+				const area = document.createElement('textarea');
+				area.value = value;
+				area.setAttribute('readonly', '');
+				area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+				document.body.append(area);
+				area.select();
+				try {
+					return document.execCommand('copy');
+				} catch {
+					return false;
+				} finally {
+					area.remove();
+				}
+			};
 			document.addEventListener('click', async (event) => {
 				const target = (event.target as HTMLElement).closest<HTMLElement>('[data-copy]');
 				if (!target) return;
-				const value = target.dataset.copy ?? '';
-				try {
-					await navigator.clipboard.writeText(value);
-					const label = target.querySelector<HTMLElement>('[data-copy-label]') ?? target;
-					const original = label.textContent;
-					label.textContent = 'Copied';
-					setTimeout(() => (label.textContent = original), 1400);
-				} catch {
-					// Clipboard unavailable: leave the text selectable.
-				}
+				if (!(await writeClipboard(target.dataset.copy ?? ''))) return;
+				const label = target.querySelector<HTMLElement>('[data-copy-label]') ?? target;
+				label.dataset.copyOriginal ??= label.textContent ?? '';
+				label.textContent = 'Copied';
+				// Restart the acknowledgement on a repeat click.
+				delete target.dataset.copied;
+				void target.offsetWidth;
+				target.dataset.copied = '';
+				clearTimeout(copyTimers.get(target));
+				copyTimers.set(
+					target,
+					window.setTimeout(() => {
+						label.textContent = label.dataset.copyOriginal ?? '';
+						delete target.dataset.copied;
+					}, 1500),
+				);
 			});
 
 			// Links that leave the site open in a new tab. GitHub, where the docs live,
