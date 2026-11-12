@@ -1,0 +1,23 @@
+/* The migration scene's colors beyond the site tokens (migrate-scene.ts):
+   wires a step darker than a hairline, the route before the cutover, and the
+   AWS mark. As on the landing page (Migrate.astro). */
+.mig-scene {
+	--mig-wire: #d6d3d1;
+	--mig-route: #57534e;
+	--mig-aws: #252f3e;
+}
+.dark .mig-scene {
+	--mig-wire: #3d3935;
+	--mig-route: #a8a29e;
+	--mig-aws: #e8e6e3;
+}
+.mig-scene text {
+	font-family: var(--font-sans);
+}
+.mig-scene .mono {
+	font-family: var(--font-mono);
+}
+.mig-scene .caps {
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}

@@ -1,0 +1,27 @@
+---
+// A small diagram of where a migration stands after one step of the guide's
+// quickstart (docs/migrate.mdx): the scene from the animation at the top of
+// the page (MigrateScene.astro), drawn still and small by migrate-scene.ts,
+// with each side's D1 database. Rendered at build time, in theme colors.
+//
+//   <Step title="Point your domain at Orange">
+//
+//   <MigrateStep state="dns" />
+import { STEP_LABELS, layout, renderSvg, stepFrame, type StepState } from './migrate-scene';
+import './migrate-scene.css';
+
+interface Props {
+	/** The state after the step: before, prepared, deployed, orange, d1, dns, backfill, or cleanup. */
+	state: StepState;
+}
+
+const { state } = Astro.props;
+if (!(state in STEP_LABELS)) throw new Error(`<MigrateStep state="${state}">: no such state`);
+const L = layout('mini');
+const svg = renderSvg(L, stepFrame(state, L), { class: 'mig-scene block h-auto w-full', 'aria-hidden': 'true' });
+---
+
+<figure class="not-prose mig-step my-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-line bg-paper px-2.5 py-3 sm:px-4">
+	<div class="w-full max-w-[300px] shrink-0"><Fragment set:html={svg} /></div>
+	<figcaption class="min-w-[9rem] flex-1 text-[13px] leading-snug text-ink-soft">{STEP_LABELS[state]}</figcaption>
+</figure>

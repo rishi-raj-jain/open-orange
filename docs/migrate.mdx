@@ -9,10 +9,7 @@ description: Move SQLite-backed Durable Objects and D1 databases from Cloudflare
 Cloudflare to Orange, and your code does not change. Each Durable Object copies
 itself on its first request to Orange, so your app keeps serving.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="images/readme-migrate-path-dark.svg" />
-  <img alt="Check with orange doctor, prepare the Worker, deploy it to Cloudflare, deploy to Rivet, move D1, point DNS at Rivet, run the backfill, then clean up. Traffic moves when you point DNS." src="images/readme-migrate-path.svg" />
-</picture>
+<MigrateScene />
 
 ## Quickstart
 
@@ -29,35 +26,36 @@ You need:
 Set these in your shell, or in `.dev.vars`, for the `orange migrate` commands:
 
 ```sh
-export ORANGE_MIGRATE_WORKER_URL=https://my-app.acme.workers.dev
-export WORKER_MIGRATOR_TOKEN=...
-export CLOUDFLARE_API_TOKEN=...
-export CLOUDFLARE_ACCOUNT_ID=...
+$ export ORANGE_MIGRATE_WORKER_URL=https://my-app.acme.workers.dev
+$ export WORKER_MIGRATOR_TOKEN=...
+$ export CLOUDFLARE_API_TOKEN=...
+$ export CLOUDFLARE_ACCOUNT_ID=...
 ```
 
 <Steps>
 
 <Step title="Check your app">
 
+<MigrateStep state="before" />
+
 `orange doctor` checks that your app runs on Orange, and lists each Durable
 Object class that `orange migrate` can move.
 
 ```sh
-orange doctor
+$ orange doctor
 ```
 
 </Step>
 
 <Step title="Prepare the Worker">
 
+<MigrateStep state="prepared" />
+
 `prepare` writes a wrapped copy of your Worker, and does not change your code.
 Add `wrangler.migrate.jsonc` and `.open-orange/` to `.gitignore`.
 
 ```sh
-orange migrate prepare
-```
-
-```text
+$ orange migrate prepare
 ✓ Prepared Room. Your code did not change.
 
 Deploy the prepared Worker to Cloudflare. Your users see no change:
@@ -69,25 +67,29 @@ Deploy the prepared Worker to Cloudflare. Your users see no change:
 
 <Step title="Deploy the prepared Worker to Cloudflare">
 
+<MigrateStep state="deployed" />
+
 Run the two commands that `prepare` printed, and enter your token. Your app
 works as before. Let it serve for a while before you move your domain.
 
 ```sh
-wrangler secret put WORKER_MIGRATOR_TOKEN --config wrangler.migrate.jsonc
-wrangler deploy --config wrangler.migrate.jsonc
+$ wrangler secret put WORKER_MIGRATOR_TOKEN --config wrangler.migrate.jsonc
+$ wrangler deploy --config wrangler.migrate.jsonc
 ```
 
 </Step>
 
 <Step title="Deploy to Rivet">
 
+<MigrateStep state="orange" />
+
 Deploy the same app with your Worker's URL and the same token. This turns the
 migration on, and Orange gets no traffic yet. Using cron triggers? See
 [Cron triggers](#cron-triggers) first.
 
 ```sh
-rivet cluster secret set WORKER_MIGRATOR_TOKEN
-orange deploy \
+$ rivet cluster secret set WORKER_MIGRATOR_TOKEN
+$ orange deploy \
   --var ORANGE_MIGRATE_WORKER_URL:https://my-app.acme.workers.dev \
   --secret WORKER_MIGRATOR_TOKEN
 ```
@@ -98,16 +100,20 @@ orange deploy \
 
 <Step title="Move each D1 database" id="5-move-d1-databases">
 
+<MigrateStep state="d1" />
+
 Run this once for each D1 database, at a quiet time: the database takes no
 writes until the command ends. `DB` is the binding.
 
 ```sh
-orange migrate d1 DB --url https://<orange-url>
+$ orange migrate d1 DB --url https://<orange-url>
 ```
 
 </Step>
 
 <Step title="Point your domain at Orange">
+
+<MigrateStep state="dns" />
 
 Change your DNS to the Orange URL. Each Durable Object copies itself from
 Cloudflare on its first request, and your app keeps serving.
@@ -116,14 +122,13 @@ Cloudflare on its first request, and your app keeps serving.
 
 <Step title="Backfill the Durable Objects">
 
+<MigrateStep state="backfill" />
+
 A few minutes later, move the objects that got no request. Run it again, a few
 minutes apart, until every class prints `0 moved, 0 failed`.
 
 ```sh
-orange migrate backfill --url https://my-app.example.com
-```
-
-```text
+$ orange migrate backfill --url https://my-app.example.com
 Room: 0 moved, 0 failed, already moved: 6.
 Run this command once more in a few minutes. Cloudflare lists new objects late.
 ```
@@ -132,12 +137,14 @@ Run this command once more in a few minutes. Cloudflare lists new objects late.
 
 <Step title="Clean up">
 
+<MigrateStep state="cleanup" />
+
 When no traffic reaches Cloudflare and a backfill reports 0 failed, turn the
 migration off on Orange. Then delete the Cloudflare Worker and its data
 yourself.
 
 ```sh
-rivet cluster env unset ORANGE_MIGRATE_WORKER_URL --pool <pool>
+$ rivet cluster env unset ORANGE_MIGRATE_WORKER_URL --pool <pool>
 ```
 
 </Step>
@@ -151,7 +158,7 @@ remove the crons on Cloudflare when your domain moves, then turn them on in
 Orange.
 
 ```sh
-rivet cluster env unset ORANGE_CRONS --pool <pool>
+$ rivet cluster env unset ORANGE_CRONS --pool <pool>
 ```
 
 ## What does not move
@@ -166,7 +173,7 @@ Point your domain back at Cloudflare, then set `MIGRATOR_DISABLED` to `true` on
 the prepared Worker. A moved D1 database stays on Orange.
 
 ```sh
-wrangler secret put MIGRATOR_DISABLED --config wrangler.migrate.jsonc
+$ wrangler secret put MIGRATOR_DISABLED --config wrangler.migrate.jsonc
 ```
 
 <AiContext summary="What moves, every step in detail, rollback, failures, limits, flags, exit codes, variables, and error codes">
@@ -262,13 +269,13 @@ run fails on it.
 If this happened, destroy the Durable Object actors on Orange before step 4.
 Until the migration is on, they hold only test data. Use the Rivet Engine API.
 `<engine-host>`, `<namespace>`, and the token are the parts of
-`RIVET_ENDPOINT`:
+`RIVET_ENDPOINT`. The actor names of a class start with the class name in
+kebab case, such as `room-1a2b3c4d`.
 
 ```sh
-# The actor names of a class start with the class name in kebab case, such as room-1a2b3c4d.
-curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/names?namespace=<namespace>"
-curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?namespace=<namespace>&name=<actor-name>"
-curl -X DELETE -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/<actor_id>?namespace=<namespace>"
+$ curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/names?namespace=<namespace>"
+$ curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?namespace=<namespace>&name=<actor-name>"
+$ curl -X DELETE -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/<actor_id>?namespace=<namespace>"
 ```
 
 After step 4, destroy only the actors whose calls fail with that message. The
@@ -340,7 +347,7 @@ This request returns an ID, which shows that the route and the token work.
 Replace `MY_OBJECT` with a Durable Object binding:
 
 ```sh
-curl -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
+$ curl -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
   "https://my-app.acme.workers.dev/__migrate/MY_OBJECT/resolve?name=test"
 ```
 
@@ -436,7 +443,7 @@ You can also read the state on Cloudflare. After the move, `state` is `moved`
 and `url` is the Orange URL.
 
 ```sh
-curl -X POST -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
+$ curl -X POST -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
   "$ORANGE_MIGRATE_WORKER_URL/__migrate-d1/DB/state"
 ```
 
@@ -457,7 +464,7 @@ database.
 3. Copy the file:
 
    ```sh
-   orange migrate d1 DB --file export.sql
+   $ orange migrate d1 DB --file export.sql
    ```
 
 | Fact | Detail |
@@ -609,7 +616,7 @@ There is no automated way back after the state is `moved`.
   applied migrations moved with the data, so only new ones run:
 
   ```sh
-  RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> orange d1 migrations apply DB --remote
+  $ RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> orange d1 migrations apply DB --remote
   ```
 
   See [D1](./modules/d1#commands) for `--remote`.

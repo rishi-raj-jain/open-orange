@@ -1,0 +1,157 @@
+---
+// The landing page's migration animation (src/components/Migrate.astro), made
+// shorter for the top of docs/migrate.mdx: the scene plays its beats in a
+// loop while on screen, and the beats sit in one row under it. The scene is
+// drawn by migrate-scene.ts, which also draws each step's diagram
+// (MigrateStep.astro). Without JavaScript, and with reduced motion, it shows a
+// settled frame; with reduced motion, picking a beat shows that beat's frame.
+//
+//   <MigrateScene />
+import { BEATS, layout, renderSvg, sceneFrame, settled, type BeatId } from './migrate-scene';
+import './migrate-scene.css';
+
+const first: BeatId = 'lazy';
+const label =
+	'Requests go through DNS to Cloudflare. The DNS record is changed to point at OpenOrange and requests follow it. Each object is copied to OpenOrange on its first request, and a backfill job copies the rest.';
+const svgs = (['wide', 'narrow'] as const).map((kind) => {
+	const L = layout(kind);
+	return renderSvg(L, sceneFrame(settled(first), L), { class: `mig-scene mig-${kind} block h-auto w-full`, 'data-kind': kind, role: 'img', 'aria-label': label });
+});
+// The legend's swatches, drawn like the scene.
+const tile = (fill: string, stroke: string, ink: string, dash = '') =>
+	`<svg viewBox="0 0 16 16" width="16" height="16" class="mig-scene" aria-hidden="true"><rect x="0.5" y="0.5" width="15" height="15" rx="4" fill="${fill}" stroke="${stroke}"${dash ? ` stroke-dasharray="${dash}"` : ''}/><text x="8" y="11.3" font-size="9.5" font-weight="600" text-anchor="middle" fill="${ink}" class="mono">A</text></svg>`;
+const wire = (stroke: string) => `<svg viewBox="0 0 18 16" width="18" height="16" class="mig-scene" aria-hidden="true"><path d="M1 8H17" stroke="${stroke}" stroke-width="2" stroke-linecap="round"/></svg>`;
+const LEGEND = [
+	{ swatch: wire('var(--mig-route)'), label: 'To Cloudflare' },
+	{ swatch: wire('#F26B1D'), label: 'To OpenOrange' },
+	{ swatch: `<svg viewBox="0 0 16 16" width="16" height="16" class="mig-scene" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="var(--color-ink)"/><text x="8" y="11.2" font-size="8.5" font-weight="700" text-anchor="middle" fill="var(--color-paper)" class="mono">A</text></svg>`, label: 'Request' },
+	{ swatch: tile('var(--color-paper-mid)', 'var(--mig-wire)', 'var(--color-ink-soft)'), label: 'Object' },
+	{ swatch: tile('#F26B1D', '#F26B1D', '#fff'), label: 'Copied' },
+	{ swatch: tile('none', 'var(--color-ink-faint)', 'var(--color-ink-faint)', '2 2'), label: 'Old copy' },
+];
+---
+
+<figure class="mig not-prose card my-8 overflow-hidden" data-migrate-scene>
+	<div class="border-b border-line bg-paper px-3 py-4 sm:px-5">
+		<div class="mx-auto max-w-[640px]">
+			{svgs.map((svg) => <Fragment set:html={svg} />)}
+		</div>
+	</div>
+	<ol class="grid grid-cols-5" aria-label="Migration stages">
+		{BEATS.map((beat) => (
+			<li class="border-line [&:not(:first-child)]:border-l">
+				<button
+					type="button"
+					data-beat={beat.id}
+					aria-current={beat.id === first ? 'step' : undefined}
+					class="beat relative flex h-full w-full items-center justify-center px-1.5 py-2.5 text-center text-[12px] font-semibold leading-tight transition-colors hover:bg-paper-mid/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange motion-reduce:transition-none sm:text-[13px]"
+				>
+					{beat.title}
+					<span class="progress absolute bottom-0 left-0 h-[2px] bg-orange" aria-hidden="true"></span>
+				</button>
+			</li>
+		))}
+	</ol>
+	<div class="grid border-t border-line px-4 py-3 text-[14px] leading-relaxed text-ink-soft sm:px-5">
+		{BEATS.map((beat) => <p data-beat-body={beat.id} class:list={['[grid-area:1/1]', beat.id !== first && 'invisible']}>{beat.body}</p>)}
+	</div>
+	<figcaption class="flex flex-wrap gap-x-3.5 gap-y-1.5 border-t border-line px-4 py-2.5 text-[12px] text-ink-faint sm:px-5">
+		{LEGEND.map((item) => (
+			<span class="inline-flex items-center gap-1.5"><Fragment set:html={item.swatch} />{item.label}</span>
+		))}
+	</figcaption>
+</figure>
+
+<style>
+	/* The figure picks its drawing by its own width: wide, or narrow for phones. */
+	.mig {
+		container-type: inline-size;
+	}
+	.mig :global(.mig-narrow) {
+		display: none;
+	}
+	@container (max-width: 459px) {
+		.mig :global(.mig-wide) {
+			display: none;
+		}
+		.mig :global(.mig-narrow) {
+			display: block;
+		}
+	}
+	.beat {
+		color: var(--color-ink-faint);
+	}
+	.beat[aria-current='step'] {
+		background: var(--color-paper-mid);
+		color: var(--color-ink);
+	}
+	.beat:not([aria-current='step']) .progress,
+	.mig:not([data-playing]) .progress {
+		width: 0 !important;
+	}
+</style>
+
+<script>
+	import { BEATS, END, START, beatAt, layout, live, sceneFrame, settled, type BeatId } from './migrate-scene';
+
+	for (const fig of document.querySelectorAll<HTMLElement>('[data-migrate-scene]')) {
+		const scenes = (['wide', 'narrow'] as const).map((kind) => {
+			const svg = fig.querySelector<SVGSVGElement>(`[data-kind="${kind}"]`)!;
+			return { L: layout(kind), svg, under: svg.querySelector('[data-under]')!, over: svg.querySelector('[data-over]')! };
+		});
+		const buttons = Array.from(fig.querySelectorAll<HTMLButtonElement>('[data-beat]'));
+		const bodies = Array.from(fig.querySelectorAll<HTMLElement>('[data-beat-body]'));
+		const ORDER = BEATS.map((b) => b.id);
+		// The drawing on screen: CSS picks it by the figure's width.
+		let scene = scenes[0];
+		const pick = () => (scene = scenes.find((s) => s.svg.getBoundingClientRect().width > 0) ?? scenes[0]);
+
+		const render = (t: number) => {
+			const [under, over] = live(scene.L, sceneFrame(t, scene.L));
+			scene.under.innerHTML = under;
+			scene.over.innerHTML = over;
+			// The row of beats follows the timeline.
+			const beat = beatAt(t), i = ORDER.indexOf(beat);
+			const next = i + 1 < ORDER.length ? START[ORDER[i + 1]] : END;
+			for (const btn of buttons) {
+				const on = btn.dataset.beat === beat;
+				if (on) btn.setAttribute('aria-current', 'step'); else btn.removeAttribute('aria-current');
+				if (on) btn.querySelector<HTMLElement>('.progress')!.style.width = `${Math.min(1, (t - START[beat]) / (next - START[beat])) * 100}%`;
+			}
+			for (const p of bodies) p.classList.toggle('invisible', p.dataset.beatBody !== beat);
+		};
+
+		// Play in a loop while on screen. Picking a beat jumps to it. Without
+		// motion, each beat shows a settled frame from late in it.
+		const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (!reduced) fig.dataset.playing = '';
+		let t = reduced ? settled('lazy') : 0, last = 0, visible = false, raf = 0;
+		const frame = (now: number) => {
+			if (last) t += Math.min(0.1, (now - last) / 1000);
+			last = now;
+			if (t >= END) t = 0;
+			render(t);
+			raf = visible ? requestAnimationFrame(frame) : 0;
+		};
+		const play = () => {
+			if (!raf && !reduced) { last = 0; raf = requestAnimationFrame(frame); }
+		};
+		for (const btn of buttons)
+			btn.addEventListener('click', () => {
+				const k = btn.dataset.beat as BeatId;
+				t = reduced ? settled(k) : START[k];
+				render(t);
+			});
+		new ResizeObserver(() => {
+			const before = scene;
+			pick();
+			if (scene !== before) render(t);
+		}).observe(fig);
+		pick();
+		render(t);
+		new IntersectionObserver(([e]) => {
+			visible = e.isIntersecting;
+			if (visible) play();
+		}).observe(fig);
+	}
+</script>
