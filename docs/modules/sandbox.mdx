@@ -101,10 +101,7 @@ E2B_API_KEY=<API key>
 does not run the container image.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding       Resource         Runs on
   env.Sandbox   Durable Object   Rivet Actor · Sandbox
 ```
@@ -112,10 +109,10 @@ orange dev
 Run a command in Ada's sandbox. A failing command is a result, not an error:
 
 ```sh
-curl localhost:8787/users/ada/run -d '{"command":"echo hi; echo oops >&2"}'
-# {"exitCode":0,"stderr":"oops\n","stdout":"hi\n","success":true}
-curl localhost:8787/users/ada/run -d '{"command":"exit 3"}'
-# {"exitCode":3,"stderr":"","stdout":"","success":false}
+$ curl localhost:8787/users/ada/run -d '{"command":"echo hi; echo oops >&2"}'
+{"exitCode":0,"stderr":"oops\n","stdout":"hi\n","success":true}
+$ curl localhost:8787/users/ada/run -d '{"command":"exit 3"}'
+{"exitCode":3,"stderr":"","stdout":"","success":false}
 ```
 
 </Step>

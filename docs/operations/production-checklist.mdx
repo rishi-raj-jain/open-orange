@@ -24,7 +24,7 @@ which are part of the image.
 Objects then have a runner to wake on during a rollout.
 
 ```sh
-orange deploy --node-count 2
+$ orange deploy --node-count 2
 ```
 
 </Step>
@@ -41,7 +41,7 @@ Send traces, metrics, and logs to your tools. See [OpenTelemetry and Prometheus]
 a later deploy goes wrong. This rolls out that build again and builds nothing:
 
 ```sh
-orange deploy --cluster <cluster> --pool <pool> --build <build-id>
+$ orange deploy --cluster <cluster> --pool <pool> --build <build-id>
 ```
 
 </Step>

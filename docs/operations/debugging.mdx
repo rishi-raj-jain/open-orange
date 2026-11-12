@@ -15,7 +15,7 @@ the Rivet dashboard, and the Rivet API.
 <Step title="Check the project">
 
 ```sh
-orange doctor
+$ orange doctor
 ```
 
 </Step>
@@ -25,7 +25,7 @@ orange doctor
 RivetKit's logs print next to your Worker's output.
 
 ```sh
-orange dev --log-level debug
+$ orange dev --log-level debug
 ```
 
 </Step>
@@ -45,7 +45,7 @@ Each object is an actor named after its class, such as `greeter-5c8cd02c`. The R
 lists them, and so does the Rivet API:
 
 ```sh
-curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?namespace=<namespace>&name=<actor-name>"
+$ curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?namespace=<namespace>&name=<actor-name>"
 ```
 
 ## Read the logs
@@ -54,7 +54,7 @@ Rivet Cloud shows your runners' output on the cluster's Logs page. To add RivetK
 deploy with:
 
 ```sh
-orange deploy --var RIVET_LOG_LEVEL:info
+$ orange deploy --var RIVET_LOG_LEVEL:info
 ```
 
 ## Learn more
@@ -81,9 +81,9 @@ lists them. `<engine-host>`, `<namespace>`, and the token are the parts of `RIVE
 These calls list the actor names, list the actors of one name, and check one actor:
 
 ```sh
-curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/names?namespace=<namespace>"
-curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?namespace=<namespace>&name=<actor-name>"
-curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/gateway/<actor-id>/health"
+$ curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/names?namespace=<namespace>"
+$ curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?namespace=<namespace>&name=<actor-name>"
+$ curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/gateway/<actor-id>/health"
 ```
 
 #### Logs

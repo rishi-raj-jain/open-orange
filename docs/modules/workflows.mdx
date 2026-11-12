@@ -88,10 +88,7 @@ export default {
 `orange dev` shows the Workflow as a Rivet Actor.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding           Resource   Runs on
   env.MY_WORKFLOW   Workflow   Rivet Actor · MyWorkflow
 ```
@@ -101,9 +98,9 @@ sleeps or waits for the event, and `complete`, with its output, once both are
 done.
 
 ```sh
-curl localhost:8787/start
-curl localhost:8787/approve
-curl localhost:8787/
+$ curl localhost:8787/start
+$ curl localhost:8787/approve
+$ curl localhost:8787/
 ```
 
 </Step>

@@ -54,13 +54,11 @@ export default {
 
 <Step title="Run it">
 
+Start `orange dev`. Its ready block shows each cron's next run, and a command
+that runs one now:
+
 ```sh
-orange dev
-```
-
-The ready block shows each cron's next run, and a command that runs one now:
-
-```text
+$ orange dev
 ● Ready in 1.2s
   Local         http://127.0.0.1:8787
   Cron          "* * * * *" next <next minute>
@@ -77,8 +75,8 @@ output.
 Run the command from the ready block to call `scheduled()` without waiting.
 
 ```sh
-curl "http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*%20*%20*%20*%20*"
-# ok
+$ curl "http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*%20*%20*%20*%20*"
+ok
 ```
 
 </Step>
@@ -219,7 +217,7 @@ reaches the Worker's `fetch()`, so nobody can run a deployed Worker's crons
 over HTTP.
 
 ```sh
-curl "http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*/5+*+*+*+*"
+$ curl "http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*/5+*+*+*+*"
 ```
 
 #### Deviations

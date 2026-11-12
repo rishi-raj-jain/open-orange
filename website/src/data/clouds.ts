@@ -1,6 +1,6 @@
-// Where OpenOrange runs, as shown under the home page title and on the Open
-// Graph card. Raw SVG markup from src/assets/migrator; each consumer sizes and
-// colors it.
+// Where OpenOrange runs, as shown under the home page title, on the Open
+// Graph card, and at the top of the Deploy docs (DeployClouds.astro). Raw SVG
+// markup from src/assets/migrator; each consumer sizes and colors it.
 import aws from '@/assets/migrator/aws.svg?raw';
 import gcp from '@/assets/migrator/gcp.svg?raw';
 import azure from '@/assets/migrator/azure.svg?raw';
@@ -23,3 +23,16 @@ export const CLOUDS: Cloud[] = [
 	{ name: 'Rivet Cloud', svg: rivet, label: true },
 	{ name: 'Your servers', svg: server, label: true, ink: 'currentColor' },
 ];
+
+/**
+ * A cloud's logo as inline SVG markup that CSS sizes by height, with its ink
+ * color following the text color, as in the home page hero.
+ */
+export function inlineLogo(cloud: Cloud): string {
+	const svg = cloud.ink ? cloud.svg.replaceAll(cloud.ink, 'currentColor') : cloud.svg;
+	return svg.replace(/<!--.*?-->/gs, '').replace(/<svg([^>]*)>/, (_, attrs: string) => {
+		const size = (name: string) => attrs.match(new RegExp(`\\s${name}="([\\d.]+)"`))?.[1];
+		const viewBox = /viewBox=/.test(attrs) ? '' : ` viewBox="0 0 ${size('width')} ${size('height')}"`;
+		return `<svg${attrs.replace(/\s(width|height|class)="[^"]*"/g, '')}${viewBox} class="h-full w-auto" aria-hidden="true">`;
+	});
+}

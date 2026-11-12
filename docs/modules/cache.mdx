@@ -68,12 +68,12 @@ Start `orange dev`, which serves the Worker on port 8787, then request the page
 twice.
 
 ```sh
-orange dev
+$ orange dev
 ```
 
 ```sh
-curl -i localhost:8787/
-curl -i localhost:8787/
+$ curl -i localhost:8787/
+$ curl -i localhost:8787/
 ```
 
 The second response has the same body and the header `cf-cache-status: HIT`.

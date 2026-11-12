@@ -124,6 +124,9 @@ Writing rules:
 - Every command shows its real output: copy it from the page or from the CLI
   source in `src/commands/`, or show the command without output. Never invent
   output.
+- A terminal session is one `sh` block: each command starts with `$ `, and its
+  output follows on the next lines, never in a separate block. The site mutes
+  the prompt and dims the output.
 - Configuration examples use `wrangler.jsonc`.
 - Every diagram has a light and a dark version: `x.svg` and `x-dark.svg` in
   `docs/images/`.

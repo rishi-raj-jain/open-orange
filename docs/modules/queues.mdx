@@ -76,10 +76,7 @@ export default {
 `orange dev` shows the queue as a Rivet Actor.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding    Resource   Runs on
   env.JOBS   Queue      Rivet Actor · jobs
 ```
@@ -87,8 +84,8 @@ orange dev
 Send a job. The `queue()` handler then logs it in the `orange dev` output.
 
 ```sh
-curl -X POST localhost:8787/jobs -d '{"id":"a"}'
-# {"queued":"a"}
+$ curl -X POST localhost:8787/jobs -d '{"id":"a"}'
+{"queued":"a"}
 ```
 
 Messages that wait in the queue survive a restart of `orange dev`.

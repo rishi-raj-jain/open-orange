@@ -52,7 +52,7 @@ Pass one `-c` per Worker to one `orange dev`. The first one serves the port.
 See [Multiple Workers](./multi-worker).
 
 ```sh
-orange dev -c wrangler.jsonc -c tail/wrangler.jsonc
+$ orange dev -c wrangler.jsonc -c tail/wrangler.jsonc
 ```
 
 </Step>
@@ -63,7 +63,7 @@ Each request to `my-worker` reaches `tail()` in `my-tail-worker` after the
 request ends.
 
 ```sh
-curl localhost:8787
+$ curl localhost:8787
 ```
 
 </Step>

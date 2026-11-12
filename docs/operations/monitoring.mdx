@@ -22,7 +22,7 @@ You need a Rivet Cloud cluster and an OTLP collector, such as Jaeger, Tempo, or 
 <Step title="Send traces to your collector">
 
 ```sh
-orange deploy \
+$ orange deploy \
   --var OTEL_SERVICE_NAME:my-app \
   --var OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:https://collector.example.com/v1/traces
 ```
@@ -50,9 +50,9 @@ Logs page shows your Worker's output.
 `orange dev` reads the same variables from your shell.
 
 ```sh
-export OTEL_SERVICE_NAME=my-app
-export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://collector.example.com/v1/traces
-orange dev
+$ export OTEL_SERVICE_NAME=my-app
+$ export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://collector.example.com/v1/traces
+$ orange dev
 ```
 
 ## Self-host
@@ -61,7 +61,7 @@ Pass the same variables to the container. Set `RIVETKIT_METRICS_PORT` to serve P
 metrics, and scrape them from a sidecar in the same pod.
 
 ```sh
-docker run \
+$ docker run \
   -e OTEL_SERVICE_NAME=my-app \
   -e OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://collector.example.com/v1/traces \
   -e RIVETKIT_METRICS_PORT=9464 \

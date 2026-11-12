@@ -2,7 +2,7 @@ import { defineConfig, passthroughImageService } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
-import { remarkDocs } from './src/components/docs/remark-docs';
+import { remarkDocs, shellSession } from './src/components/docs/remark-docs';
 import { PLACEHOLDER_COMPARISONS } from './src/data/site';
 
 // Pages that are noindex (src/layouts/Base.astro) stay out of the sitemap too.
@@ -27,7 +27,10 @@ export default defineConfig({
 	image: { service: passthroughImageService() },
 	// The /docs/ pages render the repository's docs/*.mdx (see src/content.config.ts).
 	integrations: [
-		mdx({ remarkPlugins: [remarkDocs], shikiConfig: { themes: { light: 'github-light', dark: 'github-dark' } } }),
+		mdx({
+			remarkPlugins: [remarkDocs],
+			shikiConfig: { themes: { light: 'github-light', dark: 'github-dark' }, transformers: [shellSession] },
+		}),
 		// /sitemap-index.xml, listed in public/robots.txt.
 		sitemap({ filter: (page) => !NOINDEX.has(page) }),
 	],

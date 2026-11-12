@@ -14,13 +14,14 @@ import RuntimeLimits from '@/components/docs/RuntimeLimits.astro';
 import ServiceTable from '@/components/ServiceTable.astro';
 import BindingEvidence from '@/components/docs/BindingEvidence.astro';
 import BindingStatus from '@/components/docs/BindingStatus.astro';
+import DeployClouds from '@/components/docs/DeployClouds.astro';
 import Step from '@/components/docs/Step.astro';
 import Steps from '@/components/docs/Steps.astro';
 import { bindingsForDoc } from '@/data/bindings';
 
 // Components every doc can use without an import (CLAUDE.md, "Binding page format").
 // The architecture ones render site data on docs/architecture.mdx.
-const components = { AiContext, ArchitectureFigure, BindingEvidence, BindingRoutes, BindingStatus, DeployTargets, RuntimeLimits, ServiceTable, Step, Steps };
+const components = { AiContext, ArchitectureFigure, BindingEvidence, BindingRoutes, BindingStatus, DeployClouds, DeployTargets, RuntimeLimits, ServiceTable, Step, Steps };
 
 type MdxModule = { Content: (props: Record<string, unknown>) => unknown; getHeadings: () => MarkdownHeading[] };
 

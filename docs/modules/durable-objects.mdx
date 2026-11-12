@@ -93,10 +93,7 @@ export default {
 `orange dev` shows each Durable Object binding as a Rivet Actor.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding       Resource         Runs on
   env.GREETER   Durable Object   Rivet Actor · Greeter
 
@@ -107,9 +104,12 @@ orange dev
 Each name is its own object, and its count survives a restart of `orange dev`:
 
 ```sh
-curl localhost:8787/alice   # {"greeting":"Hello, alice!","visits":1}
-curl localhost:8787/alice   # {"greeting":"Hello, alice!","visits":2}
-curl localhost:8787/bob     # {"greeting":"Hello, bob!","visits":1}
+$ curl localhost:8787/alice
+{"greeting":"Hello, alice!","visits":1}
+$ curl localhost:8787/alice
+{"greeting":"Hello, alice!","visits":2}
+$ curl localhost:8787/bob
+{"greeting":"Hello, bob!","visits":1}
 ```
 
 </Step>

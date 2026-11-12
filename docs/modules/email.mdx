@@ -23,7 +23,7 @@ You need an SMTP server. To try it on your machine, run
 out:
 
 ```sh
-docker run --rm -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27
+$ docker run --rm -p 1025:1025 -p 8025:8025 axllent/mailpit:v1.27
 ```
 
 <Steps>
@@ -87,10 +87,7 @@ On a cluster, pass the same file with
 `orange dev` shows the binding on SMTP.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding     Resource     Runs on
   env.EMAIL   Send Email   SMTP · ORANGE_EMAIL_SMTP_URL
 ```
@@ -99,7 +96,7 @@ Send one. The Worker returns the message's `messageId`, and the message shows
 in Mailpit at `http://127.0.0.1:8025`.
 
 ```sh
-curl localhost:8787
+$ curl localhost:8787
 ```
 
 </Step>
@@ -259,7 +256,7 @@ A wrong or missing secret gets `401` with
 and `email()` does not run.
 
 ```sh
-curl -X POST "https://worker.example.com/cdn-cgi/handler/email?from=alice@example.org&to=inbox@example.com" \
+$ curl -X POST "https://worker.example.com/cdn-cgi/handler/email?from=alice@example.org&to=inbox@example.com" \
   -H "Authorization: Bearer $ORANGE_EMAIL_INBOUND_SECRET" \
   --data-binary @message.eml
 ```

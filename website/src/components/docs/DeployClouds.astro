@@ -1,0 +1,14 @@
+---
+// Where you can deploy, as the logo row under the home page title (Hero.astro),
+// for the top of docs/deploy.mdx. Logos that use the text color follow the theme.
+import { CLOUDS, inlineLogo } from '@/data/clouds';
+---
+
+<ul class="not-prose my-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-[14px] font-medium text-ink-soft" aria-label="Deploy to">
+	{CLOUDS.map((c) => (
+		<li class="flex items-center gap-2" title={c.name}>
+			<span class="flex h-5 items-center text-ink" set:html={inlineLogo(c)} />
+			{c.label ? <span>{c.name}</span> : <span class="sr-only">{c.name}</span>}
+		</li>
+	))}
+</ul>

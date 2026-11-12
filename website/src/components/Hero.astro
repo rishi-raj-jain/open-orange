@@ -1,16 +1,10 @@
 ---
 import BreakGlass from './BreakGlass.astro';
 import { CHEAPER_COMPUTE, CHEAPER_DATABASE, HERO } from '@/data/site';
-import { CLOUDS } from '@/data/clouds';
+import { CLOUDS, inlineLogo } from '@/data/clouds';
 
-// Where it runs, as logos under the title. Sized by CSS, so the SVGs lose their width/height.
-const fit = (svg: string) =>
-	svg.replace(/<!--.*?-->/gs, '').replace(/<svg([^>]*)>/, (_, attrs: string) => {
-		const size = (name: string) => attrs.match(new RegExp(`\\s${name}="([\\d.]+)"`))?.[1];
-		const viewBox = /viewBox=/.test(attrs) ? '' : ` viewBox="0 0 ${size('width')} ${size('height')}"`;
-		return `<svg${attrs.replace(/\s(width|height|class)="[^"]*"/g, '')}${viewBox} class="h-full w-auto" aria-hidden="true">`;
-	});
-const clouds = CLOUDS.map((c) => ({ ...c, svg: fit(c.ink ? c.svg.replaceAll(c.ink, 'currentColor') : c.svg) }));
+// Where it runs, as logos under the title.
+const clouds = CLOUDS.map((c) => ({ ...c, svg: inlineLogo(c) }));
 
 const stats = [
 	{ value: `${CHEAPER_COMPUTE.toFixed(1)}×`, label: 'cheaper compute', href: '#cost' },

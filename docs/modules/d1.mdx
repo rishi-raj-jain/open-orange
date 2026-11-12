@@ -92,7 +92,7 @@ export default {
 <Step title="Apply the migration">
 
 ```sh
-orange d1 migrations apply DB
+$ orange d1 migrations apply DB
 ```
 
 It lists each new migration and marks it ✅ when it applies.
@@ -104,10 +104,7 @@ It lists each new migration and marks it ✅ when it applies.
 `orange dev` shows the database as a Rivet Actor.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding   Resource      Runs on
   env.DB    D1 Database   Rivet Actor
 ```
@@ -115,8 +112,8 @@ orange dev
 A `GET` returns the three rows from the migration. A `POST` adds one:
 
 ```sh
-curl localhost:8787/comments -d '{"author":"Ada","content":"Nice work"}'
-# {"id":4,"author":"Ada","content":"Nice work"}
+$ curl localhost:8787/comments -d '{"author":"Ada","content":"Nice work"}'
+{"id":4,"author":"Ada","content":"Nice work"}
 ```
 
 </Step>
@@ -191,10 +188,10 @@ These run on the same local database that `orange dev` uses. Name the database
 by its binding or its `database_name`.
 
 ```sh
-orange d1 migrations list DB
-orange d1 migrations apply DB
-orange d1 execute DB --command "SELECT * FROM comments"
-orange d1 execute DB --file ./seed.sql --json
+$ orange d1 migrations list DB
+$ orange d1 migrations apply DB
+$ orange d1 execute DB --command "SELECT * FROM comments"
+$ orange d1 execute DB --file ./seed.sql --json
 ```
 
 With `--remote`, they run on the database of the deployed `orange serve`,
@@ -202,7 +199,7 @@ through the Rivet Engine in `RIVET_ENDPOINT`. Run them in the project, with the
 Worker name and `--env` of the deployment. The deployment must be up.
 
 ```sh
-RIVET_ENDPOINT=https://<namespace>:<token>@api.rivet.dev orange d1 migrations apply DB --remote
+$ RIVET_ENDPOINT=https://<namespace>:<token>@api.rivet.dev orange d1 migrations apply DB --remote
 ```
 
 #### API details

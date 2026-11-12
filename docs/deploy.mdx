@@ -1,20 +1,26 @@
 ---
 title: Deploy
-description: Deploy a Worker to a Rivet cluster with orange deploy, or build the image and run it on your own Rivet Engine.
+description: Deploy a Worker to Rivet Cloud with orange deploy, or self-host its Docker image on any cloud or on your own servers.
 ---
 
 # Deploy
 
-`orange deploy` builds your Worker into a Docker image, uploads it to a Rivet
-cluster, and rolls a runner pool out to it. To run the same image on your own
-Rivet Engine, see [Self-host](#self-host).
+Your Worker ships as a standard Docker image, so it runs on any cloud and on
+your own servers. Rivet Cloud is the quickest path. To run everything yourself,
+see [Self-host](#self-host).
+
+<DeployClouds />
+
+## Deploy to Rivet Cloud
+
+Rivet runs the cluster for you, in the cloud provider and region you choose.
+`orange deploy` builds your Worker into a Docker image, uploads it, and rolls a
+runner pool out to it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/step-3-deploy-dark.svg" />
   <img alt="orange deploy builds an image of your Worker, uploads it, and rolls a runner pool out to it on a Rivet cluster" src="images/step-3-deploy.svg" />
 </picture>
-
-## Quickstart
 
 You need Docker running, a Rivet Cloud cluster, and a Worker project with its
 packages installed. These steps deploy
@@ -24,13 +30,10 @@ packages installed. These steps deploy
 
 <Step title="Sign in" id="quickstart-sign-in">
 
-```sh
-orange login
-```
-
 Approve the code in the browser that opens.
 
-```text
+```sh
+$ orange login
 Your one-time code: ABCD-EFGH
 Opened https://… in your browser.
 Waiting for approval…
@@ -45,10 +48,7 @@ Next: orange link --cluster <name>
 Run this in the Worker's directory.
 
 ```sh
-orange link --cluster my-cluster
-```
-
-```text
+$ orange link --cluster my-cluster
 Linked cluster my-cluster in /home/me/hello-durable-object/.rivet/project.json.
 Next: orange deploy
 Run orange mcp to connect your coding agent to the Rivet MCP for cluster my-cluster.
@@ -58,13 +58,10 @@ Run orange mcp to connect your coding agent to the Rivet MCP for cluster my-clus
 
 <Step title="Deploy">
 
+`orange deploy` prints each stage after Docker's build output.
+
 ```sh
-orange deploy
-```
-
-It prints each stage after Docker's build output.
-
-```text
+$ orange deploy
 Deploying hello-durable-object to cluster my-cluster, region <region>, pool default
 Building hello-durable-object:20261112-093000 for linux/amd64…
 Uploading build <build-id> (427.8 MiB)…
@@ -85,10 +82,7 @@ Run `orange deploy` again to roll out each new version.
 The pool's URL serves your Worker.
 
 ```sh
-curl <pool URL>/alice
-```
-
-```json
+$ curl <pool URL>/alice
 {"greeting":"Hello, alice!","visits":1}
 ```
 
@@ -96,13 +90,90 @@ curl <pool URL>/alice
 
 </Steps>
 
+## Self-host
+
+Run the same image on your own cloud or servers. You run two parts: the
+control plane, which is the Rivet Engine, and your Worker nodes, which connect
+out to it.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/self-host-dark.svg" />
+  <img alt="On your own server, orange serve runs your Worker and connects out to your Rivet Engine" src="images/self-host.svg" />
+</picture>
+
+<Steps>
+
+<Step title="Build the image">
+
+`orange deploy --dry-run` writes the build and prints the `docker` commands
+for your Worker. It needs no sign-in.
+
+```sh
+$ orange deploy --dry-run --outdir out
+$ docker build --platform linux/amd64 -f out/Dockerfile -t hello-durable-object:20261112-093000 out/context
+```
+
+Push the image to a registry that your servers can pull from.
+
+</Step>
+
+<Step title="Deploy the control plane">
+
+The Rivet Engine schedules your Durable Objects onto your nodes and routes
+requests to them. Deploy it once with
+[Rivet's self-hosting guide](https://rivet.dev/docs/deploy/self-host/control-plane/),
+which covers Kubernetes, AWS ECS, Docker Compose, VMs, Hetzner, Railway, and
+Render.
+
+Then create the `default` node pool, as in
+[Rivet's node guide](https://rivet.dev/docs/deploy/self-host/nodes/). The
+control plane refuses a node whose pool does not exist.
+
+</Step>
+
+<Step title="Run your Worker nodes">
+
+Each node is a container of your image. Point it at the control plane's
+endpoint, with its namespace and token.
+
+```sh
+$ docker run --rm -p 8080:8080 \
+  -e 'RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host>' \
+  hello-durable-object:20261112-093000
+orange serve listening on http://0.0.0.0:8080
+```
+
+Run as many nodes as you need, on any platform that keeps a container running.
+Rivet has [node guides](https://rivet.dev/docs/deploy/self-host/nodes/) for
+Kubernetes, AWS ECS, Docker Compose, VMs, Hetzner, Railway, and Render.
+
+</Step>
+
+<Step title="Call the Worker" id="self-host-call-the-worker">
+
+```sh
+$ curl localhost:8080/alice
+{"greeting":"Hello, alice!","visits":1}
+```
+
+</Step>
+
+</Steps>
+
+## Bring your own cloud
+
+With BYOC, Rivet runs the cluster in your own AWS, Google Cloud, or Azure
+account. A BYOC cluster is a Rivet Cloud cluster, so
+[Deploy to Rivet Cloud](#deploy-to-rivet-cloud) works as written. See
+[Rivet's BYOC guide](https://rivet.dev/docs/deploy/byoc/).
+
 ## Variables and secrets
 
 Pass secrets in a file and variables as flags. Your Worker reads both from
 `env`, such as `env.API_KEY`.
 
 ```sh
-orange deploy --secrets-file .dev.vars --var LOG_LEVEL:debug
+$ orange deploy --secrets-file .dev.vars --var LOG_LEVEL:debug
 ```
 
 Never put a secret in `vars`. Everything in `vars` goes into the image.
@@ -113,35 +184,7 @@ Set a cluster token from the dashboard, with the Read and Deploy scopes, in
 `RIVET_CLOUD_TOKEN`.
 
 ```sh
-RIVET_CLOUD_TOKEN=<cluster token> orange deploy --cluster my-cluster
-```
-
-## Self-host
-
-Run the same image on your own Rivet Engine.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="images/self-host-dark.svg" />
-  <img alt="On your own server, orange serve runs your Worker and connects out to your Rivet Engine" src="images/self-host.svg" />
-</picture>
-
-Write the build. It prints the `docker` commands for your Worker.
-
-```sh
-orange deploy --dry-run --outdir out
-```
-
-Run them with your Engine's endpoint.
-
-```sh
-docker build --platform linux/amd64 -f out/Dockerfile -t hello-durable-object:20261112-093000 out/context
-docker run --rm -p 8080:8080 \
-  -e 'RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host>' \
-  hello-durable-object:20261112-093000
-```
-
-```text
-orange serve listening on http://0.0.0.0:8080
+$ RIVET_CLOUD_TOKEN=<cluster token> orange deploy --cluster my-cluster
 ```
 
 <AiContext summary="Sign-in, every flag, secret rules, refused values, rollback, failed deploys, and self-host details">
@@ -169,8 +212,6 @@ Orange finds credentials in this order:
 2. `RIVET_CLOUD_TOKEN`
 3. The login session
 4. A Cloud API token in `~/.rivet/credentials`
-
-A BYOC cluster is a cluster too, so deploy to it with `--cluster` or a link.
 
 ##### Cluster tokens for CI
 
@@ -236,10 +277,11 @@ The build goes to `.open-orange/deploy/`, or to `--outdir <dir>`.
 | `--secret KEY[=SECRET_NAME]` | Yes. `env.KEY` reads a secret the cluster already holds, named `KEY` unless you give `SECRET_NAME`, as with `rivet deploy --secret`. |
 | `.dev.vars` and `.env` entries | Only through `--secrets-file .dev.vars`. They never enter the image. |
 
+A secret managed with the `rivet` CLI:
+
 ```sh
-# A secret managed with the rivet CLI
-rivet cluster secret set DATABASE_URL
-orange deploy --secret DATABASE_URL
+$ rivet cluster secret set DATABASE_URL
+$ orange deploy --secret DATABASE_URL
 ```
 
 **Where a secret's value goes**
@@ -292,7 +334,7 @@ Every deploy prints its build ID. To roll a pool back, pass an earlier build
 with `--build`:
 
 ```sh
-orange deploy --cluster my-cluster --pool default --build <build-id>
+$ orange deploy --cluster my-cluster --pool default --build <build-id>
 ```
 
 #### Fix a failed deploy
@@ -311,11 +353,10 @@ A pool that goes `degraded` or `down` stops the deploy, as in
 #### Self-host in detail
 
 The image runs as a runner of your own Rivet Engine. The runner connects out to
-the Engine, so the Engine does not need to reach the container. You need Docker
-and the endpoint of your Rivet Engine, with its namespace and token.
+the Engine, so the Engine does not need to reach the container.
 
-`orange deploy --dry-run --outdir out` calls no API, so it needs no sign-in. Its
-output ends with the two commands to run:
+`orange deploy --dry-run --outdir out` calls no API. Its output ends with the
+two commands to run:
 
 ```text
 Self-host
@@ -324,16 +365,7 @@ Self-host
 ```
 
 The image name is the Worker's name, and the tag is the UTC time. Docker's last
-step tags the image `hello-durable-object:20261112-093000`. Once
-`orange serve listening on http://0.0.0.0:8080` prints, call the Worker:
-
-```sh
-curl localhost:8080/alice
-```
-
-```json
-{"greeting":"Hello, alice!","visits":1}
-```
+step tags the image `hello-durable-object:20261112-093000`.
 
 `orange serve` also reads `RIVET_TOKEN` and `RIVET_NAMESPACE` when the
 endpoint URL does not carry them, and `RIVET_POOL`, which defaults to

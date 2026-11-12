@@ -73,10 +73,7 @@ export default {
 `orange dev` shows the namespace as a Rivet Actor.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding     Resource       Runs on
   env.NOTES   KV Namespace   Rivet Actor
 ```
@@ -84,10 +81,12 @@ orange dev
 Write a note, read it back, and delete it:
 
 ```sh
-curl -X PUT localhost:8787/notes/todo-1 -d 'buy milk'
-curl localhost:8787/notes/todo-1             # buy milk
-curl -X DELETE localhost:8787/notes/todo-1
-curl localhost:8787/notes/todo-1             # No note named todo-1
+$ curl -X PUT localhost:8787/notes/todo-1 -d 'buy milk'
+$ curl localhost:8787/notes/todo-1
+buy milk
+$ curl -X DELETE localhost:8787/notes/todo-1
+$ curl localhost:8787/notes/todo-1
+No note named todo-1
 ```
 
 </Step>

@@ -64,6 +64,17 @@
 .docs-prose pre code:not(:where(.not-prose, .not-prose *)) {
 	@apply font-mono;
 }
+/* A terminal session (`shellSession` in remark-docs.ts): a muted `$ ` before
+   each command, which a copy leaves out, and dimmed output. Output sets
+   --shiki-dark too, because the dark theme reads it (global.css). */
+.docs-prose .astro-code .line.command::before {
+	content: '$ ';
+	color: var(--color-ink-faint);
+}
+.docs-prose .astro-code .line.output {
+	color: var(--color-ink-faint);
+	--shiki-dark: var(--color-ink-faint);
+}
 .docs-prose table:not(:where(.not-prose, .not-prose *)) {
 	@apply block w-full max-w-full overflow-x-auto rounded-xl border border-line bg-surface text-[14px] leading-[1.5];
 	border-collapse: separate;

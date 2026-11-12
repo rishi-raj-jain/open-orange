@@ -81,10 +81,7 @@ export default {
 `orange dev` shows the binding on Chrome DevTools.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding       Resource            Runs on
   env.BROWSER   Browser Rendering   Chrome DevTools · ORANGE_BROWSER_CDP_URL
 ```
@@ -92,7 +89,7 @@ orange dev
 Request the Worker. It returns the page's title.
 
 ```sh
-curl localhost:8787
+$ curl localhost:8787
 ```
 
 </Step>
@@ -198,9 +195,9 @@ Use this path if you do not want a hosted browser. Any headless Chrome or
 Chromium works, such as a `chromedp/headless-shell` container.
 
 ```sh
-chromium --headless --remote-debugging-port=9222 &
-export ORANGE_BROWSER_CDP_URL=http://127.0.0.1:9222
-orange dev
+$ chromium --headless --remote-debugging-port=9222 &
+$ export ORANGE_BROWSER_CDP_URL=http://127.0.0.1:9222
+$ orange dev
 ```
 
 All sessions share the one browser in `ORANGE_BROWSER_CDP_URL`. So that one

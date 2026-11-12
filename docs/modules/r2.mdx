@@ -74,10 +74,7 @@ export default {
 `orange dev` lists the bucket as a Rivet Actor.
 
 ```sh
-orange dev
-```
-
-```text
+$ orange dev
   Binding     Resource    Runs on
   env.FILES   R2 Bucket   Rivet Actor · files
 ```
@@ -85,8 +82,9 @@ orange dev
 Upload a file and read it back. It survives a restart of `orange dev`.
 
 ```sh
-curl -X PUT localhost:8787/files/notes/a.txt -H 'content-type: text/plain' --data-binary 'hello world'
-curl localhost:8787/files/notes/a.txt        # hello world
+$ curl -X PUT localhost:8787/files/notes/a.txt -H 'content-type: text/plain' --data-binary 'hello world'
+$ curl localhost:8787/files/notes/a.txt
+hello world
 ```
 
 </Step>
@@ -197,11 +195,11 @@ after February 19, 2025 accept only virtual-hosted requests.
 Start MinIO and create the bucket, then point the bucket at it:
 
 ```sh
-docker run -p 9000:9000 minio/minio server /data   # then create the "files" bucket
-export ORANGE_R2_FILES_S3_ENDPOINT=http://127.0.0.1:9000
-export ORANGE_R2_FILES_S3_ACCESS_KEY_ID=minioadmin
-export ORANGE_R2_FILES_S3_SECRET_ACCESS_KEY=minioadmin
-orange dev
+$ docker run -p 9000:9000 minio/minio server /data   # then create the "files" bucket
+$ export ORANGE_R2_FILES_S3_ENDPOINT=http://127.0.0.1:9000
+$ export ORANGE_R2_FILES_S3_ACCESS_KEY_ID=minioadmin
+$ export ORANGE_R2_FILES_S3_SECRET_ACCESS_KEY=minioadmin
+$ orange dev
 ```
 
 #### S3 settings

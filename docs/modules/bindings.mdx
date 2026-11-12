@@ -38,10 +38,7 @@ Use the same keys as on Cloudflare.
 you.
 
 ```sh
-orange doctor
-```
-
-```text
+$ orange doctor
   Binding      Resource       On Rivet          Runs on
 ! env.IMAGES   Images         not supported     stub · calls throw
                Orange has no backend for this binding. Call the service's HTTP API with fetch(), or
@@ -64,11 +61,8 @@ Put the variable that `orange doctor` names in `.dev.vars`, next to
 `wrangler.jsonc`, and check again.
 
 ```sh
-echo 'OPENROUTER_API_KEY=<your key>' >> .dev.vars
-orange doctor
-```
-
-```text
+$ echo 'OPENROUTER_API_KEY=<your key>' >> .dev.vars
+$ orange doctor
 ✓ Workers AI    env.AI · OpenRouter
 
 ● Ready for orange dev
@@ -81,7 +75,7 @@ orange doctor
 When it starts, `orange dev` lists each binding and what it runs on.
 
 ```sh
-orange dev
+$ orange dev
 ```
 
 </Step>
@@ -101,7 +95,7 @@ names one for [Vectorize](#vectorize), [Images](#images), and
 instead. See [Variables and secrets](../deploy#variables-and-secrets).
 
 ```sh
-orange deploy --secrets-file .dev.vars
+$ orange deploy --secrets-file .dev.vars
 ```
 
 <AiContext summary="Compatibility, limits and details">

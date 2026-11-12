@@ -9,8 +9,11 @@
 //   image, so Astro bundles the file like `![](../images/x.svg)`. A block
 //   `<picture>` with a `prefers-color-scheme: dark` source becomes two images,
 //   shown by the site's theme (`.docs-light` and `.docs-dark` in prose.css).
+// It also exports `shellSession`, the Shiki transformer for terminal sessions
+// in the docs' code blocks (see below and astro.config.ts).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { ShikiConfig } from 'astro';
 import { docRoute } from './routes';
 
 type Attribute = { type: string; name?: string; value?: unknown };
@@ -95,6 +98,59 @@ function visit(node: Node, fromDir: string) {
 		} else visit(children[i], fromDir);
 	}
 }
+
+type ShikiTransformer = NonNullable<ShikiConfig['transformers']>[number];
+type Session = { kinds: ('command' | 'continuation' | 'output')[]; output: string[] };
+type SessionMeta = { session?: Session };
+
+const SHELLS = new Set(['sh', 'bash', 'shell', 'zsh']);
+const PROMPT = /^\$(?: |$)/;
+
+/**
+ * A Shiki transformer for terminal sessions. In a shell block with a line that
+ * starts with `$ `, each such line is a command, a line after one that ends in
+ * `\` continues it, and every other line is output:
+ *
+ *   $ orange deploy
+ *   ✓ Deployed …
+ *
+ * Commands are highlighted as shell without the `$ `, which prose.css draws
+ * back as a muted prompt that a copy leaves out. Output lines are plain text,
+ * dimmed by prose.css. A shell block without a `$ ` line stays a plain script.
+ */
+export const shellSession: ShikiTransformer = {
+	name: 'docs:shell-session',
+	preprocess(code, options) {
+		if (!SHELLS.has(options.lang ?? '')) return;
+		const lines = code.split('\n');
+		if (!lines.some((line) => PROMPT.test(line))) return;
+		const session: Session = { kinds: [], output: [] };
+		let continued = false;
+		const source = lines.map((line, i) => {
+			if (continued || PROMPT.test(line)) {
+				const command = continued ? line : line.slice(2);
+				session.kinds[i] = continued ? 'continuation' : 'command';
+				continued = command.endsWith('\\');
+				return command;
+			}
+			session.kinds[i] = 'output';
+			session.output[i] = line;
+			// Output is not shell: leave it out of the highlighting, so a quote in
+			// it cannot run on into the next command.
+			return '';
+		});
+		(this.meta as SessionMeta).session = session;
+		return source.join('\n');
+	},
+	line(node, line) {
+		const session = (this.meta as SessionMeta).session;
+		const kind = session?.kinds[line - 1];
+		if (!session || !kind) return;
+		const text = session.output[line - 1];
+		if (kind === 'output') node.children = text ? [{ type: 'text', value: text }] : [];
+		this.addClassToHast(node, kind);
+	},
+};
 
 export function remarkDocs() {
 	return (tree: Node, file: File) => {

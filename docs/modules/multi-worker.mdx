@@ -104,15 +104,18 @@ Pass one `-c` per Worker. The first one is the primary Worker, and only it
 serves the port.
 
 ```sh
-orange dev -c wrangler.jsonc -c auth/wrangler.jsonc -c jobs/wrangler.jsonc
+$ orange dev -c wrangler.jsonc -c auth/wrangler.jsonc -c jobs/wrangler.jsonc
 ```
 
 Then call the gateway. An error that `auth` throws arrives with its message.
 
 ```sh
-curl localhost:8787/health        # auth is up
-curl localhost:8787/login/ada     # {"logins":1,"user":"ada"}
-curl localhost:8787/login/Ada%21  # {"error":"user must be lowercase letters"}
+$ curl localhost:8787/health
+auth is up
+$ curl localhost:8787/login/ada
+{"logins":1,"user":"ada"}
+$ curl localhost:8787/login/Ada%21
+{"error":"user must be lowercase letters"}
 ```
 
 </Step>
@@ -215,7 +218,7 @@ Worker in one deployment, each in its own runtime, and the Workers reach each
 other as in `orange dev`.
 
 ```sh
-orange serve -c app/wrangler.json -c api/wrangler.json -c jobs/wrangler.json
+$ orange serve -c app/wrangler.json -c api/wrangler.json -c jobs/wrangler.json
 ```
 
 - The serve port answers with the Worker whose `routes` match the request's
