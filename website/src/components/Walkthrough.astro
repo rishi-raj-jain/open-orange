@@ -1,15 +1,20 @@
 ---
-// Placeholder for the OpenOrange walkthrough video.
+// The OpenOrange launch walkthrough, embedded from YouTube.
+const VIDEO_ID = 'ykeVET4LtA4';
 ---
 
 <section id="walkthrough" class="scroll-mt-20 rule">
 	<div class="container-x section-tight">
-		<div class="relative flex aspect-video w-full flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl bg-plate text-white">
-			<span class="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20" aria-hidden="true">
-				<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z" /></svg>
-			</span>
-			<p class="text-[17px] font-medium">Walkthrough of OpenOrange</p>
-			<p class="text-[14px] text-cream/60">Video coming soon</p>
+		<div class="aspect-video w-full overflow-hidden rounded-2xl bg-plate">
+			<iframe
+				class="h-full w-full"
+				src={`https://www.youtube.com/embed/${VIDEO_ID}?rel=0`}
+				title="Introducing OpenOrange"
+				loading="lazy"
+				allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+				referrerpolicy="strict-origin-when-cross-origin"
+				allowfullscreen
+			></iframe>
 		</div>
 	</div>
 </section>
