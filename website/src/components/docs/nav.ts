@@ -51,7 +51,7 @@ const SECTIONS: Section[] = [
 ];
 
 // Docs pages written as Astro pages rather than repo MDX, listed in SECTIONS by route.
-const PAGES: Record<string, string> = { '/docs/': 'Introduction', '/docs/bindings/': 'Status' };
+const PAGES: Record<string, string> = { '/docs/': 'Introduction', '/docs/bindings/': 'Bindings overview' };
 
 /** Titles that differ from the doc's frontmatter, on the page and in the sidebar. */
 export const TITLES: Record<string, string> = { 'modules/browser-rendering': 'Browser Run', 'modules/bindings': 'Binding configuration' };

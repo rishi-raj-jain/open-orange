@@ -7,7 +7,7 @@
 export function docRoute(id: string): string {
 	const clean = id.replace(/(^|\/)index$/, '');
 	if (clean === '') return '/docs/';
-	// docs/modules/index.mdx only lists the binding docs; the Bindings status page replaces it.
+	// docs/modules/index.mdx only lists the binding docs; the Bindings overview page replaces it.
 	if (clean === 'modules') return '/docs/bindings/';
 	if (clean === 'modules/bindings') return '/docs/bindings/configuration/';
 	if (clean.startsWith('modules/')) return `/docs/bindings/${clean.slice('modules/'.length)}/`;

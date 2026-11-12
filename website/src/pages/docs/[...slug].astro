@@ -45,7 +45,7 @@ const headings = [
 	{bindings.length > 0 && (
 		<section slot="after" id="compatibility" class="mt-16 scroll-mt-20 border-t border-line pt-10">
 			<h2 class="text-[1.75rem] font-medium leading-tight tracking-[-0.025em]">Compatibility</h2>
-			<p class="caption mt-2">From the latest conformance run. Scores on the <a href="/compatibility/" class="link">compatibility page</a>; every binding on the <a href="/docs/bindings/" class="link">status page</a>.</p>
+			<p class="caption mt-2">From the latest conformance run. Scores on the <a href="/compatibility/" class="link">compatibility page</a>; every binding on the <a href="/docs/bindings/" class="link">bindings overview</a>.</p>
 			<div class="mt-8">
 				{bindings.map((b, i) => <BindingDetail b={b} first={i === 0} />)}
 			</div>

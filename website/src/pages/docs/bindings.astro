@@ -1,143 +1,246 @@
 ---
+// Bindings overview: one row per Cloudflare binding, pointing at what it runs
+// on in OpenOrange. Status, config keys, notes and test results live on each
+// binding's own page (BindingDetail), so this page stays a map.
 import Docs from '@/layouts/Docs.astro';
-import Chip from '@/components/compat/Chip.astro';
-import TipScript from '@/components/compat/TipScript.astro';
-import Row from '@/components/compat/Row.astro';
-import RowHead from '@/components/compat/RowHead.astro';
-import ClaimRow from '@/components/compat/ClaimRow.astro';
-import ResultCount from '@/components/compat/ResultCount.astro';
-import MatrixRow from '@/components/compat/MatrixRow.astro';
-import { BINDINGS, bindingPage } from '@/data/bindings';
-import { PROVIDERS } from '@/data/site';
-import { CLAIM_LABEL, PRODUCT_LABEL, SUMMARY, TONE_CLASS, inline, type ProductStatus } from '@/data/conformance';
+import { BINDINGS, bindingPage, type Binding } from '@/data/bindings';
+import { PRODUCT_LABEL, TONE_CLASS, inline, type ProductStatus } from '@/data/conformance';
+import { docRoute } from '@/components/docs/routes';
 
-const order: ProductStatus[] = ['drop-in', 'pluggable', 'partial', 'stub'];
-const counts = order.map((id) => ({ id, ...PRODUCT_LABEL[id], count: BINDINGS.filter((b) => b.product.status === id).length }));
-const working = BINDINGS.filter((b) => b.product.status !== 'stub').length;
-const stubs = BINDINGS.filter((b) => b.product.status === 'stub');
+// Where each binding runs, in a few words, after the service map on
+// /architecture/ and the `orange` field of compat/products.json. A binding
+// missing here shows its full `orange` text instead. Stubs name what to use.
+const RUNS_ON: Record<string, string> = {
+	workers: 'The OpenOrange runtime on Node.js',
+	'durable-objects': 'Rivet Actors',
+	kv: 'A Rivet Actor per namespace',
+	d1: 'A SQLite database in a Rivet Actor',
+	r2: 'A Rivet Actor, or any S3-compatible store',
+	queues: 'A Rivet Actor per queue',
+	workflows: "Cloudflare's own Workflows engine on Rivet Actors",
+	'cron-triggers': 'Rivet Actor schedules',
+	'rate-limiting': 'A fixed-window counter in a Rivet Actor',
+	'workers-ai': 'Any OpenAI-compatible endpoint',
+	'cache-api': 'A Rivet Actor per cache name',
+	'durable-object-facets': 'A child Rivet Actor per facet',
+	'worker-loader': 'A Node.js process per dynamic Worker, in an agentOS VM',
+	'service-bindings': 'Other Workers in the same orange dev session',
+	'dispatch-namespaces': 'User Workers in the same orange dev session',
+	sandboxes: 'Your sandbox provider',
+	containers: 'A sandbox per object, on your sandbox provider',
+	'browser-rendering': 'Your headless Chrome or a hosted browser',
+	'send-email': 'Your SMTP server',
+	hyperdrive: 'A direct connection to your database',
+	'analytics-engine': 'A dataset that drops every data point',
+	vectorize: 'Use a vector database over `fetch()`',
+	images: 'Use an image service such as imgproxy',
+	pipelines: 'Not built yet',
+	'ai-search': 'Not built yet',
+	'mtls-certificates': 'Not built yet',
+	vpc: 'Use `fetch()` to reach the host network',
+	'legacy-blobs': 'Import the file from the Worker source',
+};
+
+// Shorter names where the product name runs long.
+const NAME: Record<string, string> = {
+	'service-bindings': 'Service bindings',
+	'dispatch-namespaces': 'Workers for Platforms',
+};
+
+const LEGEND: { id: ProductStatus; meaning: string }[] = [
+	{ id: 'drop-in', meaning: 'nothing to change' },
+	{ id: 'pluggable', meaning: 'you pick the provider' },
+	{ id: 'partial', meaning: 'known differences' },
+	{ id: 'stub', meaning: 'every call throws' },
+];
+
+const working = BINDINGS.filter((b) => b.product.status !== 'stub');
+const rows = [...working, ...BINDINGS.filter((b) => b.product.status === 'stub')];
+
+// A row opens its binding's page at the top. When a page covers several
+// bindings, the later ones (and every binding on the shared configuration
+// page) jump to their own section of it.
+const configuration = docRoute('modules/bindings');
+const taken = new Set<string>();
+const hrefs = new Map<string, string | undefined>(
+	BINDINGS.map((b: Binding) => {
+		const page = bindingPage(b);
+		if (!page) return [b.slug, undefined];
+		if (page === configuration || taken.has(page)) return [b.slug, `${page}#${b.slug}`];
+		taken.add(page);
+		return [b.slug, page];
+	}),
+);
 ---
 
 <Docs
-	title="Binding status"
-	description={`${working} of ${BINDINGS.length} Cloudflare bindings run on OpenOrange, with the same wrangler.jsonc and the same env. Each binding's page has how it runs, what differs, and the tests behind it.`}
+	title="Bindings overview"
+	description={`${working.length} of ${BINDINGS.length} Cloudflare bindings run on OpenOrange, with the same wrangler.jsonc and the same env. Here is where each one runs. Its page has what differs and the tests behind it.`}
 	href="/docs/bindings/"
 	prose={false}
 	wide
 >
-	<section id="overview" class="scroll-mt-20">
-		<div>
-			<dl class="flex flex-wrap gap-x-10 gap-y-4">
-				{counts.map((c) => (
-					<div class="flex items-baseline gap-2">
-						<dd class="stat text-[1.75rem]">{c.count}</dd>
-						<dt class="flex items-center gap-1.5 text-[15px] text-ink-faint"><span class={TONE_CLASS[c.tone].dot}></span>{c.label}</dt>
-					</div>
-				))}
-			</dl>
-			<p class="caption mt-4">From OpenOrange <code class="code-chip">{SUMMARY.orange.sha}</code>, {SUMMARY.date}. Scores on the <a href="/compatibility/" class="link">compatibility page</a>.</p>
-		</div>
+	<ul class="legend" aria-label="Status">
+		{LEGEND.map((l) => (
+			<li>
+				<span class={`${TONE_CLASS[PRODUCT_LABEL[l.id].tone].dot} size-1.5`}></span>
+				<span class="font-medium text-ink-soft">{PRODUCT_LABEL[l.id].label}</span>
+				{l.meaning}
+			</li>
+		))}
+	</ul>
 
-		<div class="binding-rows pt-10">
+	<ul class="map mt-5">
+		{rows.map((b) => {
+			const s = PRODUCT_LABEL[b.product.status];
+			const href = hrefs.get(b.slug);
+			const cells = (
+				<>
+					<span class="map-name">{NAME[b.slug] ?? b.product.product}</span>
+					<span class="map-arrow" aria-hidden="true">→</span>
+					<span class:list={['map-to', b.product.status === 'stub' && 'is-stub']}>
+						<span class="sr-only">runs on </span>
+						<Fragment set:html={inline(RUNS_ON[b.slug] ?? b.product.orange)} />
+					</span>
+					<span class="map-status">
+						<span class={`${TONE_CLASS[s.tone].dot} size-1.5`}></span>
+						{s.label}
+					</span>
+				</>
+			);
+			return (
+				<li id={b.slug} class="map-row">
+					{href ? <a href={href} class="map-cells">{cells}</a> : <div class="map-cells">{cells}</div>}
+				</li>
+			);
+		})}
+	</ul>
 
-			<dl class="grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2">
-				{counts.map((c) => (
-					<div class="flex items-start gap-2">
-						<span class={`${TONE_CLASS[c.tone].dot} mt-1.5`}></span>
-						<span><dt class="inline font-medium text-ink">{c.label}.</dt> <dd class="inline text-ink-soft">{c.meaning}</dd></span>
-					</div>
-				))}
-			</dl>
-			<div class="mt-8">
-				<RowHead name="Binding" a="Config key" b="Runs on" end="" />
-				<div class="rows">
-					{BINDINGS.map((b) => {
-						const s = PRODUCT_LABEL[b.product.status];
-						return (
-							<Row>
-								<Chip slot="status" tone={s.tone} label={s.label} />
-								<a slot="name" href={`${bindingPage(b) ?? ''}#${b.slug}`} class="row-name link no-underline hover:underline">{b.product.product}</a>
-								<span slot="a" class="row-text font-mono text-[12.5px]">{b.doc.wranglerKeys.join(', ') || '—'}</span>
-								<span slot="b" class="row-text">
-									<span set:html={inline(b.product.orange)} />
-									{PROVIDERS[b.slug] ? (
-										<span class="mt-1 block text-ink-faint">Works with {PROVIDERS[b.slug].hosted.map((h) => h.name).join(', ')}</span>
-									) : null}
-								</span>
-								<span slot="end"></span>
-							</Row>
-						);
-					})}
-				</div>
-			</div>
-		</div>
-	</section>
-
-
-	<section class="rule mt-16 scroll-mt-20 pt-12" id="stubs">
-		<div>
-			<div>
-				<h2 class="text-[1.75rem] font-medium leading-tight tracking-[-0.025em]">Stubs</h2>
-				<p class="mt-5 text-[16px] leading-[1.6] text-ink-soft">
-					The Worker loads and <code class="code-chip">env.NAME</code> exists. Every call throws an error that names the binding and says what to use instead.
-				</p>
-			</div>
-			<div class="mt-10">
-				<RowHead name="Binding" a="Config key" b="On OpenOrange" end="" />
-				<div class="rows">
-					{stubs.map((b) => {
-						const s = PRODUCT_LABEL[b.product.status];
-						return (
-							<Row id={b.slug}>
-								<Chip slot="status" tone={s.tone} label={s.label} />
-								<span slot="name" class="row-name">{b.product.product}</span>
-								<span slot="a" class="row-text font-mono text-[12.5px]">{b.doc.wranglerKeys.join(', ') || '—'}</span>
-								<span slot="b" class="row-text" set:html={inline(b.product.note)} />
-								<span slot="end"></span>
-
-								<dl>
-									<dt>Runs on</dt>
-									<dd set:html={inline(b.product.orange)} />
-									{b.claims.length ? (
-										<>
-											<dt>Recorded results</dt>
-											<dd class="space-y-2">
-												{b.claims.map((c) => (
-													<span class="flex flex-wrap items-center gap-3">
-														<Chip tone={CLAIM_LABEL[c.status].tone} label={CLAIM_LABEL[c.status].label} />
-														<a href={`/compatibility/#${c.id}`} class="link text-[13.5px]" set:html={inline(c.title)} />
-														<ResultCount evidence={c.evidence} />
-													</span>
-												))}
-											</dd>
-										</>
-									) : null}
-									{b.matrix.length ? (
-										<>
-											<dt>Matrix</dt>
-											<dd class="flex flex-wrap gap-x-4 gap-y-1">
-												{b.matrix.map((e) => (
-													<a href={`/compatibility/#${e.id}`} class="link font-mono text-[12.5px]">{e.id}</a>
-												))}
-											</dd>
-										</>
-									) : null}
-								</dl>
-							</Row>
-						);
-					})}
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<TipScript />
+	<p class="caption mt-6">Test results for every binding are on the <a href="/compatibility/" class="link">compatibility page</a>.</p>
 </Docs>
 
 <style>
-	/* The docs column is narrower than a full page: give the text columns the room. */
-	@media (min-width: 768px) {
-		.binding-rows :global(.row-cols) {
-			grid-template-columns: 1.25rem 6.5rem minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.6fr) 5.5rem;
+	.legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1.25rem;
+		font-size: 13px;
+		line-height: 1.5;
+		color: var(--color-ink-faint);
+	}
+	.legend > li {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	/* Rows share one grid through subgrid, so every arrow lines up after the
+	   longest binding name: name, arrow, target, status. */
+	.map {
+		display: grid;
+		grid-template-columns: auto auto minmax(0, 1fr) auto;
+		column-gap: 1rem;
+		border-top: 1px solid var(--color-line);
+	}
+	.map-row {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: subgrid;
+		border-bottom: 1px solid var(--color-line);
+		scroll-margin-top: 6rem;
+	}
+	.map-cells {
+		grid-column: 1 / -1;
+		display: grid;
+		grid-template-columns: subgrid;
+		align-items: baseline;
+		padding: 0.6875rem 0.5rem;
+		transition: background-color 150ms;
+	}
+	a.map-cells:hover {
+		background-color: color-mix(in srgb, var(--color-paper-mid) 60%, transparent);
+	}
+	a.map-cells:focus-visible {
+		outline: 2px solid var(--color-orange);
+		outline-offset: -2px;
+		border-radius: 0.375rem;
+	}
+	.map-row:target > .map-cells {
+		background-color: var(--color-orange-soft);
+	}
+	.map-name {
+		font-size: 14.5px;
+		font-weight: 500;
+		line-height: 1.4;
+		color: var(--color-ink);
+	}
+	.map-arrow {
+		color: var(--color-ink-faint);
+		transition:
+			color 150ms,
+			transform 150ms;
+	}
+	a.map-cells:hover .map-arrow {
+		color: var(--color-orange);
+		transform: translateX(2px);
+	}
+	.map-to {
+		min-width: 0;
+		font-size: 14px;
+		line-height: 1.4;
+		color: var(--color-ink-soft);
+		overflow-wrap: anywhere;
+	}
+	.map-to.is-stub {
+		color: var(--color-ink-faint);
+	}
+	.map-to :global(code) {
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+	}
+	.map-status {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		justify-self: end;
+		white-space: nowrap;
+		font-size: 12px;
+		color: var(--color-ink-faint);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.map-cells,
+		.map-arrow {
+			transition: none;
+		}
+	}
+
+	/* Phones: the name and status on one line, the arrow and target under them. */
+	@media (max-width: 639px) {
+		.map,
+		.map-row {
+			display: block;
+		}
+		.map-cells {
+			display: grid;
+			grid-template-columns: auto minmax(0, 1fr) auto;
+			grid-template-areas:
+				'name name status'
+				'arrow to to';
+			column-gap: 0.5rem;
+			row-gap: 0.125rem;
+			padding-inline: 0.25rem;
+		}
+		.map-name {
+			grid-area: name;
+		}
+		.map-arrow {
+			grid-area: arrow;
+		}
+		.map-to {
+			grid-area: to;
+		}
+		.map-status {
+			grid-area: status;
 		}
 	}
 </style>

@@ -128,13 +128,12 @@ export const BINDING_SLUG_BY_MATRIX: Map<string, string> = new Map(BINDINGS.flat
 
 /**
  * The docs page that shows a binding's details: the page of its first doc
- * file. Stubs documented only in docs/modules/bindings.mdx have none; the
- * Status page lists them.
+ * file. Stubs documented only in docs/modules/bindings.mdx get theirs on that
+ * page, the binding configuration page.
  */
 export function bindingPage(b: Binding): string | undefined {
 	const id = b.doc.docs[0]?.replace(/^docs\//, '').replace(/\.mdx$/, '');
-	if (!id || (id === 'modules/bindings' && b.product.status === 'stub')) return undefined;
-	return docRoute(id);
+	return id ? docRoute(id) : undefined;
 }
 
 /** The bindings whose details belong on the docs page with this collection id. */
