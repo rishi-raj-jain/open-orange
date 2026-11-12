@@ -31,8 +31,10 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # The full suite starts many `orange dev` processes and engines; it needs more cores than
+    # GitHub's standard runner, where it exceeds an hour.
+    runs-on: depot-ubuntu-24.04-16
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
