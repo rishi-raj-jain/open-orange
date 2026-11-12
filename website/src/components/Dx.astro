@@ -1445,10 +1445,10 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			let started: () => void = () => {};
 			const progress = new Promise<void>((done) => (started = () => done()));
 			const run = async () => {
-				await wait(job, 360);
+				await wait(job, 300);
 				s.input.setAttribute('data-focus', '');
-				await wait(job, 200);
-				await type(job, s.draft, s.prompt, 10, 12);
+				await wait(job, 180);
+				await type(job, s.draft, s.prompt, 8, 10);
 				s.send.setAttribute('data-ready', '');
 				await wait(job, 300);
 				s.send.animate([{ scale: '1' }, { scale: '0.88' }, { scale: '1' }], { duration: 160, easing: 'ease-out' });
@@ -1599,7 +1599,7 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 				hand(false);
 				delete link.dataset.hover;
 				await Promise.race([progress, done]);
-				await wait(demo, 1000);
+				await wait(demo, 900);
 				await moveTo(closeButton, 0.5, 0.5, 600);
 				lights.setAttribute('data-hover', '');
 				await wait(demo, 240);
