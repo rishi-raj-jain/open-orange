@@ -579,6 +579,17 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		.dx .dx-body {
 			padding-bottom: 3.75rem;
 		}
+		/* The app is the window in front, so the terminal is inactive. */
+		.dx-term .dx-bar {
+			background: #2c2a28;
+			color: rgb(245 245 244 / 0.38);
+		}
+		.dark .dx-term .dx-bar {
+			background: #363330;
+		}
+		.dx-term .dx-lights i {
+			background: rgb(255 255 255 / 0.15);
+		}
 	}
 	@media (max-width: 639px) and (prefers-reduced-motion: reduce), (max-width: 639px) and (scripting: none) {
 		.dx-browser {
@@ -1656,10 +1667,8 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			if ((event.target as Element).closest('[data-ghost]')) takeOver();
 		});
 		document.addEventListener('keydown', (event) => {
-			if (event.key === 'Escape' && browser.hasAttribute('data-open')) {
-				takeOver();
-				void closeApp();
-			}
+			// Escape closes a window the visitor opened, not the demo's.
+			if (event.key === 'Escape' && !demo.live && browser.hasAttribute('data-open')) void closeApp();
 		});
 
 		const run = async () => {
