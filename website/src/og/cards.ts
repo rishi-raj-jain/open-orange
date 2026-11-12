@@ -2,12 +2,12 @@
 // website/OG.md explains how to preview a change.
 //
 //   siteCard  the site-wide card (/og.png) and the GitHub social preview
-//             (/og/github.png): the home page headline and the line under
-//             it, beside the break-glass box just as the hammer breaks it.
+//             (/og/github.png): the brand and the home page headline, beside
+//             the break-glass box just as the hammer breaks it. It matches the
+//             launch graphic.
 //   docsCard  one per docs page (/og/docs/….png): the page's title and
-//             description beside the same box.
-//
-// Both end with the same row of cloud logos (cloudRow), so they can't drift.
+//             description beside the same box, above a row of cloud logos
+//             (cloudRow).
 //
 // Copy and numbers come from src/data/site.ts and src/data/clouds.ts, so the
 // cards change with the home page. Colors and type follow src/styles/global.css.
@@ -123,32 +123,33 @@ const breakGlass = (assets: Assets, left: number, top: number, height: number, {
 	];
 };
 
+// The site card lays out 1200 wide at the image's aspect ratio (1200×630, or
+// 1200×600 for GitHub's 1280×640) and scales to fit, so the headline breaks the
+// same way at both sizes.
+const SITE_W = 1200;
+
 /**
- * The site-wide card: brand, the home page headline and the line under it,
- * the box as the hammer breaks it, and the same cloud row as the docs cards.
- * The box anchors to the right edge, so it lays out at 1200×630 and at
- * GitHub's 1280×640.
+ * The site-wide card: the brand, the home page headline on two lines, and the
+ * box as the hammer breaks it, as in the launch graphic.
  */
 export function siteCard(assets: Assets, { width, height }: Size, { intact = false } = {}): Node {
-	const dy = (height - 630) / 2;
-	return h(
+	const k = width / SITE_W;
+	const w = SITE_W;
+	const ht = Math.round(height / k);
+	const boxH = 500;
+	const card = h(
 		'div',
-		{ display: 'flex', position: 'relative', width, height, backgroundColor: C.paper, fontFamily: 'Inter', color: C.ink },
+		{ display: 'flex', position: 'relative', width: w, height: ht, backgroundColor: C.paper, fontFamily: 'Inter', color: C.ink, transform: `scale(${k})`, transformOrigin: 'top left' },
 		h(
 			'div',
-			{ display: 'flex', flexDirection: 'column', position: 'absolute', left: 72, top: dy + 60, width: width - 144, height: 630 - 60 - 50 },
-			brand(assets, 30),
-			h(
-				'div',
-				// The same width at both sizes, so the headline breaks the same way.
-				{ display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center', width: 716 },
-				h('div', { fontSize: 74, fontWeight: 500, lineHeight: 1.04, letterSpacing: '-0.035em' }, HERO.title),
-				h('div', { fontSize: 31, lineHeight: 1.4, color: C.inkSoft, marginTop: 26, width: 640 }, HERO.lede),
-			),
-			cloudRow(),
+			// 790 wide fits "Workers anywhere." but not a third word, so the headline keeps two lines.
+			{ display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'absolute', left: 72, top: 56, width: 790, height: ht - 56 - 48 },
+			brand(assets, 34),
+			h('div', { fontSize: 84, fontWeight: 500, lineHeight: 1.03, letterSpacing: '-0.04em', marginTop: 30 }, HERO.title),
 		),
-		...breakGlass(assets, width - 340, dy + 64, 430, { intact }),
+		...breakGlass(assets, w - 350, (ht - boxH) / 2, boxH, { intact }),
 	);
+	return h('div', { display: 'flex', width, height, backgroundColor: C.paper, overflow: 'hidden' }, card);
 }
 
 /** Per-page card for the docs: the page title and description beside a smaller box, the clouds along the bottom. */

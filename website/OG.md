@@ -12,7 +12,10 @@ template on every `pnpm --dir website build`. No rendered PNG is committed.
 ## Where things live
 
 - `src/og/cards.ts`: the templates. `siteCard` is the site card and the GitHub
-  preview; `docsCard` is the docs card. Layout, sizes and colors are here.
+  preview, styled like the launch graphic: the brand, the headline and the box.
+  It lays out 1200 wide and scales to GitHub's 1280×640, so the headline
+  breaks the same way in both. `docsCard` is the docs card. Layout, sizes and
+  colors are here.
 - `src/og/shatter.ts`: the break-glass box a moment after the hammer hits it.
   It ports the shatter animation in `src/components/BreakGlass.astro` (same
   fracture, shard physics and hammer swing) with a fixed seed, and draws one
@@ -27,12 +30,12 @@ template on every `pnpm --dir website build`. No rendered PNG is committed.
 
 ## Change the content
 
-- **Headline and the line under it**: `HERO.title` and `HERO.lede` in
-  `src/data/site.ts`. The home page hero reads the same values, so the card
-  and the site stay in step.
+- **Headline**: `HERO.title` in `src/data/site.ts`. The home page hero reads
+  the same value, so the card and the site stay in step. The site card sets it
+  on two lines; a longer headline needs a smaller `fontSize` in `siteCard`.
 - **Cloud logos**: `CLOUDS` in `src/data/clouds.ts` (SVGs in
   `src/assets/migrator/`). `cloudRow()` in `cards.ts` draws them along the
-  bottom of every card; `OPTICAL` there evens out their visual weight.
+  bottom of the docs cards; `OPTICAL` there evens out their visual weight.
 - **Docs title, description and section**: the page's frontmatter in
   `docs/*.mdx` or `docs/modules/*.mdx`, and its sidebar group in
   `src/components/docs/nav.ts`. The two docs pages written in Astro take theirs
