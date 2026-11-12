@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: "How OpenOrange runs your Cloudflare project: standard Docker containers in any cloud, scaled by the Rivet control plane, with state in S3 behind an SSD layer."
+description: "How OpenOrange runs your Cloudflare project: standard Docker containers in any cloud, scaled by the Rivet control plane, with state in S3."
 ---
 
 # Architecture
@@ -17,9 +17,8 @@ Rivet is an open-source control plane. Each Durable Object runs as a Rivet
 Actor: Rivet finds it, wakes it on one of your containers, and routes each
 request to it.
 
-Rivet keeps state in S3, which is cheap, durable and scalable, with an SSD
-layer in front so reads and writes stay fast. Scaling out is a matter of adding
-machines. See [Rivet Actors](https://rivet.dev/docs/actors/).
+Rivet keeps state in S3, which is cheap, durable and scalable. Scaling out is
+a matter of adding machines. See [Rivet Actors](https://rivet.dev/docs/actors/).
 
 ## Standard Docker containers, in any cloud
 
@@ -29,6 +28,9 @@ Docker image, so it runs anywhere Docker runs.
 Each container holds your Workers, Durable Objects, Workflows and the rest of
 your Cloudflare code. The containers connect out to Rivet, which spreads the
 load across them. To add capacity, add containers.
+
+Self-hosted is this architecture as drawn: you run the containers and Rivet.
+Rivet Cloud and BYOC run the same setup, operated by Rivet.
 
 <DeployTargets />
 

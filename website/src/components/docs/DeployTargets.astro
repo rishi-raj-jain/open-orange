@@ -1,7 +1,13 @@
 ---
 // Where `orange deploy` can put your containers, from DEPLOY_TARGETS
 // (src/data/site.ts). A plain table, so it takes the docs table style.
+// Self-hosted leads: it is the architecture on this page as drawn, and Rivet
+// Cloud and BYOC run the same setup with Rivet operating it.
 import { DEPLOY_TARGETS } from '@/data/site';
+
+const ORDER = ['self-host', 'rivet-cloud', 'byoc'];
+const rank = (id: string) => (ORDER.includes(id) ? ORDER.indexOf(id) : ORDER.length);
+const targets = [...DEPLOY_TARGETS].sort((a, b) => rank(a.id) - rank(b.id));
 ---
 
 <table>
@@ -9,7 +15,7 @@ import { DEPLOY_TARGETS } from '@/data/site';
 		<tr><th>Deploy to</th><th>Runs on</th></tr>
 	</thead>
 	<tbody>
-		{DEPLOY_TARGETS.map((target) => (
+		{targets.map((target) => (
 			<tr><td><strong>{target.label}</strong></td><td>{target.runsOn}</td></tr>
 		))}
 	</tbody>
