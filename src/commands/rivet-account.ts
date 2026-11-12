@@ -7,7 +7,9 @@ import { setTimeout as delay } from "node:timers/promises";
 import { parseArgs } from "node:util";
 import { z } from "zod";
 
+import { ExpectedFailure, exitWithOutcome } from "../cli/issue-report.js";
 import { isRivetMcpConfigured } from "./mcp.js";
+import { createRivetCloudClient } from "./rivet-cloud-api.js";
 
 // Sign-in and the cluster link. These read and write the files of the Rivet CLI, so `rivet login`
 // and `orange login` share one session.
@@ -139,7 +141,8 @@ async function postAuth(apiUrl: string, path: string, body: unknown): Promise<{ 
 		});
 	} catch (error: unknown) {
 		const cause = error instanceof Error ? error.message : String(error);
-		throw new Error(`Couldn't reach Rivet Cloud at ${url.origin}: ${cause}`);
+		// A network failure is the machine's or Rivet Cloud's, not a bug in Orange.
+		throw new ExpectedFailure(`Couldn't reach Rivet Cloud at ${url.origin}: ${cause}`);
 	}
 	return { ok: response.ok, status: response.status, text: await response.text() };
 }
@@ -155,7 +158,7 @@ function isCurrent(session: Session): boolean {
  */
 async function latestSession(apiUrl: string, held: Session): Promise<Session> {
 	const latest = (await readCredentials()).sessions[sessionKey(apiUrl)];
-	if (latest === undefined) throw new Error(sessionExpiredMessage);
+	if (latest === undefined) throw new ExpectedFailure(sessionExpiredMessage);
 	if (latest.refresh_token !== held.refresh_token && isCurrent(latest)) return latest;
 	const { ok, status, text } = await postAuth(apiUrl, "refresh", { refresh_token: latest.refresh_token });
 	if (ok) {
@@ -169,7 +172,7 @@ async function latestSession(apiUrl: string, held: Session): Promise<Session> {
 		const after = (await readCredentials()).sessions[sessionKey(apiUrl)];
 		if (after !== undefined && after.refresh_token !== latest.refresh_token) return await latestSession(apiUrl, latest);
 		await saveSession(apiUrl, undefined);
-		throw new Error(sessionExpiredMessage);
+		throw new ExpectedFailure(sessionExpiredMessage);
 	}
 	throw new Error(`Couldn't refresh the Rivet Cloud session (HTTP ${status}): ${text.slice(0, 200)}`);
 }
@@ -217,6 +220,18 @@ export async function resolveCloudAuth(flag: string | undefined, apiUrl: string)
 			return session.access_token;
 		},
 	};
+}
+
+// The saved session for this API while it still works. One the server no longer refreshes is gone.
+async function workingSession(apiUrl: string): Promise<Session | undefined> {
+	const saved = (await readCredentials()).sessions[sessionKey(apiUrl)];
+	if (saved === undefined || isCurrent(saved)) return saved;
+	try {
+		return await latestSession(apiUrl, saved);
+	} catch (error: unknown) {
+		if (error instanceof ExpectedFailure && error.message === sessionExpiredMessage) return undefined;
+		throw error;
+	}
 }
 
 function openBrowser(url: string): boolean {
@@ -312,13 +327,13 @@ export function renderAccountHelp(command: string): string {
 	const shared = "  --cloud-api <url>   Rivet Cloud API. Default https://cloud-api.rivet.dev.";
 	switch (command) {
 		case "login":
-			return ["open-orange login", "", "Sign in to Rivet Cloud in a browser. Shares the session with `rivet login`.", "", "  --no-browser        Print the sign-in URL instead of opening a browser.", shared].join("\n");
+			return ["open-orange login", "", "Sign in to Rivet Cloud in a browser. Shares the session with `rivet login`.", "Keeps a session that still works. Run `orange logout` first to sign in again.", "", "  --no-browser        Print the sign-in URL instead of opening a browser.", shared].join("\n");
 		case "logout":
 			return ["open-orange logout", "", "Remove the Rivet Cloud session.", "", shared].join("\n");
 		case "whoami":
 			return ["open-orange whoami", "", "Show the signed-in account and the linked cluster.", "", "  --token <token>     Describe this Rivet Cloud token instead.", shared].join("\n");
 		case "link":
-			return ["open-orange link", "", "Link this directory to a Rivet cluster, so `orange deploy` needs no --cluster.", "Writes .rivet/project.json. Shares the link with the Rivet CLI.", "", "  --cluster <name>    Cluster to link. Required.", "  --org <slug>        Organization that the cluster belongs to."].join("\n");
+			return ["open-orange link", "", "Link this directory to a Rivet cluster, so `orange deploy` needs no --cluster.", "Writes .rivet/project.json. Shares the link with the Rivet CLI.", "Checks that the cluster exists when signed in.", "", "  --cluster <name>    Cluster to link. Required.", "  --org <slug>        Organization that the cluster belongs to.", shared].join("\n");
 		default:
 			return ["open-orange unlink", "", "Remove this directory's link to a Rivet cluster."].join("\n");
 	}
@@ -342,8 +357,13 @@ export async function runAccountCommand(args: readonly string[], io: AccountIo):
 		const apiUrl = values["cloud-api"] ?? defaultCloudApi;
 		switch (command) {
 			case "login": {
-				const session = await login(apiUrl, values["no-browser"] !== true, io);
-				io.error(`Signed in as ${session.user.email}.`);
+				const existing = await workingSession(apiUrl);
+				if (existing !== undefined) {
+					io.error(`Already signed in as ${existing.user.email}. To sign in as someone else, run \`orange logout\` first.`);
+				} else {
+					const session = await login(apiUrl, values["no-browser"] !== true, io);
+					io.error(`Signed in as ${session.user.email}.`);
+				}
 				// A broken link file is `orange deploy`'s error to report, not sign-in's.
 				const linked = (() => {
 					try {
@@ -382,6 +402,19 @@ export async function runAccountCommand(args: readonly string[], io: AccountIo):
 			}
 			case "link": {
 				if (values.cluster === undefined) throw new Error("orange link needs a cluster. Pass --cluster <name>.");
+				// The same call that `orange deploy` makes first, so a cluster that does not exist fails here.
+				const auth = await resolveCloudAuth(values.token, apiUrl);
+				const organization = values.org ?? (process.env.RIVET_ORG?.trim() || undefined);
+				if (auth === undefined) {
+					io.error(`Not signed in, so Orange did not check that cluster ${values.cluster} exists. Run \`orange login\` to check it.`);
+				} else {
+					await createRivetCloudClient({
+						apiUrl,
+						cluster: values.cluster,
+						...(organization === undefined ? {} : { organization }),
+						token: (force) => auth.token(force),
+					}).listRegions();
+				}
 				const path = linkPath(process.cwd());
 				await mkdir(dirname(path), { recursive: true });
 				const link = { cluster: values.cluster, ...(values.org === undefined ? {} : { org: values.org }) };
@@ -407,6 +440,6 @@ export async function runAccountCommand(args: readonly string[], io: AccountIo):
 		}
 	} catch (error: unknown) {
 		io.error(error instanceof Error ? error.message : String(error));
-		return 1;
+		return error instanceof ExpectedFailure ? exitWithOutcome(1) : 1;
 	}
 }

@@ -3,6 +3,8 @@ import { request as httpRequest, type IncomingMessage } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { z } from "zod";
 
+import { ExpectedFailure } from "../cli/issue-report.js";
+
 // A client for the cluster endpoints of the Rivet Cloud API that `orange deploy` calls.
 // https://cloud-api.rivet.dev/v2/openapi.json
 
@@ -99,7 +101,11 @@ export function createRivetCloudClient(options: RivetCloudOptions): RivetCloudCl
 		method: "GET" | "POST" | "PUT",
 		path: string,
 		schema: z.ZodType<T>,
-		{ body, missingIsUndefined = false }: { body?: unknown; missingIsUndefined?: boolean } = {},
+		{
+			body,
+			forbiddenHint,
+			missingIsUndefined = false,
+		}: { body?: unknown; forbiddenHint?: string; missingIsUndefined?: boolean } = {},
 	): Promise<{ value: T | undefined }> => {
 		const url = new URL(`/v2/clusters/${cluster}${path}`, options.apiUrl);
 		const send = async (token: string): Promise<Response> =>
@@ -113,27 +119,29 @@ export function createRivetCloudClient(options: RivetCloudOptions): RivetCloudCl
 				method,
 				signal: AbortSignal.timeout(requestTimeoutMs),
 			});
-		let response: Response;
-		let token: string;
-		try {
-			token = await options.token();
-			response = await send(token);
-			// A login token can expire between the check and the call, so retry once with a new one.
-			if (response.status === 401) {
-				const refreshed = await options.token(true);
-				if (refreshed !== token) {
-					token = refreshed;
-					response = await send(refreshed);
-				}
+		// A network failure is the machine's or Rivet Cloud's, not a bug in Orange.
+		const reach = async (token: string): Promise<Response> => {
+			try {
+				return await send(token);
+			} catch (error: unknown) {
+				throw new ExpectedFailure(`Failed to ${action}. Couldn't reach Rivet Cloud at ${url.origin}: ${causeOf(error)}`);
 			}
-		} catch (error: unknown) {
-			if (error instanceof Error && error.message.includes("orange login")) throw error;
-			throw new Error(`Failed to ${action}. Couldn't reach Rivet Cloud at ${url.origin}: ${causeOf(error)}`);
+		};
+		// A token error, such as an expired session, already says what failed and what to do.
+		let token = await options.token();
+		let response = await reach(token);
+		// A login token can expire between the check and the call, so retry once with a new one.
+		if (response.status === 401) {
+			const refreshed = await options.token(true);
+			if (refreshed !== token) {
+				token = refreshed;
+				response = await reach(refreshed);
+			}
 		}
 		const text = await response.text();
 		if (response.status === 404 && missingIsUndefined) return { value: undefined };
 		if (!response.ok) {
-			throw new Error(describeApiError(action, options.cluster, response.status, text, token));
+			throw apiError(action, options.cluster, response.status, text, token, forbiddenHint);
 		}
 		if (text.length === 0) return { value: undefined };
 		let json: unknown;
@@ -184,7 +192,9 @@ export function createRivetCloudClient(options: RivetCloudOptions): RivetCloudCl
 		},
 		async putPool(region, pool, body) {
 			const action = `roll out pool ${pool} in region ${region}`;
-			return required(await call(action, "PUT", poolPath(region, pool), poolSchema, { body }), action);
+			// A cluster token can update a pool but not create one, and a login token can do both.
+			const forbiddenHint = `Create pool ${pool} in the dashboard at https://dashboard.rivet.dev, or deploy once after \`orange login\`.`;
+			return required(await call(action, "PUT", poolPath(region, pool), poolSchema, { body, forbiddenHint }), action);
 		},
 	};
 }
@@ -194,7 +204,9 @@ function sentence(text: string): string {
 }
 
 // Rivet Cloud errors are `{ _tag, message, errors? }`. The token is never part of the message.
-function describeApiError(action: string, cluster: string, status: number, text: string, token: string): string {
+// A rejected token, a missing permission, or a plan limit is for the user to fix, not a bug in Orange.
+// `forbiddenHint` replaces the 403 advice for a call that runs after the token already reached the cluster.
+function apiError(action: string, cluster: string, status: number, text: string, token: string, forbiddenHint?: string): Error {
 	let parsed: z.infer<typeof apiErrorSchema> | undefined;
 	try {
 		const result = apiErrorSchema.safeParse(JSON.parse(text));
@@ -204,24 +216,27 @@ function describeApiError(action: string, cluster: string, status: number, text:
 	}
 	const reason = parsed?.message ?? (text.trim().slice(0, 200) || `HTTP ${status}`);
 	if (status === 401 && token.startsWith("admin_")) {
-		return `Couldn't ${action}. This is a cluster admin token (admin_...), which is for the Rivet Engine, not the Rivet Cloud API. Run \`orange login\`, or pass a Rivet Cloud token with --token or RIVET_CLOUD_TOKEN.`;
+		return new ExpectedFailure(`Couldn't ${action}. This is a cluster admin token (admin_...), which is for the Rivet Engine, not the Rivet Cloud API. Run \`orange login\`, or pass a Rivet Cloud token with --token or RIVET_CLOUD_TOKEN.`);
 	}
 	if (status === 404 && /^cluster\b.*\bnot found/i.test(reason)) {
-		return `Couldn't ${action}. ${sentence(reason)} If the cluster exists, this token may belong to another organization. Check --token, RIVET_CLOUD_TOKEN, and the token saved in ~/.rivet/credentials, or run \`orange login\`.`;
+		return new ExpectedFailure(`Couldn't ${action}. ${sentence(reason)} If the cluster exists, this token may belong to another organization. Check --token, RIVET_CLOUD_TOKEN, and the token saved in ~/.rivet/credentials, or run \`orange login\`.`);
 	}
 	if (status === 401) {
-		return `Couldn't ${action}. Rivet Cloud rejected the token: ${reason}\nPass a valid Rivet Cloud token with --token or RIVET_CLOUD_TOKEN. Or run \`orange login\`.`;
+		return new ExpectedFailure(`Couldn't ${action}. Rivet Cloud rejected the token: ${reason}\nPass a valid Rivet Cloud token with --token or RIVET_CLOUD_TOKEN. Or run \`orange login\`.`);
+	}
+	if (status === 403 && forbiddenHint !== undefined) {
+		return new ExpectedFailure(`Couldn't ${action}. ${sentence(reason)}\n${forbiddenHint}`);
 	}
 	if (status === 403) {
-		return `Couldn't ${action}. The token has no access to cluster ${cluster}: ${reason}\nUse a token from the organization that owns the cluster.`;
+		return new ExpectedFailure(`Couldn't ${action}. The token has no access to cluster ${cluster}: ${reason}\nUse a token from the organization that owns the cluster.`);
 	}
 	if (status === 402) {
-		return `Couldn't ${action}. The organization's plan or payment method does not cover it: ${reason}\nAdd a payment method or change the plan at https://dashboard.rivet.dev.`;
+		return new ExpectedFailure(`Couldn't ${action}. The organization's plan or payment method does not cover it: ${reason}\nAdd a payment method or change the plan at https://dashboard.rivet.dev.`);
 	}
 	const fields = (parsed?.errors ?? []).map(
 		(error) => `\n  ${error.field === undefined ? "" : `${error.field}: `}${error.message}`,
 	);
-	return `Failed to ${action} (HTTP ${status}): ${reason}${fields.join("")}`;
+	return new Error(`Failed to ${action} (HTTP ${status}): ${reason}${fields.join("")}`);
 }
 
 // Sends the file in one PUT with exactly `size` bytes and its Content-MD5, as the

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -80,16 +81,26 @@ async function withAccount(body: (account: Account) => Promise<void>): Promise<v
 
 const rollout = (cloud: RivetCloudDouble): string[] => ["--cloud-api", cloud.url, "--build", "bld_ready"];
 
-test("orange login, link, and deploy need no flags or variables after the first sign-in", { timeout: 180_000 }, async () => {
-	await withAccount(async ({ cloud, credentialsPath, orange }) => {
+test("orange login, link, and deploy need no flags or variables after the first sign-in, and link refuses a missing cluster", { timeout: 180_000 }, async () => {
+	await withAccount(async ({ cloud, credentialsPath, orange, projectDirectory }) => {
 		const login = await orange(["login", "--no-browser", "--cloud-api", cloud.url]);
 		assert.equal(login.code, 0, login.output);
 		assert.match(login.output, /ABCD-1234/);
 		assert.match(login.output, /Signed in as ada@example\.com/);
 		// Only the user can read the session.
 		assert.equal((await stat(credentialsPath)).mode & 0o777, 0o600);
+		const again = await orange(["login", "--no-browser", "--cloud-api", cloud.url]);
+		assert.equal(again.code, 0, again.output);
+		assert.match(again.output, /Already signed in as ada@example\.com/);
+		assert.doesNotMatch(again.output, /one-time code/);
 
-		assert.equal((await orange(["link", "--cluster", cluster, "--org", "my-org"])).code, 0);
+		const missing = await orange(["link", "--cluster", "no-such-cluster", "--cloud-api", cloud.url]);
+		assert.equal(missing.code, 1, missing.output);
+		assert.match(missing.output, /cluster no-such-cluster\. Cluster not found\./);
+		assert.doesNotMatch(missing.output, /Linked cluster|Looks like a bug/);
+		assert.equal(existsSync(join(projectDirectory, ".rivet", "project.json")), false);
+
+		assert.equal((await orange(["link", "--cluster", cluster, "--org", "my-org", "--cloud-api", cloud.url])).code, 0);
 		const whoami = await orange(["whoami", "--cloud-api", cloud.url]);
 		assert.equal(whoami.stdout.trim(), "Ada <ada@example.com>", whoami.output);
 		assert.match(whoami.output, /Linked cluster: acme/);
@@ -165,6 +176,18 @@ test("a session the server no longer accepts fails the deploy, asks for a new si
 		const whoami = await orange(["whoami", "--cloud-api", cloud.url]);
 		assert.equal(whoami.code, 1, whoami.output);
 		assert.match(whoami.output, /Not signed in/);
+	});
+});
+
+test("orange login replaces a saved session that the server no longer refreshes", { timeout: 120_000 }, async () => {
+	await withAccount(async ({ cloud, orange, writeSession }) => {
+		await writeSession({ accessToken: "expired", expiresAt: Date.now() - 1_000, refreshToken: "revoked" });
+		const login = await orange(["login", "--no-browser", "--cloud-api", cloud.url]);
+		assert.equal(login.code, 0, login.output);
+		assert.match(login.output, /ABCD-1234/);
+		assert.match(login.output, /Signed in as ada@example\.com/);
+		const deploy = await orange(["deploy", "--cluster", cluster, ...rollout(cloud)]);
+		assert.equal(deploy.code, 0, deploy.output);
 	});
 });
 
@@ -253,5 +276,22 @@ test("an admin token and a cluster the token cannot see each fail with what to d
 		const other = await orange(["deploy", "--cluster", "someone-elses", "--token", "ci-token-value", ...rollout(cloud)]);
 		assert.equal(other.code, 1, other.output);
 		assert.match(other.output, /this token may belong to another organization/);
+		// The user's to fix, not a bug in Orange.
+		assert.doesNotMatch(admin.output + other.output, /Looks like a bug/);
+	});
+});
+
+test("an unreachable Rivet Cloud fails the deploy with one clear reason and no bug report link", { timeout: 120_000 }, async () => {
+	await withAccount(async ({ cloud, orange, writeSession }) => {
+		const { refreshToken } = cloud.issueSession();
+		// An expired session must refresh first, so this covers the sign-in request and the API call.
+		await writeSession({ accessToken: "expired", expiresAt: Date.now() - 1_000, refreshToken });
+		await cloud.close();
+		for (const credentials of [[], ["--token", "ci-token-value"]]) {
+			const deploy = await orange(["deploy", "--cluster", cluster, ...credentials, ...rollout(cloud)]);
+			assert.equal(deploy.code, 1, deploy.output);
+			assert.equal(deploy.output.match(/Couldn't reach Rivet Cloud at /g)?.length, 1, deploy.output);
+			assert.doesNotMatch(deploy.output, /Looks like a bug/);
+		}
 	});
 });
