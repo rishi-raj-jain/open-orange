@@ -9,7 +9,7 @@ const max = Math.max(...CREDITS.map((c) => c.amount));
 const points = [
 	{
 		title: 'Credit surfing without a rewrite',
-		body: "Start on Google's credits. When they run out, openorange deploy --cluster to a cluster on another cloud. Same config, same code.",
+		body: `Start on Google's credits. When they run out, openorange deploy --cluster to a cluster on another cloud. Same config, same code. The move is a <a href="${SITE.docsMigrate}" class="link">live migration</a>: your app keeps serving while the data moves, with zero downtime for Durable Objects.`,
 	},
 	{
 		title: 'Your model spend and your compute in one account',
@@ -71,7 +71,7 @@ const points = [
 				{points.map((point, i) => (
 					<li class={i === 0 ? 'pb-7' : 'py-7'}>
 						<h2 class="h-card">{point.title}</h2>
-						<p class="body-copy mt-2 text-ink-soft">{point.body}</p>
+						<p class="body-copy mt-2 text-ink-soft" set:html={point.body} />
 					</li>
 				))}
 			</ul>
