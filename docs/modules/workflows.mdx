@@ -5,44 +5,169 @@ description: Run Cloudflare Workflows with OpenOrange on Cloudflare's own Workfl
 
 # Workflows
 
-**Status:** Partial. Orange runs Cloudflare's own Workflows engine, with one
-Rivet Actor for each instance. A few APIs are missing. See
-[What is partial](#what-is-partial).
+<BindingStatus
+  binding="workflows"
+  works="`create()`, `get()`, every `step` API, `sendEvent()`, pause, resume, terminate, and restart, on Cloudflare's own Workflows engine"
+  differs="Rivet's size limits apply instead of Cloudflare's 1 MiB, and errors keep their names where `wrangler dev` renames them"
+  missing="`instance.subscribe()`, `limits.steps`, `retention`, the `vitest-pool-workers` test helpers, and an `orange workflows` command"
+/>
 
-## Configuration
+A Workflow is a job of many steps that survives restarts: each step's result is
+saved, and the run can sleep or wait for an event. On OpenOrange, your
+Workflow code and Wrangler configuration run unchanged, with one Rivet Actor
+for each instance.
 
-OpenOrange reads the standard Wrangler Workflow binding. Export the class from
-the Worker. No extra setup is needed:
+## Quickstart
+
+<Steps>
+
+<Step title="Bind the Workflow">
+
+Add a `workflows` entry to `wrangler.jsonc`.
 
 ```jsonc
 {
+  "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "workflows": [
     { "binding": "MY_WORKFLOW", "name": "my-workflow", "class_name": "MyWorkflow" }
   ]
 }
 ```
 
-```js
-import { WorkflowEntrypoint } from "cloudflare:workers";
-import { NonRetryableError } from "cloudflare:workflows";
+</Step>
 
-export class MyWorkflow extends WorkflowEntrypoint {
-  async run(event, step) {
+<Step title="Write the Workflow">
+
+Extend `WorkflowEntrypoint`, and export the class from your Worker's entry
+file. This one charges, sleeps, then waits for an approval event.
+
+```ts
+import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
+
+export class MyWorkflow extends WorkflowEntrypoint<Env, { amount: number }> {
+  async run(event: WorkflowEvent<{ amount: number }>, step: WorkflowStep) {
     const order = await step.do("charge", { retries: { limit: 3, delay: "1 second" } }, async () => {
       return { charged: event.payload.amount };
     });
-    await step.sleep("cool down", "10 minutes");
-    const approval = await step.waitForEvent("approval", { type: "approved", timeout: "1 hour" });
+    await step.sleep("cool down", "10 seconds");
+    const approval = await step.waitForEvent<{ by: string }>("approval", { type: "approved", timeout: "1 hour" });
     return { order, approver: approval.payload.by };
   }
 }
 ```
 
-Bindings with the same `name` share instances. A binding with a `script_name`
-of another Worker runs the Workflow in that Worker. Run both Workers in one
-`orange dev`. See [Multiple Workers](./multi-worker).
+</Step>
+
+<Step title="Start it from your Worker">
+
+`create()` starts an instance, `get()` finds it again, and `sendEvent()`
+delivers the event that `step.waitForEvent()` waits for.
+
+```ts
+export default {
+  async fetch(request, env): Promise<Response> {
+    const { pathname } = new URL(request.url);
+    if (pathname === "/start") {
+      await env.MY_WORKFLOW.create({ id: "order-1", params: { amount: 42 } });
+    }
+    const instance = await env.MY_WORKFLOW.get("order-1");
+    if (pathname === "/approve") {
+      await instance.sendEvent({ type: "approved", payload: { by: "ada" } });
+    }
+    return Response.json(await instance.status());
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+</Step>
+
+<Step title="Run it">
+
+`orange dev` shows the Workflow as a Rivet Actor.
+
+```sh
+orange dev
+```
+
+```text
+  Binding           Resource   Runs on
+  env.MY_WORKFLOW   Workflow   Rivet Actor · MyWorkflow
+```
+
+Start the instance, approve it, and read its status. It is `waiting` while it
+sleeps or waits for the event, and `complete`, with its output, once both are
+done.
+
+```sh
+curl localhost:8787/start
+curl localhost:8787/approve
+curl localhost:8787/
+```
+
+</Step>
+
+</Steps>
 
 ## How it works
+
+- Orange runs Cloudflare's own Workflows engine, the one `wrangler dev` runs.
+- Each instance is one Rivet Actor. Its step results, sleeps, and events live
+  in the actor's SQLite database.
+- The actor sleeps during `step.sleep()` or `step.waitForEvent()`. An alarm or
+  `sendEvent()` wakes it, and the run replays: finished steps return their
+  stored results.
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
+
+The engine runs every `step` API. The binding implements:
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `create()` | Supported | An ID that exists throws. See [Deviations](#deviations). An ID outside `^[a-zA-Z0-9_][a-zA-Z0-9-_]*$` throws `WorkflowError: Workflow instance has invalid id`. Without an ID, the instance gets a random UUID. |
+| `createBatch()` | Supported | Both forms. |
+| `get()` | Supported | A missing ID throws `instance.not_found`. |
+| `deleteBatch()` | Supported | |
+| `instance.status()` | Supported | All 8 statuses occur. See [Statuses](#statuses). There is no `__LOCAL_DEV_STEP_OUTPUTS` field, which only `wrangler dev` adds. |
+| `instance.pause()`, `resume()`, `terminate()` | Supported | `terminate()` cannot stop a step callback that is already running. See [Deviations](#deviations). |
+| `instance.restart()` | Supported | Also `{ from: { name, count, type } }`. |
+| `instance.delete()` | Supported | |
+| `instance.sendEvent()` | Supported | |
+| `instance.subscribe()` | Not supported | The engine has it, but the binding does not expose it. |
+| `step.do()` | Supported | With retries, backoff, and timeouts. |
+| `step.sleep()`, `step.sleepUntil()`, `step.waitForEvent()` | Supported | |
+| Parallel steps | Supported | Steps awaited together, for example with `Promise.all()`, run at the same time. |
+| A retry delay function, `sensitive: "output"`, rollback handlers, a `ReadableStream` step output | Untested | They come with the engine, but no OpenOrange test covers them yet. |
+| `limits.steps` in the Wrangler configuration | Not supported | Not read. Orange has no step limit. Cloudflare stops an instance at 10,000 steps by default. |
+| `retention` in `create()` | Partial | Validated but not applied. An instance stays until you call `delete()`. |
+| `vitest-pool-workers` test helpers | Not supported | `introspectWorkflow()` and the instance modifier are not available. |
+| `wrangler workflows` commands | Not supported | `orange workflows` prints that the command is not implemented, so no command lists or manages instances. |
+
+#### Limits
+
+Rivet's limits apply, not Cloudflare's 1 MiB.
+
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| `create()` params and a `sendEvent()` payload | They cross one Durable Object RPC call: at most 32 MiB on the wire. Binary data counts 4/3 of its size. | The call throws a `RangeError`, and the instance stays as it was. |
+| A step output and the instance output | Stored in one SQLite commit of at most 128 MiB | A larger step output errors the instance with `Step <name> output is too large to store`. |
+| Steps for each instance | No limit | `limits.steps` is not read. |
+| Workflow names, instance IDs, step names, and instances per `createBatch()` | No length or count limit. Cloudflare's 64, 100, and 256 characters and 100 instances per batch are not copied. | The call succeeds. Tested with a 155-character ID, a 300-character step name, and a batch of 150. |
+
+#### Configuration
+
+OpenOrange reads the standard Wrangler Workflow binding. Export the class from
+the Worker. No extra setup is needed.
+
+- Bindings with the same `name` share instances.
+- A binding with a `script_name` of another Worker runs the Workflow in that
+  Worker. Run both Workers in one `orange dev`. See
+  [Multiple Workers](./multi-worker).
+
+#### The engine
 
 The engine is Cloudflare's. Orange did not write its own:
 
@@ -55,6 +180,8 @@ The engine is Cloudflare's. Orange did not write its own:
 - The Orange changes connect the engine to Rivet. They keep its storage in the
   actor, wake it with a Durable Object alarm, and use Rivet's limits in place
   of Cloudflare's quotas.
+
+#### What happens on create()
 
 When you call `env.MY_WORKFLOW.create({ id, params })`:
 
@@ -76,77 +203,24 @@ crash, or a restart stops a run in the middle of a step, the run starts again
 in about 5 seconds. The step runs again, as Cloudflare retries a step whose
 engine stopped.
 
-The binding implements `create()`, `createBatch()` (both forms), `get()`,
-`deleteBatch()`, and on an instance `status()`, `pause()`, `resume()`,
-`terminate()`, `restart()` (also `{ from: { name, count, type } }`),
-`delete()`, and `sendEvent()`. All 8 statuses occur: `queued`, `running`,
-`paused`, `waitingForPause`, `waiting`, `errored`, `terminated`, and
-`complete`. Cloudflare's open engine never sets `waiting`, so OpenOrange sets
-it while every step call in flight is a sleep or an event wait, as Cloudflare
-reports it while an instance hibernates.
+#### Statuses
 
-The `step` argument implements `step.do()` with retries, backoff, and
-timeouts, and `step.sleep()`, `step.sleepUntil()`, and `step.waitForEvent()`.
-Steps awaited together, for example with `Promise.all()`, run at the same
-time. There is no step limit. A retry delay function, `sensitive: "output"`,
-rollback handlers, and a `ReadableStream` step output come with the engine, but
-no OpenOrange test covers them yet.
+All 8 statuses occur: `queued`, `running`, `paused`, `waitingForPause`,
+`waiting`, `errored`, `terminated`, and `complete`. Cloudflare's open engine
+never sets `waiting`, so OpenOrange sets it while every step call in flight is
+a sleep or an event wait, as Cloudflare reports it while an instance
+hibernates.
+
+#### Errors
 
 Errors keep their names, as workerd's RPC keeps them with
 `enhanced_error_serialization`, which Orange's fixed compatibility profile
-turns on. For example, a step that
-throws a `CustomError("boom")` errors the instance with `{ name: "CustomError",
-message: "boom" }`, and a `waitForEvent()` timeout throws a
-`WorkflowTimeoutError`.
+turns on. For example, a step that throws a `CustomError("boom")` errors the
+instance with `{ name: "CustomError", message: "boom" }`, and a
+`waitForEvent()` timeout throws a `WorkflowTimeoutError`.
 
-## Conformance
+#### Deviations
 
-`src/runtime/workflows.test.ts` drives a fixture Worker through `orange dev`.
-The expected values are what the same Worker shows under `wrangler dev`, apart
-from the differences below. It covers:
-
-- Terminate during a step and after the actor sleeps
-- Pause during a sleep and during a step, and resume
-- Restart from the start, from a step, and during a step
-- Parallel steps
-- An event sent before its wait, and an event larger than Cloudflare's 1 MiB
-- Wait timeouts
-- Two instances with the same step names
-- A sleep that ends from the alarm with no requests
-- A step longer than the idle sleep timeout
-- Failed steps
-- Delete and `deleteBatch()`
-- Duplicate and concurrent IDs
-- A sleep across an `orange dev` restart
-
-The upstream corpus runs Cloudflare's `workflows-starter` template.
-
-## What is partial
-
-The engine runs every `step` API. These parts of the Workflows API are missing:
-
-- `instance.subscribe()` is not implemented. The engine has it, but the
-  binding does not expose it.
-- `limits.steps` in the Wrangler configuration is not read. Orange has no step
-  limit. Cloudflare stops an instance at 10,000 steps by default.
-- `retention` in `create()` is validated but not applied. An instance stays
-  until you call `delete()`.
-- `status()` has no `__LOCAL_DEV_STEP_OUTPUTS` field, which only `wrangler dev`
-  adds.
-- The test helpers of `vitest-pool-workers` (`introspectWorkflow()` and the
-  instance modifier) are not available.
-- There is no `orange workflows` command to list or manage instances.
-
-## Limits and deviations
-
-- Rivet's limits apply, not Cloudflare's 1 MiB:
-  - `create()` params and a `sendEvent()` payload cross one Durable Object RPC
-    call. One call is at most 32 MiB on the wire, and binary data counts 4/3 of
-    its size. A larger call throws a `RangeError`, and the instance stays as
-    it was.
-  - A step output and the instance output are stored in one SQLite commit of
-    at most 128 MiB. A larger step output errors the instance with
-    `Step <name> output is too large to store`.
 - Errors keep their names. `wrangler dev` runs its engine on the 2024-10-22
   compatibility date, so there a custom name becomes `Error`, and an error
   that Workflow code throws gets its name in front of its message.
@@ -168,3 +242,41 @@ The engine runs every `step` API. These parts of the Workflows API are missing:
 - A Durable Object response larger than one tunnel message, such as a
   `status()` with an output of hundreds of KiB, can be cut off under load with
   `TypeError: terminated`. This is a RivetKit bug.
+
+#### Conformance
+
+`src/runtime/workflows.test.ts` drives a fixture Worker through `orange dev`.
+The expected values are what the same Worker shows under `wrangler dev`, apart
+from the [deviations](#deviations). It covers:
+
+- Terminate during a step and after the actor sleeps
+- Pause during a sleep and during a step, and resume
+- Restart from the start, from a step, and during a step
+- Parallel steps
+- An event sent before its wait, and an event larger than Cloudflare's 1 MiB
+- Wait timeouts
+- Two instances with the same step names
+- A sleep that ends from the alarm with no requests
+- A step longer than the idle sleep timeout
+- Failed steps
+- Delete and `deleteBatch()`
+- Duplicate and concurrent IDs
+- A sleep across an `orange dev` restart
+
+The upstream corpus runs Cloudflare's `workflows-starter` template.
+
+- `tests/runnable-examples.test.ts` runs the `workflows` example: retries that
+  succeed on attempt 3, `NonRetryableError`, a wait timeout, `createBatch()`,
+  a taken and an invalid ID, a random ID, and `pause()` and `terminate()` on a
+  finished instance.
+- `tests/beyond-cloudflare-quotas.test.ts` creates an instance with a
+  155-character ID and a 300-character step name, and a batch of 150.
+- The `lifecycle` probe runs create, `sendEvent()`, `terminate()`, `pause()`
+  and `resume()`, and `restart()` under both Orange and workerd. The
+  `scale-units` probe checks that each instance is one actor.
+
+##### Recorded results
+
+<BindingEvidence bindings={["workflows"]} />
+
+</AiContext>

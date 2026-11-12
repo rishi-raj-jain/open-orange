@@ -5,11 +5,32 @@ description: What Orange prints when a command fails, and what the report link h
 
 # Errors
 
-When an `orange` command fails, its last line links to a new issue on
-[rivet-dev/open-orange](https://github.com/rivet-dev/open-orange/issues), with the
-title and error filled in. A terminal shows a short link. A pipe or CI log shows the full URL.
+When an `orange` command fails, its last line links to a new GitHub issue with
+the error already filled in.
 
-Nothing is sent. The link opens only if you open it, and you can edit the issue first.
+```text
+Looks like a bug? Report it: https://github.com/rivet-dev/open-orange/issues/new
+```
+
+## Report a bug
+
+Open the link, edit the issue if you want, and submit it. Nothing is sent until
+you do. Orange replaces tokens, secrets, paths, and your user name in the error
+with placeholders first.
+
+<AiContext summary="What the link holds, what Orange removes, and when it prints no link">
+
+#### What the link holds
+
+The link opens a new issue on
+[rivet-dev/open-orange](https://github.com/rivet-dev/open-orange/issues). A
+terminal shows a short link. A pipe or CI log shows the full URL.
+
+The issue's title is `orange <command>: ` followed by the error's first line.
+Only the error text and the Orange, Node.js, and OS versions go in the link.
+Command arguments do not, unless the error text repeats them.
+
+#### What Orange removes
 
 Before Orange builds the link, it removes these from the error text:
 
@@ -23,12 +44,14 @@ Before Orange builds the link, it removes these from the error text:
 | URL credentials, paths, and queries | Only `scheme://host` stays |
 | Your user name, when it has 3 or more characters | `<user>` |
 
-Only the error text and the Orange, Node.js, and OS versions go in the link. Command
-arguments do not, unless the error text repeats them.
+#### When Orange prints no link
 
 Orange prints no link for a failure that is the command's result or the user's input:
 
 - You stop a command with Ctrl-C (exit `130`).
 - A command gets invalid arguments or an unknown command (exit `2`).
 - `orange doctor` finds a check to fix, and `orange migrate backfill` has objects to retry (exit `1`).
+- `orange migrate prepare` or `orange migrate d1` refuses a Worker or database it cannot move, such as a D1 database with virtual tables (exit `1`).
 - A Wrangler command that Orange does not implement.
+
+</AiContext>

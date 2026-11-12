@@ -1,52 +1,26 @@
 ---
 title: Runtime modules
-description: Configuration, implementation notes, compatibility status, and known deviations for OpenOrange runtime capabilities.
+description: One page for each Cloudflare Workers capability on OpenOrange, with its status, a quickstart, and what differs from Cloudflare.
 ---
 
 # Runtime modules
 
-These documents describe how OpenOrange exposes Cloudflare Workers capabilities
-on Node.js. A module document covers one ambient-global family, imported
-`cloudflare:*` module, environment binding, or Worker event family.
+Each page here covers one Cloudflare Workers capability on OpenOrange: a
+binding, an event handler, or the runtime globals. To see what each binding of
+your project runs on and what it needs, run `orange doctor`, or start with
+[Bindings](./bindings.mdx).
 
-Every document includes:
+A binding page opens with a status summary and a quickstart. Its full
+reference (compatibility, limits, differences from Cloudflare, and test
+evidence) is in the collapsed AI context at the end of the page. There, a
+feature is **Supported** when unchanged code runs, **Partial** when some
+documented APIs throw or act differently in ways that common code can hit, and
+**Not supported** when its calls throw.
 
-- The support status:
-  - **Supported:** unchanged code runs. The page lists each difference from
-    Cloudflare.
-  - **Partial:** the module runs, but some documented APIs throw or act
-    differently in ways that common code can hit.
-  - **Not supported:** the binding loads, and its calls throw.
-- Wrangler-compatible configuration and application usage.
-- How the capability is implemented by OpenOrange.
-- Static and behavioral conformance coverage.
-- Known differences from Cloudflare.
-
-The modules are:
-
-- [Globals](./globals)
-- [Fetch events](./fetch-events)
-- [Cron Triggers](./cron-triggers)
-- [Tail Workers](./tail-workers)
-- [Secrets Store](./secrets-store)
-- [Version metadata](./version-metadata)
-- [Durable Objects](./durable-objects)
-- [Bindings](./bindings): every binding, what it runs on, and what you set
-- [Worker Loader](./worker-loader): each dynamic Worker in its own Node.js process, in an agentOS VM
-- [KV](./kv)
-- [D1](./d1)
-- [Hyperdrive](./hyperdrive)
-- [Rate Limiting](./rate-limiting)
-- [Workers AI](./workers-ai)
-- [R2](./r2)
-- [Email](./email): Send Email through your SMTP server, and inbound mail to `email()`
-- [Browser Rendering](./browser-rendering): `@cloudflare/puppeteer` against a hosted browser, or any Chrome DevTools Protocol endpoint
-- [Workflows](./workflows): Cloudflare's own Workflows engine, with one Rivet Actor for each instance
-- [Queues](./queues)
-- [Static assets](./assets)
-- [Cache API](./cache)
-- [Multiple Workers](./multi-worker): service bindings, `script_name`, and dispatch namespaces across Workers
-- [Sandbox](./sandbox): `@cloudflare/sandbox` on a provider you choose
-
-Some pages have no conformance section yet: Hyperdrive, Browser Rendering, and
-Email.
+| Group | Pages |
+| --- | --- |
+| Configuration | [Bindings](./bindings.mdx): every binding, what it runs on, and what you set |
+| Storage | [Durable Objects](./durable-objects.mdx), [KV](./kv.mdx), [D1](./d1.mdx), [R2](./r2.mdx), [Hyperdrive](./hyperdrive.mdx), [Queues](./queues.mdx) |
+| Compute | [Workflows](./workflows.mdx), [Multiple Workers](./multi-worker.mdx), [Worker Loader](./worker-loader.mdx), [Sandbox](./sandbox.mdx), [Static assets](./assets.mdx) |
+| AI | [Workers AI](./workers-ai.mdx), [Browser Rendering](./browser-rendering.mdx) |
+| Runtime APIs | [Runtime globals](./globals.mdx), [Fetch events](./fetch-events.mdx), [Cron Triggers](./cron-triggers.mdx), [Tail Workers](./tail-workers.mdx), [Cache API](./cache.mdx), [Email](./email.mdx), [Rate Limiting](./rate-limiting.mdx), [Secrets Store](./secrets-store.mdx), [Version metadata](./version-metadata.mdx) |

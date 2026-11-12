@@ -25,12 +25,6 @@ const steps = [
 		code: 'orange login\norange link --cluster <cluster-name>\norange deploy',
 		more: { label: 'Deploy guide', href: docHref('deploy') },
 	},
-	{
-		title: 'Move your data from Cloudflare',
-		body: '`orange migrate` moves Durable Objects and D1 databases while your app serves. Skip this step if your app has no data on Cloudflare.',
-		code: 'orange migrate prepare\norange migrate backfill --url https://app.example.com',
-		more: { label: 'Migration guide', href: docHref('migrate') },
-	},
 ];
 
 // Text in backticks renders as code: odd parts are code.
@@ -70,6 +64,7 @@ const sections = await Promise.all(
 			<Code code={step.code} lang="sh" themes={{ light: 'github-light', dark: 'github-dark' }} />
 		</>
 	))}
+	<p>Your app has data on Cloudflare? Follow the <a href={docHref('migrate')}>migration guide</a>.</p>
 
 	<h2 id="explore">Explore the docs</h2>
 	<ul class="not-prose !my-6 grid !list-none gap-3 !pl-0 sm:grid-cols-2">

@@ -8,20 +8,21 @@ description: Run Workers KV namespaces on OpenOrange, where each namespace is on
 <BindingStatus
   binding="kv"
   works="`get()`, `getWithMetadata()`, `put()`, `delete()`, and `list()`, with metadata, expiration, and bulk reads"
-  differs="Reads are strongly consistent. Cloudflare's KV quotas do not apply, so a value over 25 MiB or a 30-second TTL works."
-  missing="The edge cache: `cacheTtl` is ignored and `cacheStatus` is always `null`. There is no `orange kv` command."
+  differs="Reads are strongly consistent, and Cloudflare's KV quotas do not apply"
+  missing="The edge cache (`cacheTtl` and `cacheStatus`) and an `orange kv` command"
 />
 
+A KV namespace on OpenOrange is one Rivet Actor with its own SQLite database.
 Your KV code and Wrangler configuration run unchanged.
 
-## Configuration
+## Quickstart
 
 <Steps>
 
 <Step title="Bind the namespace">
 
-Add a `kv_namespaces` entry to `wrangler.jsonc`. On Orange, `id` only names
-the namespace, so a Cloudflare namespace ID works as it is.
+Add a `kv_namespaces` entry to `wrangler.jsonc`. Keep your Cloudflare `id`:
+Orange uses it as the namespace's name.
 
 ```jsonc
 {
@@ -67,19 +68,20 @@ export default {
 
 </Step>
 
-<Step title="Start orange dev">
+<Step title="Run it">
+
+`orange dev` shows the namespace as a Rivet Actor.
 
 ```sh
 orange dev
 ```
 
-The binding table lists `env.NOTES` as a KV namespace on a Rivet Actor.
+```text
+  Binding     Resource       Runs on
+  env.NOTES   KV Namespace   Rivet Actor
+```
 
-</Step>
-
-<Step title="Call it">
-
-Keys survive a restart of `orange dev`.
+Write a note, read it back, and delete it:
 
 ```sh
 curl -X PUT localhost:8787/notes/todo-1 -d 'buy milk'
@@ -92,14 +94,17 @@ curl localhost:8787/notes/todo-1             # No note named todo-1
 
 </Steps>
 
-### What Orange reads
+## How it works
 
-| In `wrangler.jsonc` | On Orange |
-| --- | --- |
-| `id` | Names the namespace. Under `orange dev`, a `preview_id` wins, as in `wrangler dev`. With neither, the binding name names it. `orange serve` and a deployed Worker skip `preview_id`, as `wrangler deploy` does. |
-| The same `id` on two bindings | One namespace, also for every Worker of one `orange dev` session. See [Multiple Workers](./multi-worker). |
+- Each namespace is one Rivet Actor with a SQLite database.
+- Under `orange dev`, it lives in your project's `.open-orange` directory, so
+  keys survive a restart. After `orange deploy`, it runs on your Rivet cluster.
+- One actor serves every call on its namespace. To spread load, use more than
+  one namespace.
 
-## Compatibility
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
 
 | Feature | Status | Notes |
 | --- | --- | --- |
@@ -120,21 +125,10 @@ Two differences reach most projects:
   Cloudflare, a read in another location can return an older value for up to
   60 seconds.
 - **Cloudflare's quotas do not apply,** so a write that Cloudflare would refuse
-  succeeds. Rivet's limit on one write applies instead. See [Limits](#limits).
+  succeeds, such as a value over 25 MiB or a 30-second TTL. Rivet's limit on
+  one write applies instead. See [Limits](#limits).
 
-## How it works
-
-Each namespace is one Rivet Actor with a SQLite database. Under `orange dev`,
-it lives in the project's `.open-orange` directory, next to Durable Object
-storage, so keys survive restarts. After `orange deploy`, it runs on your Rivet
-cluster.
-
-One actor is the single writer for its namespace, so every `get()`, `put()`,
-`delete()`, and `list()` on a namespace goes through it. Cloudflare spreads
-reads across its edge and has no such bound. To spread load, use more than one
-namespace.
-
-## Limits
+#### Limits
 
 | What | Limit | What happens over it |
 | --- | --- | --- |
@@ -142,7 +136,15 @@ namespace.
 | A large value | 64 MiB stored and read back in a test on Rivet 3.0.6 | A 100 MiB value made the Engine fence the namespace's storage, and the `put()` did not return. That is a Rivet issue under one large write, not a set limit. |
 | Calls on one namespace | What one Rivet Actor serves | Spread the keys over more namespaces. |
 
-<AiContext summary="Argument rules, error text, storage, every deviation, and the test evidence">
+#### What Orange reads
+
+On Orange, `id` only names the namespace, so a Cloudflare namespace ID works as
+it is.
+
+| In `wrangler.jsonc` | On Orange |
+| --- | --- |
+| `id` | Names the namespace. Under `orange dev`, a `preview_id` wins, as in `wrangler dev`. With neither, the binding name names it. `orange serve` and a deployed Worker skip `preview_id`, as `wrangler deploy` does. |
+| The same `id` on two bindings | One namespace, also for every Worker of one `orange dev` session. See [Multiple Workers](./multi-worker). |
 
 #### API details
 
@@ -179,11 +181,15 @@ backend of `wrangler dev`.
 
 - The actor class is `openorange:kv-namespace`, shown as
   `KV namespaces (Orange)`, and its key is the namespace ID.
+- Under `orange dev`, the namespace's storage sits in `.open-orange` next to
+  Durable Object storage.
 - Entries are rows of one table, `openorange_kv`, with the key, the value, the
   expiration, and the metadata.
 - A read of an expired key deletes its row.
 - Keys and metadata travel in the request body to the actor, so URL and header
   size limits do not bound them.
+- One actor is the single writer for its namespace, so every `get()`, `put()`,
+  `delete()`, and `list()` on a namespace goes through it.
 
 #### Deviations
 
@@ -194,8 +200,9 @@ These add to the two differences under [Compatibility](#compatibility).
   metadata, 25 MiB values, 100 keys per bulk read, 1,000 keys per `list()`
   page, and TTLs of at least 60 seconds.
 - `put()` buffers the whole value before it stores it.
-- Sharding a namespace across actors, or backing KV with a Rivet Service, may
-  lift the one-actor throughput bound later.
+- Cloudflare spreads reads across its edge and has no one-actor throughput
+  bound. Sharding a namespace across actors, or backing KV with a Rivet
+  Service, may lift that bound later.
 
 #### Conformance
 

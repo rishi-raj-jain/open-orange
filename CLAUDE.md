@@ -72,42 +72,65 @@
 - Each module document must state its support status, show Wrangler-compatible
   configuration, explain how Orange implements it, describe its behavioral and
   type conformance coverage, and list every known deviation from Cloudflare,
-  in the [binding page format](#binding-page-format).
+  in the [docs page format](#docs-page-format).
 - Never put secret values, credentials, or private infrastructure details in
   public docs.
 
-### Binding page format
+### Docs page format
 
-Every binding page in `docs/modules/` is written for a person first, with the
-detail that only an agent needs collapsed at the end.
-`docs/modules/durable-objects.mdx` is the reference page. The docs components
-live in `website/src/components/docs/`, and pages use them without an import.
+Every page in `docs/` is for a person skimming it. In about one screen they
+get the concept and a quickstart that works. Everything else (compatibility
+tables, limits, differences from Cloudflare, edge cases, internals, errors,
+measurements, test evidence) goes in one collapsed `<AiContext>` at the end.
+`docs/modules/durable-objects.mdx` is the reference binding page. The docs
+components live in `website/src/components/docs/`, and pages use them without
+an import.
 
-Sections, in this order:
+A binding page, in this order:
 
-1. **Status summary.** `<BindingStatus>` right after the `# Title`. Its
-   status, backend, Wrangler keys, scaling, and check counts come from the
-   conformance data, and its migration value from
-   `website/src/data/binding-migration.ts`. The page writes three one-line
-   props: `works`, `differs`, and `missing`.
-2. **`## Configuration`.** The shortest path to a working binding, as
-   `<Steps>`: the `wrangler.jsonc`, the code, and a run with its output. Then
-   at most one short table of what Orange reads differently from Wrangler.
-3. **`## Compatibility`.** One table of `Feature | Status | Notes`, with the
-   status `Supported`, `Partial`, or `Not supported`. Then at most three
-   bullets on the differences that most projects hit. It is the page's only
-   list of API status. A page with `<BindingStatus>` gets no generated
-   compatibility section.
-4. **`## How it works`.** What runs the binding and what that means for the
-   reader, in a few short paragraphs, or a diagram and a few bullets.
-5. **`## Limits`.** One table of `What | Limit | What happens over it`, for
-   the limits a user can hit.
-6. **`<AiContext>`.** Everything else: exhaustive API tables, edge cases,
-   internals, measurements, debugging tables, every known deviation, the
-   conformance coverage, and `<BindingEvidence>` with the recorded results.
+1. **`# Title`**, then **`<BindingStatus>`**. Its status, backend, scaling,
+   check counts and migration value come from data. The page writes three
+   one-line props: `works`, `differs`, and `missing`.
+2. **One or two sentences** on what the binding is on OpenOrange. A diagram
+   here only if one already exists (`x.svg` and `x-dark.svg` in
+   `docs/images/`).
+3. **`## Quickstart`**: `<Steps>` with three to five steps, each titled with an
+   imperative verb: the `wrangler.jsonc`, the code, and the run with its
+   output. Requirements go above `<Steps>`, never in step 1.
+4. **`## How it works`**: at most three short bullets or three sentences.
+5. **`<AiContext summary="Compatibility, limits and details">`**: everything
+   else, starting with `#### Compatibility` (one `Feature | Status | Notes`
+   table) and `#### Limits`, then the rest, ending with `#### Conformance` and
+   `<BindingEvidence>`.
 
-Each binding's migration value is one of four, with one line of detail and a
-link to the guide when there is a path:
+A guide (migrate, deploy, operations, errors) opens with one or two sentences
+and a `## Quickstart` as `<Steps>`, then at most three short task sections of a
+sentence and a command each, then `<AiContext>` with the reference: every flag,
+refused value, error, and edge case.
+
+Writing rules:
+
+- Write for a person deciding whether to use it or setting it up. Short
+  sentences, present tense, "you".
+- The human sections hold no caveats, exceptions, numbers the reader does not
+  need to run it, or lists of what is missing. `<BindingStatus>` already says
+  what differs and what is missing.
+- No `## Compatibility`, `## Limits`, or other reference section outside
+  `<AiContext>`. Inside it, use `####` and `#####` headings only, so "On this
+  page" lists only the human sections. Keep the heading text of any section
+  that other pages link to, so its anchor still works; a link to an anchor
+  inside `<AiContext>` opens it.
+- Say each fact once.
+- Every command shows its real output: copy it from the page or from the CLI
+  source in `src/commands/`, or show the command without output. Never invent
+  output.
+- Configuration examples use `wrangler.jsonc`.
+- Every diagram has a light and a dark version: `x.svg` and `x-dark.svg` in
+  `docs/images/`.
+
+Each binding's migration value (in `website/src/data/binding-migration.ts`) is
+one of four, with one line of detail and a link to the guide when there is a
+path:
 
 - **Live migration:** the app keeps serving while the data moves, as with
   `orange migrate`'s copy on first request and backfill.
@@ -118,29 +141,6 @@ link to the guide when there is a path:
 - **Not needed:** stateless or external, so there is nothing to move.
 
 Change a value in the same commit as the migration code or guide.
-
-Writing rules:
-
-- Write for someone setting the binding up or deciding whether to use it.
-  Short sentences, present tense, "you". Lead each section with what the
-  reader does or gets.
-- Say each fact once. Do not restate the status summary in prose, keep API
-  status in the Compatibility table only, and do not repeat the human sections
-  inside `<AiContext>`.
-- A human section is about one screen. When it needs more than a table and a
-  few bullets, move the rest into `<AiContext>`.
-- `<Steps>`: four to six steps, each titled with an imperative verb, about two
-  sentences each. Requirements go above `<Steps>`, never in step 1. Every
-  command shows its real output, from an actual run.
-- Configuration examples use `wrangler.jsonc`.
-- Inside `<AiContext>`, use `####` and `#####` headings, so "On this page"
-  lists only the human sections. Keep the anchors that other pages link to.
-- Every diagram has a light and a dark version: `x.svg` and `x-dark.svg` in
-  `docs/images/`.
-
-A guide that is not a binding page, such as `docs/deploy.mdx`, opens with a
-`## Quickstart` as `<Steps>`, then a short section per task, then
-`<AiContext>` with the reference: every flag, refused value, and error.
 
 Skeleton:
 
@@ -159,7 +159,9 @@ description: One sentence on what runs the binding on OpenOrange.
   missing="One line: what is not there"
 />
 
-## Configuration
+One or two sentences on what it is on OpenOrange.
+
+## Quickstart
 
 <Steps>
 <Step title="Bind the namespace">
@@ -174,21 +176,21 @@ The command, then its output.
 </Step>
 </Steps>
 
-## Compatibility
+## How it works
+
+- At most three short bullets.
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
 
 | Feature | Status | Notes |
 | --- | --- | --- |
 
-## How it works
-
-## Limits
+#### Limits
 
 | What | Limit | What happens over it |
 | --- | --- | --- |
-
-<AiContext summary="Every API detail, deviation, and the test evidence">
-
-#### Deviations
 
 #### Conformance
 

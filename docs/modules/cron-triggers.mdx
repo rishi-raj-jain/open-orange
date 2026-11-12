@@ -5,22 +5,42 @@ description: Run a Worker's scheduled() handler on a cron schedule with OpenOran
 
 # Cron Triggers
 
-**Status:** Supported. Runs on a Rivet Actor.
+<BindingStatus
+  binding="cron-triggers"
+  works="`triggers.crons` with Cloudflare's cron syntax, `scheduled()` with `controller.cron`, `scheduledTime` and `waitUntil()`, and the local trigger routes"
+  differs="`orange dev` runs your crons for real. Overlapping runs are skipped, runs have no time limit, and an invalid expression is skipped with a warning."
+  missing="Retries of a failed run, so `controller.noRetry()` has no effect"
+/>
 
-## Configuration
+Cron Triggers run your Worker's `scheduled()` handler on a schedule, in UTC.
+Your `triggers.crons` and handler run unchanged, and `orange dev` runs them on
+their schedule.
 
-OpenOrange reads the standard Wrangler `triggers.crons` list. No extra setup is
-needed:
+## Quickstart
+
+<Steps>
+
+<Step title="Add a schedule">
+
+List your crons under `triggers.crons` in `wrangler.jsonc`. This one runs
+every minute.
 
 ```jsonc
 {
+  "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "triggers": {
-    "crons": ["*/5 * * * *", "0 15 1 * *"]
+    "crons": ["* * * * *"]
   }
 }
 ```
 
-The Worker exports a `scheduled()` handler:
+</Step>
+
+<Step title="Write the handler">
+
+Export a `scheduled()` handler. `controller.cron` tells you which cron fired.
 
 ```js
 export default {
@@ -30,12 +50,108 @@ export default {
 };
 ```
 
-A `WorkerEntrypoint` default export can define `scheduled(controller)` instead.
+</Step>
+
+<Step title="Run it">
+
+```sh
+orange dev
+```
+
+The ready block shows each cron's next run, and a command that runs one now:
+
+```text
+● Ready in 1.2s
+  Local         http://127.0.0.1:8787
+  Cron          "* * * * *" next <next minute>
+                Run one now: curl "http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*%20*%20*%20*%20*"
+```
+
+Each minute, `scheduled()` runs and its log line appears in the `orange dev`
+output.
+
+</Step>
+
+<Step title="Run one now">
+
+Run the command from the ready block to call `scheduled()` without waiting.
+
+```sh
+curl "http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*%20*%20*%20*%20*"
+# ok
+```
+
+</Step>
+
+</Steps>
 
 ## How it works
 
+- One Rivet Actor keeps a job for each cron. The jobs survive a restart of
+  `orange dev`, and a sleeping actor wakes for its next run.
+- When a job is due, the actor calls your `scheduled()` handler and waits for
+  its `ctx.waitUntil()` work.
+- A run that throws does not stop later runs. Its error shows in the
+  `orange dev` output.
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `triggers.crons` | Supported | The standard Wrangler list. No extra setup is needed. |
+| `scheduled(controller, env, ctx)` on the default export | Supported | |
+| `scheduled(controller)` on a `WorkerEntrypoint` default export | Supported | |
+| `controller.cron` | Supported | The expression as written in the configuration. |
+| `controller.scheduledTime` | Supported | The minute the job was due, in milliseconds. |
+| `ctx.waitUntil()` | Supported | The work finishes before the run ends. |
+| `controller.noRetry()` | No effect | Rivet never retries a failed run. |
+| Cloudflare's cron syntax | Supported | See [Expressions](#expressions). |
+| `/cdn-cgi/local/scheduled` and `/__scheduled` | Supported | As in `wrangler dev`, under `orange dev` only. See [Run `scheduled()` by hand](#run-scheduled-by-hand). |
+| `scheduled()` through a service binding | Partial | Works on a binding to this Worker. To another Worker, it rejects. See [Multiple Workers](./multi-worker). |
+| `wrangler triggers deploy` | Not supported | `orange triggers deploy` prints that the command is not implemented. |
+
+#### Limits
+
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| Run time | None. Cloudflare stops a run after 15 minutes of wall time. | Orange runs `scheduled()` until it finishes, with no CPU time limit. |
+| Runs of one cron at a time | One. Cloudflare can start a run while the previous run of the same cron is still running. | Rivet skips the new run and records it as skipped. |
+| A missed tick | Not run, like Cloudflare, for example while `orange dev` was stopped | A tick that a restart delays by less than a minute still runs. |
+
+#### Configuration
+
+Two crons, one every 5 minutes and one at 15:00 UTC on the 1st of each month:
+
+```jsonc
+{
+  "triggers": {
+    "crons": ["*/5 * * * *", "0 15 1 * *"]
+  }
+}
+```
+
+#### Expressions
+
+Orange reads every expression with Cloudflare's rules: the five fields, `*`,
+`,`, `-`, `/`, month and weekday names, `L`, `W`, and `LW` in the day of month,
+`L` and `#` in the day of week, and weekdays from 1 (Sunday) to 7 (Saturday).
+When both day fields are set, a day matches either one. An expression that
+does not parse, or never matches a date, prints a warning. Orange skips that
+cron and runs the others.
+
+- The warning names the reason, for example
+  `Orange skips cron trigger "61 * * * *": Minute value "61" must be 0-59`.
+- `?` reads as `*`. A range whose start is after its end wraps around, as in
+  Quartz.
+- An expression listed twice runs once.
+
+#### The ready block
+
 `orange dev` runs every cron automatically, in UTC. When the Worker is ready,
-it prints each cron's next run and a `curl` command that runs one now:
+it prints each cron's next run and a `curl` command that runs the first one
+now:
 
 ```text
 ● Ready in 1.2s
@@ -47,38 +163,35 @@ it prints each cron's next run and a `curl` command that runs one now:
 With `--json`, the `ready` event has a `crons` array. Each entry has `cron`,
 `nextRunAt`, and `triggerUrl`.
 
-Orange reads every expression with Cloudflare's rules: the five fields, `*`,
-`,`, `-`, `/`, month and weekday names, `L`, `W`, and `LW` in the day of month,
-`L` and `#` in the day of week, and weekdays from 1 (Sunday) to 7 (Saturday).
-When both day fields are set, a day matches either one. An expression that
-does not parse, or never matches a date, prints a warning. Orange
-skips that cron and runs the others.
+#### Scheduling internals
 
-One internal Rivet Actor, `openorange:cron` with key `["cron"]`, holds one Rivet
-cron job per expression. Orange computes each cron's next matching minute and
-gives Rivet that one minute as a concrete expression such as `59 23 30 10 *`.
-After each run, Orange sets the next minute.
-At startup, each `orange dev` process makes the jobs match the configuration:
-it adds new expressions and deletes removed ones. The actor exists only for
-Workers that have crons, or that had crons whose jobs it still has to delete.
+- One internal Rivet Actor, `openorange:cron` with key `["cron"]`, shown as
+  `Cron Triggers (Orange)`, holds one Rivet cron job per expression. The job's
+  name is the expression as written. In a session with several Workers, the
+  key also names the Worker, so each Worker keeps its own crons. See
+  [Multiple Workers](./multi-worker).
+- Orange computes each cron's next matching minute and gives Rivet that one
+  minute as a concrete expression such as `59 23 30 10 *`, in UTC. After each
+  run, Orange sets the next minute. Rivet's own cron parser lacks `LW`, crosses
+  month edges for `W`, and numbers weekdays from 0.
+- `orange serve` and a deployed Worker run the crons too.
+- At startup, each `orange dev` process makes the jobs match the
+  configuration: it adds new expressions and deletes removed ones. With an
+  external Rivet Engine, as under `orange serve`, this runs in the background
+  once the Worker serves requests, and retries with backoff until it succeeds.
+  Each failure appears as an error.
+- The actor exists only for Workers that have crons, or that had crons whose
+  jobs it still has to delete.
+- The jobs are stored in the actor's SQLite storage.
+- When a job is due, the actor calls `scheduled()` in the process that hosts
+  it.
+- Errors from `scheduled()` and its `waitUntil()` promises appear in the
+  `orange dev` output as errors, and as `error` events with `--json`. The
+  actor records the run as failed with
+  `scheduled() failed for cron trigger "<expression>"`, and the next tick
+  still runs.
 
-When a job is due, the actor calls `scheduled()` in the process that hosts it:
-
-- `controller.cron` is the expression as written in the configuration.
-- `controller.scheduledTime` is the minute the job was due, in milliseconds.
-- `ctx.waitUntil()` work finishes before the run ends.
-- `controller.noRetry()` has no effect. Rivet never retries a failed run.
-
-A run that throws does not stop later runs. Errors from `scheduled()` and its
-`waitUntil()` promises appear in the `orange dev` output as errors, and as
-`error` events with `--json`.
-
-The jobs are stored in the actor's SQLite storage, so they survive `orange dev`
-restarts. A sleeping actor wakes for its next run. Like Cloudflare, Orange does
-not run a tick it missed, for example while `orange dev` was stopped. A tick
-that a restart delays by less than a minute still runs.
-
-### Turn crons off
+#### Turn crons off
 
 `ORANGE_CRONS=off` runs no cron on this Orange: in `.dev.vars` for `orange dev`, or with
 `orange deploy --var ORANGE_CRONS:off`. Orange deletes the jobs of the configured crons, as for
@@ -86,7 +199,7 @@ crons removed from the configuration. Remove the setting to run them again. A mi
 Cloudflare uses it, so that each cron runs in one place. See
 [Cron triggers](../migrate#cron-triggers) in the migration guide.
 
-### Run `scheduled()` by hand
+#### Run `scheduled()` by hand
 
 These routes work like `wrangler dev`. They run `scheduled()` in the process
 that receives the request, and they work with or without `triggers.crons`.
@@ -94,16 +207,33 @@ that receives the request, and they work with or without `triggers.crons`.
 | Route | Response |
 | --- | --- |
 | `/cdn-cgi/local/scheduled?cron=<expression>&time=<ms>` | `ok` (200) or `exception` (500). Add `format=json` for `{"outcome", "noRetry"}`. |
-| `/__scheduled?cron=<expression>` | Only with `orange dev --test-scheduled`. `Ran scheduled event` (200), or 500 when the run fails. |
+| `/__scheduled?cron=<expression>` | Only with `orange dev --test-scheduled`. `Ran scheduled event` (200), or `Internal Server Error` (500) when the run fails. Without the flag, the Worker's `fetch()` gets the request. |
 
 A run fails when `scheduled()` throws, when a `waitUntil()` promise rejects,
-or when the Worker has no `scheduled()` handler.
+or when the Worker has no `scheduled()` handler. A Worker without one fails
+with `Handler does not export a scheduled() function`, and `noRetry` is
+`true`.
+
+`orange serve` and a deployed Worker do not serve these routes. The request
+reaches the Worker's `fetch()`, so nobody can run a deployed Worker's crons
+over HTTP.
 
 ```sh
 curl "http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*/5+*+*+*+*"
 ```
 
-## Conformance
+#### Deviations
+
+These add to the differences under [Limits](#limits) and the `noRetry()` row
+under [Compatibility](#compatibility).
+
+- **Orange runs crons in `orange dev`.** Wrangler does not run crons in local
+  development. It only prints the `curl` command. A project that expects
+  "crons never fire in dev" gets real runs.
+- **Invalid expressions.** Cloudflare rejects an invalid expression at deploy.
+  `orange dev` warns and skips only that cron.
+
+#### Conformance
 
 The generated event registry check verifies that the `scheduled` execution
 context has exactly the Cloudflare `ExecutionContext` keys. Behavior tests in
@@ -123,17 +253,17 @@ They check that:
 - With `ORANGE_CRONS=off`, no cron runs, including the jobs that an earlier start left.
 - Two `orange dev` processes on one Rivet Engine run each tick once.
 
-## Deviations
+The runnable example [`tests/fixtures/examples/cron`](../../tests/fixtures/examples/cron)
+has five jobs, including Cloudflare-only syntax and a job that always fails.
+`tests/runnable-examples.test.ts` runs it end to end.
 
-- **Orange runs crons in `orange dev`.** Wrangler does not run crons in local
-  development. It only prints the `curl` command. A project that expects
-  "crons never fire in dev" gets real runs.
-- **Overlapping runs are skipped.** Cloudflare can start a run while the
-  previous run of the same cron is still running. Rivet skips the new run and
-  records it as skipped.
-- **Invalid expressions.** Cloudflare rejects an invalid expression at deploy.
-  `orange dev` warns and skips only that cron.
-- **No time limit.** Cloudflare stops a run after 15 minutes of wall time.
-  Orange runs `scheduled()` until it finishes and has no CPU time limit.
-- **Retries.** `noRetry()` has no effect, because a failed run is never
-  retried.
+`tests/orange-serve.test.ts` checks that `orange serve` has no local cron
+route, and that it deletes the jobs of a removed configuration after a restart
+on an empty disk. workerd's upstream `http-server-nodejs-test` `testScheduled`
+fails with `The RPC receiver does not implement the method "scheduled"`.
+
+##### Recorded results
+
+<BindingEvidence bindings={["cron-triggers"]} />
+
+</AiContext>

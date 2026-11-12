@@ -12,7 +12,10 @@ description: Use the Workers Rate Limiting binding on OpenOrange, where each nam
   missing="Nothing"
 />
 
-## Configuration
+Rate Limiting caps how often each client can call your Worker. Your code and
+`wrangler.jsonc` run on Orange as they are.
+
+## Quickstart
 
 This limits each client to 100 requests a minute.
 
@@ -61,21 +64,16 @@ export default {
 
 </Step>
 
-<Step title="Start the Worker">
+<Step title="Run it">
 
-`orange dev` serves the Worker on port 8787. It stops with an error when a
-rate limiter's `period` is not 10 or 60, or its `limit` is not a number.
+`orange dev` serves the Worker on port 8787.
 
 ```sh
 orange dev
 ```
 
-</Step>
-
-<Step title="Send requests past the limit">
-
 Send 101 requests inside one clock minute. The first 100 get `200`, and the
-101st gets `429`. The counter starts again at the next full minute.
+101st gets `429`.
 
 ```sh
 for i in $(seq 1 101); do curl -s -o /dev/null -w '%{http_code}\n' localhost:8787/; done
@@ -85,17 +83,19 @@ for i in $(seq 1 101); do curl -s -o /dev/null -w '%{http_code}\n' localhost:878
 
 </Steps>
 
-### What Orange reads
+## How it works
 
-Orange reads the binding as `wrangler dev` does:
+- Each `namespace_id` is one Rivet Actor with its own SQLite database. It
+  holds the counter of every key, and the counters survive a restart of
+  `orange dev`.
+- Each window starts on a multiple of the period, so a 60-second window starts
+  at each full minute. The counter starts again in the next window.
+- A call adds one to its key's counter until it reaches `limit`. Calls that
+  get `success: false` do not count.
 
-| In `wrangler.jsonc` | On Orange |
-| --- | --- |
-| `ratelimits` | Supported, with Wrangler's checks. |
-| `unsafe.bindings` with `"type": "ratelimit"` | The same fields, with the same checks. |
-| `namespace_id` | Names the counter. Bindings with the same `namespace_id` share counters, also across the Workers of one `orange dev` session. |
+<AiContext summary="Compatibility, limits and details">
 
-## Compatibility
+#### Compatibility
 
 | Feature | Status | Notes |
 | --- | --- | --- |
@@ -112,34 +112,27 @@ Two differences reach most projects:
   the connection only when the request has no such header, as `wrangler dev`
   does. Key a limit on it only behind a proxy that sets the header.
 
-## How it works
-
-Each `namespace_id` is one Rivet Actor with its own SQLite database, and that
-actor holds the counter of every key. The counters survive a restart of
-`orange dev`.
-
-The counter is a fixed window, as in `wrangler dev`:
-
-- Windows start on wall-clock multiples of the period, so a 60 second window
-  starts at each full minute.
-- Each key and period has one counter. A call adds one until the counter
-  reaches `limit`. Calls that get `success: false` do not count.
-- A client can use its whole limit at the end of one window and again at the
-  start of the next.
-- Each call reads and updates its counter in one SQLite transaction, so calls
-  that overlap never get more than `limit` through.
-
-## Limits
+#### Limits
 
 | What | Limit | What happens over it |
 | --- | --- | --- |
 | Calls for one key in one window | The binding's `limit`, or the `limit` of the call | `limit()` resolves to `{ success: false }` until the next window. |
 | `period` | 10 or 60 seconds | In `wrangler.jsonc`, `orange dev` stops with an error. In a call, `limit()` rejects with `unsupported period: <period>`. |
 
-<AiContext summary="Every option check, error text, counter detail, deviation, and the test evidence">
+#### What Orange reads
+
+Orange reads the binding as `wrangler dev` does:
+
+| In `wrangler.jsonc` | On Orange |
+| --- | --- |
+| `ratelimits` | Supported, with Wrangler's checks. |
+| `unsafe.bindings` with `"type": "ratelimit"` | The same fields, with the same checks. |
+| `namespace_id` | Names the counter. Bindings with the same `namespace_id` share counters, also across the Workers of one `orange dev` session. |
 
 #### Configuration edge cases
 
+- `orange dev` stops with an error when a rate limiter's `period` is not 10
+  or 60, or its `limit` is not a number.
 - `ratelimits` goes through Wrangler's own validation, so its errors are
   Wrangler's, for example `"simple.period" must be either 10 or 60 but got 30`.
 - Wrangler passes `unsafe.bindings` through unchecked, so Orange checks that
@@ -179,6 +172,12 @@ text. Each failed check rejects the call with an `Error`:
 
 #### The counter
 
+- The counter is a fixed window, as in `wrangler dev`.
+- Each key and period has one counter.
+- A client can use its whole limit at the end of one window and again at the
+  start of the next.
+- Each call reads and updates its counter in one SQLite transaction, so calls
+  that overlap never get more than `limit` through.
 - The actor's class is the internal `openorange:ratelimit`. RivetKit shows it
   as `Rate Limiting (Orange)`. The binding table of `orange dev` shows each
   binding as a `Rate Limiter` on a `Rivet Actor`.

@@ -5,24 +5,18 @@ description: Send a Worker's logs, exceptions, and outcomes to the tail() handle
 
 # Tail Workers
 
-**Status:** Partial. Events travel through Rivet Durable Streams.
+A Tail Worker gets the logs, exceptions, and outcome of each event in another
+Worker, in its `tail()` handler. You list it in the traced Worker's
+`tail_consumers`, and Orange delivers the events through Rivet Durable Streams.
 
-- **Works:** `tail()` gets a `TraceItem` for each `fetch`, service binding `fetch()`, `scheduled`, and `queue` event, with its logs, exceptions, and outcome as in workerd.
-- **Differs:** Events wait for a consumer that is not running, for up to 7 days. Cloudflare drops them.
-- **Missing:** Traces of Durable Object, JS RPC, `connect()`, alarm, and WebSocket events, and `streaming_tail_consumers`.
-- **Migration:** Not needed. Cloudflare keeps no tail events to move.
-
-## Configuration
-
-Tail Workers need Rivet Services, which Orange installs with RivetKit as
-`@rivet-dev/services`.
+## Quickstart
 
 <Steps>
 
 <Step title="List the consumer">
 
 In the Worker you want to trace, name the consumer Worker in
-`tail_consumers`. A Worker can also name itself.
+`tail_consumers`.
 
 ```jsonc
 {
@@ -65,8 +59,8 @@ orange dev -c wrangler.jsonc -c tail/wrangler.jsonc
 
 <Step title="Send a request">
 
-Each request to `my-worker` reaches `tail()` in `my-tail-worker` once the
-event and its `waitUntil()` tasks end.
+Each request to `my-worker` reaches `tail()` in `my-tail-worker` after the
+request ends.
 
 ```sh
 curl localhost:8787
@@ -76,15 +70,27 @@ curl localhost:8787
 
 </Steps>
 
-### What Orange reads
+## How it works
 
-| In `wrangler.jsonc` | On Orange |
-| --- | --- |
-| `tail_consumers[].service` | The Worker itself, or another Worker of the same `orange dev` or `orange serve`. |
-| `tail_consumers[].environment` | Ignored. |
-| `streaming_tail_consumers` | A non-empty list fails the config load with `Unsupported Wrangler configuration: streaming_tail_consumers`. |
+- When an event ends, your Worker appends its `TraceItem` to a
+  [Rivet Durable Streams](https://rivet.dev/docs/integrations/durable-streams)
+  stream for each consumer, after the response.
+- The consumer reads the stream and calls `tail()` with a batch of events.
+  Delivery is at least once, so make a `tail()` that writes to another system
+  tolerate duplicates.
+- `orange dev` starts Durable Streams for you. On a cluster, you
+  [deploy Rivet Services](#on-a-cluster) yourself.
 
-## Compatibility
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
+
+**Status:** Partial. Events travel through Rivet Durable Streams.
+
+- **Works:** `tail()` gets a `TraceItem` for each `fetch`, service binding `fetch()`, `scheduled`, and `queue` event, with its logs, exceptions, and outcome as in workerd.
+- **Differs:** Events wait for a consumer that is not running, for up to 7 days. Cloudflare drops them.
+- **Missing:** Traces of Durable Object, JS RPC, `connect()`, alarm, and WebSocket events, and `streaming_tail_consumers`.
+- **Migration:** Not needed. Cloudflare keeps no tail events to move.
 
 | Feature | Status | Notes |
 | --- | --- | --- |
@@ -100,28 +106,7 @@ curl localhost:8787
 | `streaming_tail_consumers` and `tailStream()` | Not supported | |
 | Worker Loader `tails` and `streamingTails` | Not supported | Accepted. They receive no events. |
 
-Most projects hit one difference: **delivery is at least once**, so a
-consumer can get an event twice. Make a `tail()` that writes to another system
-tolerate duplicates.
-
-## How it works
-
-When an event ends, after its `waitUntil()` tasks, the Worker appends its
-`TraceItem` to a [Rivet Durable Streams](https://rivet.dev/docs/integrations/durable-streams)
-stream for each consumer. The append runs after the response, so the request
-does no I/O for it.
-
-In the consumer Worker, one internal actor per consumer, `openorange:tail`,
-reads the stream from its saved offset and calls `tail()` with the events of
-each read. The offset moves only after `tail()` returns. When `tail()` throws,
-the same events come again after a pause that doubles from 1 second up to 60
-seconds.
-
-Durable Streams runs in Rivet Services. `orange dev` starts one Services
-process for the session. **On a cluster, you deploy Services yourself**:
-`orange serve` does not start it. See [On a cluster](#on-a-cluster).
-
-## Limits
+#### Limits
 
 | What | Limit | What happens over it |
 | --- | --- | --- |
@@ -131,7 +116,24 @@ process for the session. **On a cluster, you deploy Services yourself**:
 | One event | 1,000,000 bytes of JSON, less 16 KiB | The event is dropped, with an error. |
 | Clock difference between a cluster's nodes | 60 seconds | An event that a slow node appends to a segment the consumer has left is lost. |
 
-<AiContext summary="Delivery guarantees, segments, Rivet Services, cluster setup, deviations, and test coverage">
+#### What Orange reads
+
+| In `wrangler.jsonc` | On Orange |
+| --- | --- |
+| `tail_consumers[].service` | The Worker itself, or another Worker of the same `orange dev` or `orange serve`. |
+| `tail_consumers[].environment` | Ignored. |
+| `streaming_tail_consumers` | A non-empty list fails the config load with `Unsupported Wrangler configuration: streaming_tail_consumers`. |
+
+#### Delivery path
+
+- An event's `TraceItem` is appended when the event ends, after its
+  `waitUntil()` tasks. The append runs after the response, so the request does
+  no I/O for it.
+- In the consumer Worker, one internal actor per consumer, `openorange:tail`,
+  reads the stream from its saved offset and calls `tail()` with the events of
+  each read. The offset moves only after `tail()` returns.
+- When `tail()` throws, the same events come again after a pause that doubles
+  from 1 second up to 60 seconds.
 
 #### Traced events
 
@@ -193,7 +195,7 @@ consumer reads expires on its own after the retention.
 
 #### Rivet Services
 
-Durable Streams runs in Rivet Services, which ships with RivetKit as
+Durable Streams runs in Rivet Services, which Orange installs with RivetKit as
 `@rivet-dev/services`.
 
 - `orange dev` starts one Services process for the session, next to its local
@@ -222,11 +224,6 @@ Services deployment in the envoy pool `services`, next to the Orange pool:
 Until Services runs, the producers keep events in memory, up to 10,000 per
 consumer. The first failed append prints the error that names the missing
 `services` pool.
-
-#### Deviations
-
-The status summary and the [Compatibility](#compatibility) section list every
-known deviation. A cluster also needs its own Services deployment, as above.
 
 #### Conformance
 

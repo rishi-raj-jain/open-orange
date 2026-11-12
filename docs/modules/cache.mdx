@@ -12,7 +12,11 @@ description: Use caches.default and caches.open() on OpenOrange, where each cach
   missing="`cache.add()`, `cache.addAll()`, and the edge cache that `fetch()` options such as `cf.cacheTtl` control"
 />
 
-## Configuration
+The Cache API stores responses so your Worker can answer a repeat request
+without building the response again. On OpenOrange, each cache name is one
+Rivet Actor with its own SQLite database.
+
+## Quickstart
 
 This caches each page of a Worker for 60 seconds.
 
@@ -34,9 +38,8 @@ The Cache API needs no binding, so any `wrangler.jsonc` works.
 
 <Step title="Cache each response">
 
-Look the request up with `match()`, and store a miss with `put()`. Orange
-stores a response only while it is fresh, so give it a `Cache-Control` with
-`max-age` or `s-maxage`.
+Look the request up with `match()`, and store a miss with `put()`. The
+response's `max-age` sets how long its entry lives.
 
 ```ts
 export default {
@@ -59,43 +62,38 @@ export default {
 
 </Step>
 
-<Step title="Start the Worker">
+<Step title="Run it">
 
-`orange dev` serves the Worker on port 8787.
+Start `orange dev`, which serves the Worker on port 8787, then request the page
+twice.
 
 ```sh
 orange dev
 ```
 
-</Step>
-
-<Step title="Request a page twice">
-
-The second response has the same body and the header
-`cf-cache-status: HIT`. After 60 seconds the entry expires, and the next
-request renders the page again.
-
 ```sh
 curl -i localhost:8787/
 curl -i localhost:8787/
 ```
 
+The second response has the same body and the header `cf-cache-status: HIT`.
+After 60 seconds the entry expires, and the next request renders the page
+again.
+
 </Step>
 
 </Steps>
 
-### What Orange reads
+## How it works
 
-The Cache API stores entries by default. `ORANGE_CACHE` changes that. Set it
-in the shell or in `.dev.vars`, and the shell wins.
+- Entries survive a restart of `orange dev`.
+- `caches.default` is one actor, so spread busy traffic over named caches with
+  `caches.open()`.
+- Set `ORANGE_CACHE=off` to turn the cache off.
 
-| Setting | On Orange |
-| --- | --- |
-| `ORANGE_CACHE` unset, empty, or `on` | Entries are stored. |
-| `ORANGE_CACHE=off` | Nothing is stored, as on a `workers.dev` subdomain: `put()` resolves, `match()` returns `undefined`, and `delete()` returns `false`. |
-| Any other `ORANGE_CACHE` value | `orange dev` stops with an error. |
+<AiContext summary="Compatibility, limits and details">
 
-## Compatibility
+#### Compatibility
 
 | Feature | Status | Notes |
 | --- | --- | --- |
@@ -121,21 +119,7 @@ Two differences reach most projects:
   the Cache API. Orange has no edge cache, so the subrequest always goes to
   the origin, as in `wrangler dev`.
 
-## How it works
-
-Each cache name is one Rivet Actor with its own SQLite database, and entries
-survive a restart of `orange dev`. `caches.default` is one actor, so spread
-busy traffic over named caches with `caches.open()`.
-
-- `put()` reads freshness as a shared cache does: `s-maxage`, then `max-age`,
-  then `Expires`. The request's own `Cache-Control` does not count.
-- A body is stored in 512 KiB chunks, and a `put()` commits the whole body at
-  once. A `match()` during a `put()` on the same URL gets one complete body,
-  never a mix of two.
-- A Worker with no Durable Objects or storage bindings starts the Rivet Engine
-  on its first Cache API call, which waits a few seconds.
-
-## Limits
+#### Limits
 
 | What | Limit | What happens over it |
 | --- | --- | --- |
@@ -144,9 +128,21 @@ busy traffic over named caches with `caches.open()`.
 | Cache API calls in one request | No limit set by Orange. Cloudflare's is 50 or 1,000. | |
 | Length of a cache name | No limit set by Orange. Cloudflare's is 1,024 characters. | |
 
-<AiContext summary="Every put() and match() rule, error text, storage internals, deviations, and the test evidence">
+#### What Orange reads
+
+The Cache API stores entries by default. `ORANGE_CACHE` changes that. Set it
+in the shell or in `.dev.vars`, and the shell wins.
+
+| Setting | On Orange |
+| --- | --- |
+| `ORANGE_CACHE` unset, empty, or `on` | Entries are stored. |
+| `ORANGE_CACHE=off` | Nothing is stored, as on a `workers.dev` subdomain: `put()` resolves, `match()` returns `undefined`, and `delete()` returns `false`. |
+| Any other `ORANGE_CACHE` value | `orange dev` stops with an error. |
 
 #### `put()`
+
+`put()` reads freshness as a shared cache does: `s-maxage`, then `max-age`,
+then `Expires`. The request's own `Cache-Control` does not count.
 
 Validation and its error text follow workerd's `Cache::put()`. Each of these
 throws a `TypeError`:
@@ -204,9 +200,13 @@ throws a `TypeError`:
   `caches.open("x")` uses `named:x`, as Miniflare does.
 - Each Worker of a multi-Worker session has its own caches.
 - Entries persist in the local Engine state under `.open-orange/rivetkit/`.
+- A Worker with no Durable Objects or storage bindings starts the Rivet Engine
+  on its first Cache API call, which waits a few seconds.
 - A `put()` writes each 512 KiB chunk in its own request and commit, then a
   final commit points the entry at the new body. So Rivet's commit limit does
   not bound an entry.
+- A `match()` during a `put()` on the same URL gets one complete body, never a
+  mix of two.
 - Chunks are read over a WebSocket to the actor, with up to 4 chunk reads
   in flight. A body that is never read opens no WebSocket, so it does not keep
   the actor awake.
@@ -254,8 +254,6 @@ These add to the differences under [Compatibility](#compatibility) and
   pass. `matchOperations` and `deleteOperations` fail, because they depend on
   workerd's mock cache backend. `cache-put-stream-test`'s
   `concurrentClonePuts` passes.
-
-##### Recorded results
 
 <BindingEvidence bindings={["cache-api"]} />
 

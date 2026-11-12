@@ -5,126 +5,218 @@ description: Send and consume Cloudflare Queues messages with OpenOrange, backed
 
 # Queues
 
-**Status:** Supported. Runs on one Rivet Actor for each queue.
+<BindingStatus
+  binding="queues"
+  works="`send()`, `sendBatch()`, delays, `ack()`, `retry()`, retries, and dead-letter queues, with Cloudflare's consumer defaults"
+  differs="Each queue delivers one batch at a time, so `max_concurrency` is ignored. Cloudflare's size, batch, and delay quotas do not apply."
+  missing="`oldestMessageTimestamp` in queue metrics, and the `wrangler queues` commands"
+/>
 
-## Configuration
+A queue on OpenOrange is one Rivet Actor that keeps its messages in SQLite and
+delivers them to your Worker's `queue()` handler. Your Queues code and Wrangler
+configuration run unchanged.
 
-OpenOrange reads the standard Wrangler Queues configuration. No extra setup is
-needed:
+## Quickstart
+
+<Steps>
+
+<Step title="Bind the queue">
+
+Add a producer and a consumer to `wrangler.jsonc`. Here one Worker both sends
+to the queue and consumes it.
 
 ```jsonc
 {
+  "name": "queues",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "queues": {
-    "producers": [{ "binding": "JOBS", "queue": "jobs", "delivery_delay": 0 }],
-    "consumers": [
-      {
-        "queue": "jobs",
-        "max_batch_size": 10,
-        "max_batch_timeout": 5,
-        "max_retries": 3,
-        "retry_delay": 0,
-        "dead_letter_queue": "jobs-dlq"
-      }
-    ]
+    "producers": [{ "binding": "JOBS", "queue": "jobs" }],
+    "consumers": [{ "queue": "jobs", "max_batch_timeout": 1, "max_retries": 2 }]
   }
 }
 ```
 
-The Worker sends with `env.JOBS` and consumes with its `queue()` handler:
+</Step>
 
-```js
+<Step title="Send and consume messages">
+
+`send()` stores a message. The `queue()` handler gets it in a batch, and
+`ack()` removes it from the queue.
+
+```ts
+interface Job {
+  id: string;
+}
+
+interface Env {
+  JOBS: Queue<Job>;
+}
+
 export default {
-  async fetch(request, env) {
-    await env.JOBS.send({ to: "user@example.com" });
-    return new Response("queued");
+  async fetch(request, env): Promise<Response> {
+    const job = await request.json<Job>();
+    await env.JOBS.send(job);
+    return Response.json({ queued: job.id }, { status: 202 });
   },
-  async queue(batch, env) {
+
+  async queue(batch, env): Promise<void> {
     for (const message of batch.messages) {
-      console.log(message.id, message.attempts, message.body);
+      console.log(`Ran job ${message.body.id} on attempt ${message.attempts}`);
       message.ack();
     }
   },
-};
+} satisfies ExportedHandler<Env, Job>;
 ```
 
-Consumer settings use Cloudflare's production defaults. Cloudflare's maximums
-are not copied:
+</Step>
+
+<Step title="Run it">
+
+`orange dev` shows the queue as a Rivet Actor.
+
+```sh
+orange dev
+```
+
+```text
+  Binding    Resource   Runs on
+  env.JOBS   Queue      Rivet Actor · jobs
+```
+
+Send a job. The `queue()` handler then logs it in the `orange dev` output.
+
+```sh
+curl -X POST localhost:8787/jobs -d '{"id":"a"}'
+# {"queued":"a"}
+```
+
+Messages that wait in the queue survive a restart of `orange dev`.
+
+</Step>
+
+</Steps>
+
+## How it works
+
+- Each queue is one Rivet Actor, named by the queue. It keeps each message in
+  its SQLite database until the consumer acks it, so messages survive restarts.
+- The actor delivers one batch at a time to `queue()`, with Cloudflare's rules
+  for `ack()`, `retry()`, retries, and dead-letter queues.
+- Every Worker of one `orange dev` session that names a queue shares it. See
+  [Multiple Workers](./multi-worker).
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `send()` and `sendBatch()` | Supported | `text`, `bytes`, `json`, and `v8` content types. `json` is the default. |
+| `delaySeconds` and the producer's `delivery_delay` | Supported | Any whole number of seconds, 0 or more. No 24-hour maximum. |
+| `queue()` with `ack()`, `retry()`, `ackAll()`, and `retryAll()` | Supported | Cloudflare's rules. See [Delivery](#delivery). |
+| `retry({ delaySeconds })` and `retryAll({ delaySeconds })` | Supported | |
+| `max_batch_size`, `max_batch_timeout`, `max_retries`, `retry_delay` | Supported | Cloudflare's production defaults, with no maximums. See [Consumer settings](#consumer-settings). |
+| `dead_letter_queue` | Supported | The dead-letter queue is a normal queue, so a Worker can consume it. |
+| `max_concurrency` | Not supported | Ignored. Each queue runs one batch at a time. |
+| `metrics()`, the `metadata` that `send()` returns, and `batch.metadata` | Partial | Count the messages that are due. `oldestMessageTimestamp` is never set. |
+| `wrangler queues` commands | Not supported | `orange queues` prints that the command is not implemented. |
+
+Two differences reach most projects:
+
+- **The consumer defaults are Cloudflare's production ones**, not the smaller
+  ones of `wrangler dev`. Set the values in `wrangler.jsonc` to get the same
+  batches in both.
+- **Messages wait when no Worker of the session consumes the queue**, like a
+  Cloudflare queue with no consumer. `wrangler dev` drops them.
+
+#### Limits
+
+Orange does not copy Cloudflare's quotas: 128 KB per message, 100 messages
+and 256 KB per `sendBatch()`, 100 messages per batch, a 60-second batch
+timeout, 100 retries, and 24-hour delays. Rivet's limits apply:
+
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| One `send()` or `sendBatch()` | 32 MiB of message bodies, because the call is one message to the Rivet Engine. A 31 MiB message was measured to work. | The call throws a `RangeError` at once that names the limit, and stores nothing. Split the batch. |
+| Batches on one queue | One at a time, through one Rivet Actor | Carry more messages per call with `sendBatch()`, or spread the load over more queues. |
+
+The full error is
+`RangeError: Queue send failed: the messages are <n> bytes. One send() or sendBatch() is one message to Rivet's Engine, which takes at most 33554432 bytes (32 MiB). Split the batch.`
+
+#### Consumer settings
 
 | Setting | Default | Range |
 | --- | --- | --- |
 | `max_batch_size` | 10 | 1 or more |
-| `max_batch_timeout` | 5 seconds | 0 or more |
+| `max_batch_timeout` | 5 seconds | 0 or more, fractions allowed |
 | `max_retries` | 3 | 0 or more |
 | `retry_delay` | 0 seconds | 0 or more |
 
-`wrangler dev` uses smaller defaults (5 messages, 1 second, and 2 retries). Set
-the values in the configuration to get the same batches in both.
+`wrangler dev` uses 5 messages, 1 second, and 2 retries. Each of these errors
+stops `orange dev`:
 
-A value out of range stops `orange dev` and names the queue.
+- `Queue consumer <queue>.<setting> must be an integer of <minimum> or more`,
+  or `a number of 0 or more` for `max_batch_timeout`.
+- `Queue producer <binding>.delivery_delay must be an integer of 0 or more`.
+- `Queue <queue> has more than one consumer`, for two consumers of one queue
+  in one Worker. Across Workers, see [Multiple Workers](./multi-worker).
 
-## How it works
+#### Sending
 
-Each queue is one Rivet Actor, `openorange:queue`, with the queue name as its
-key. Producers in any Worker that name the same queue share it. Messages are
-rows in the actor's SQLite database, so they persist across `orange dev`
-restarts in the project's `.open-orange` directory. A message row is deleted
-only after the consumer acks it, sends it to the dead-letter queue, or drops it.
-
-- `send()` and `sendBatch()` store messages with the `text`, `bytes`, `json`,
-  or `v8` content type. `json` is the default. A body of `undefined` and a
-  body that does not match its content type throw a `TypeError`, like workerd.
-- `delaySeconds` and the producer's `delivery_delay` set the time at which a
-  message becomes available. The delay can be any whole number of seconds,
-  0 or more; Cloudflare's 24-hour maximum is not copied. A Rivet
+- A body of `undefined`, a body that does not match its content type, and an
+  unknown content type throw a `TypeError`, as in workerd:
+  `Message body cannot be undefined`,
+  `Content Type "text" requires a value of type string, but received: number`,
+  and `Unsupported queue message content type: xml`.
+- An empty `sendBatch()` throws `sendBatch() requires at least one message`.
+- A delay that is not a whole number of seconds, 0 or more, throws
+  `Queue send failed: message delay -1 is invalid. It must be a whole number of seconds, 0 or more.`
+- In `sendBatch()`, a message's `delaySeconds` wins over the batch's, which
+  wins over the producer's `delivery_delay`.
+- A delayed message is stored with the time it becomes available. A Rivet
   schedule wakes the actor at the earliest pending time.
-- The consumer delivers one batch at a time to the Worker's `queue()` handler.
-  `ack()`, `retry()`, `ackAll()`, and `retryAll()` follow Cloudflare's rules:
-  the first call wins, a call on one message wins over a batch call, and an
-  explicit `ack()` holds even when the handler throws.
+- A `sendBatch()` is stored in one transaction, so a rejected message stores
+  none of the batch.
+- Message IDs are 32 hexadecimal characters, as on Cloudflare.
+
+#### Delivery
+
+- A batch holds up to `max_batch_size` due messages. With fewer due, the
+  actor waits up to `max_batch_timeout` from the first due message, so after
+  an idle period the first batch waits the whole timeout.
+- `ack()`, `retry()`, `ackAll()`, and `retryAll()` follow Cloudflare's rules:
+  the first call wins, and a later conflicting call logs a warning. A call on
+  one message wins over a batch call. An explicit `ack()` holds even when the
+  handler throws. A message with no call is acked when the batch succeeds.
+- A retry waits the message's `retry({ delaySeconds })`, then the batch's
+  `retryAll({ delaySeconds })`, then the consumer's `retry_delay`.
 - A batch completes only after `queue()` and its `waitUntil()` promises
-  settle. If the handler throws, every message that was not acked is retried.
-  If `orange dev` stops or crashes during `queue()`, the batch is delivered
+  settle. If the handler throws, or a `waitUntil()` promise rejects, every
+  message that was not acked is retried. The errors appear in the `orange dev`
+  output.
+- If `orange dev` stops or crashes during `queue()`, the batch is delivered
   again after the restart. Delivery is at least once.
 - A message gets `max_retries + 1` deliveries. Then it goes to the
-  `dead_letter_queue`, with its ID, timestamp, and body, or it is dropped with
-  a warning.
+  `dead_letter_queue` with its ID, timestamp, and body, and its `attempts`
+  count starts again at 1. Without a dead-letter queue, it is dropped with
+  `Dropped message "<id>" on queue "<queue>" after <n> failed attempts!`.
+- A consumer Worker without a `queue()` handler fails each batch with
+  `Handler does not export a queue() function.`
+- A message row is deleted only after the consumer acks it, sends it to the
+  dead-letter queue, or drops it. The actor sends dead letters before it
+  deletes their rows, so a crash redelivers instead of losing a message.
 
-## Conformance
+#### Storage
 
-An end-to-end `orange dev` test covers retries up to `max_retries` and the
-dead-letter queue, `retry({ delaySeconds })`, batches from concurrent
-producers, a 128,000-byte message, send validation errors, a crash during
-`queue()`, and a delayed message across a restart. The upstream workerd Queues
-tests use a mock queue service that the conformance runner does not configure.
+- The actor class is `openorange:queue`, shown as `Queues (Orange)`, and its
+  key is the queue name.
+- Messages are rows of one table, `messages`, in the actor's SQLite database.
+  Under `orange dev`, it lives in the project's `.open-orange` directory.
+- A consumer in another Worker of the session receives the batches of a queue
+  that this Worker produces to.
 
-## Limits and deviations
-
-- OpenOrange does not copy Cloudflare's limits of 128 KB per message, and 100
-  messages and 256 KB per `sendBatch()`. The limit is Rivet's: one `send()` or
-  `sendBatch()` is one message to the Rivet Engine, which takes at most 32 MiB.
-  Messages over that in one call fail at once with a `RangeError` that names
-  the limit. A 31 MiB message was measured to work.
-- A `sendBatch()` call is stored in one transaction, so a rejected message
-  stores none of the batch.
-- Each queue runs one batch at a time. `max_concurrency` is ignored.
-- A queue is shared by name across the Workers of one `orange dev` session.
-  A consumer in another Worker of the session receives the batches. With no
-  consumer in the session, messages wait in the queue, like a Cloudflare queue
-  that has no consumer. `wrangler dev` drops them.
-- A batch that is delivered again after a crash keeps its `attempts` value.
-- `metrics()` and the `metadata` that `send()` returns count the messages that
-  are due, and they never include `oldestMessageTimestamp`.
-
-### Throughput
-
-Each queue is one actor, and one actor is the single writer for its storage.
-Every `send()`, `sendBatch()`, and batch delivery on a queue goes through that
-actor, so one queue's throughput is bounded by what one actor can do.
-Use `sendBatch()` to carry more messages per call, or more than one queue to
-spread load. Sharding a queue across actors, or backing Queues with a Rivet
-Service, may lift this limit later.
-
-### Registry message size
+#### Registry message size
 
 Orange raises the RivetKit registry option `maxIncomingMessageSize` from its
 64 KiB default to 32 MiB, the most the Rivet Engine takes in one message from
@@ -136,3 +228,40 @@ The option applies to every actor in the registry, including Durable Objects,
 facets, and the Workflows and cron actors. Durable Object and facet `fetch()`,
 RPC, and WebSocket traffic do not use RivetKit actions, so the limit does not
 change them.
+
+#### Deviations
+
+These add to the differences under [Compatibility](#compatibility).
+
+- A batch that is delivered again after a crash keeps its `attempts` value.
+- One actor is the single writer for a queue, so every `send()`,
+  `sendBatch()`, and batch delivery on it goes through that actor. Sharding a
+  queue across actors, or backing Queues with a Rivet Service, may lift this
+  bound later.
+
+#### Conformance
+
+- `src/runtime/queues.test.ts` drives Queues through a real `orange dev`:
+  retries up to `max_retries` and the dead-letter queue,
+  `retry({ delaySeconds })`, batches from concurrent producers, a
+  128,000-byte message and one over Cloudflare's 128 KB, send validation
+  errors, a crash during `queue()`, and a delayed message across a restart.
+- `tests/beyond-cloudflare-quotas.test.ts` sends a 1 MiB message, a 3-day
+  delay, and a batch of 250, and a send over 32 MiB that fails with Rivet's
+  limit.
+- `tests/runnable-examples.test.ts` runs the `queues` example: retries with
+  backoff, the dead-letter queue, message and batch delays, each content type,
+  `retryAll()`, and `metrics()`.
+- `src/runtime/multi-worker.test.ts` sends to a queue from one Worker and
+  consumes it in another, and checks that two consumers of one queue fail at
+  startup.
+- The `scale-units` probe checks that each queue is one actor.
+- workerd's upstream `queue-test` and `queue-metadata-test` fail. They use a
+  mock queue service that the conformance runner does not configure, so their
+  queue binding is dropped.
+
+##### Recorded results
+
+<BindingEvidence bindings={["queues"]} />
+
+</AiContext>

@@ -5,20 +5,17 @@ description: Read your Worker's version ID, tag, and timestamp from the version_
 
 # Version metadata
 
-**Status:** Partial. It runs in the Worker's own process.
+The `version_metadata` binding tells your Worker which build of its code is
+running. Orange fills in its `id`, `tag`, and `timestamp` when it starts the
+Worker.
 
-- **Works:** `env.CF_VERSION_METADATA` has `id`, `tag`, and `timestamp`, with Wrangler's types.
-- **Differs:** `id` is a SHA-256 hash of your bundle and configuration, not a version UUID. `tag` is always `dev`.
-- **Missing:** `ctx.version`.
-- **Migration:** Not needed. The binding holds no data.
-
-## Configuration
+## Quickstart
 
 <Steps>
 
 <Step title="Bind the metadata">
 
-Add the binding to `wrangler.jsonc`. Orange also reads it from `wrangler.toml`.
+Add the binding to `wrangler.jsonc`.
 
 ```jsonc
 {
@@ -33,8 +30,8 @@ Add the binding to `wrangler.jsonc`. Orange also reads it from `wrangler.toml`.
 
 <Step title="Generate the types">
 
-`orange types` writes the same `Env` type as `wrangler types`, with
-`CF_VERSION_METADATA: WorkerVersionMetadata`.
+`orange types` adds `CF_VERSION_METADATA: WorkerVersionMetadata` to your `Env`
+type.
 
 ```sh
 orange types
@@ -58,8 +55,8 @@ export default {
 
 <Step title="Run it">
 
-Start `orange dev` and request the Worker. Every request gets the same values
-until you restart `orange dev`.
+Start `orange dev` and request the Worker. The response holds `id`, `tag`, and
+`timestamp`.
 
 ```sh
 orange dev
@@ -70,38 +67,47 @@ curl localhost:8787
 
 </Steps>
 
-## Compatibility
+## How it works
+
+- Orange builds the object once, when it starts the Worker's runtime, and
+  injects it before your code runs.
+- `id` is a hash of your bundled Worker and its configuration. It changes only
+  when your code or configuration changes, so use it to tell builds apart.
+- `timestamp` is when the runtime started.
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
+
+**Status:** Partial. It runs in the Worker's own process.
+
+- **Works:** `env.CF_VERSION_METADATA` has `id`, `tag`, and `timestamp`, with Wrangler's types.
+- **Differs:** `id` is a SHA-256 hash of your bundle and configuration, not a version UUID. `tag` is always `dev`.
+- **Missing:** `ctx.version`.
+- **Migration:** Not needed. The binding holds no data.
 
 | Feature | Status | Notes |
 | --- | --- | --- |
 | `id` | Partial | 64 hex characters. Code that parses it as a UUID fails. |
 | `tag` | Partial | Always `dev`, also under `orange serve` and `orange deploy`. |
 | `timestamp` | Partial | An ISO timestamp of when Orange built and started the Worker, not of a version upload. |
-| The `WorkerVersionMetadata` type | Supported | `orange types` matches Wrangler byte for byte. |
+| The `WorkerVersionMetadata` type | Supported | `orange types` writes the same `Env` type as `wrangler types`, byte for byte. |
+| `version_metadata` in `wrangler.toml` | Supported | Read as from `wrangler.jsonc`. |
 | `ctx.version` | Not supported | Reads `undefined`. workerd has it only behind the experimental `enable_version_api` flag. |
 
-Most projects hit one difference: **`id` changes only when your code or
-configuration changes**, so use it to tell builds apart, not to look up a
-version on Cloudflare.
+#### Limits
 
-## How it works
+The binding has no limits of its own.
 
-Orange builds the object once, when it starts the Worker's runtime, and
-injects it before your Worker's code runs.
+#### How the values are set
 
 - `id` hashes the bundled Worker and its normalized configuration, but not
-  the timestamp.
+  the timestamp. It is not for looking up a version on Cloudflare.
 - A secret enters the hash by its name only, so a new secret value keeps the
   same `id`.
 - `timestamp` is set each time a runtime starts. Under `orange serve`, each
   runner sets its own, so two runners of one deployment can show different
   times.
-
-## Limits
-
-The binding has no limits of its own.
-
-<AiContext summary="Hash inputs, every deviation, and the test coverage">
 
 #### Hash inputs
 
@@ -125,8 +131,8 @@ These add to the [Compatibility](#compatibility) table.
   never matches an ID that Wrangler or the Cloudflare dashboard shows.
 - `timestamp` is set right after Orange bundles the Worker, when the runtime
   starts.
-- `orange dev` does not reload on a change, so the values stay the same until
-  the process restarts.
+- `orange dev` does not reload on a change, so every request gets the same
+  values until the process restarts.
 
 #### Conformance
 

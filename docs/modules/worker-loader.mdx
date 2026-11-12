@@ -12,7 +12,11 @@ description: Load and run dynamic Workers at runtime with the worker_loaders bin
   missing="`getDurableObjectClass()`, `connect()` to a dynamic Worker, Python modules, and tail events from dynamic Workers"
 />
 
-## Configuration
+A Worker Loader runs code that your Worker hands it at runtime, as a dynamic
+Worker you call with `fetch()` or RPC. On OpenOrange, each dynamic Worker runs
+in its own agentOS VM.
+
+## Quickstart
 
 <Steps>
 
@@ -31,7 +35,7 @@ Add a `worker_loaders` binding to `wrangler.jsonc`.
 
 </Step>
 
-<Step title="Write the dynamic Worker's code">
+<Step title="Write the dynamic Worker">
 
 The code is an object of modules. `globalOutbound: null` blocks the dynamic
 Worker's own `fetch()`.
@@ -69,19 +73,32 @@ export default {
 
 <Step title="Run it">
 
-Start `orange dev` and request the Worker. The first request waits for the
-dynamic Worker's VM to boot.
+Start `orange dev`, then request the Worker.
 
 ```sh
 orange dev
 curl localhost:8787
 ```
 
+```text
+Hello from a dynamic Worker
+```
+
 </Step>
 
 </Steps>
 
-## Compatibility
+## How it works
+
+- Dynamic Worker code is untrusted, so each dynamic Worker gets its own VM,
+  as it gets its own isolate on Cloudflare. It never runs on the host.
+- The VM boots when the dynamic Worker first loads.
+- Your Worker and the dynamic Worker talk Workers RPC, so stubs and bindings
+  you pass in `env` or `props` work across the boundary.
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
 
 | Feature | Status | Notes |
 | --- | --- | --- |
@@ -98,29 +115,7 @@ curl localhost:8787
 | `compatibilityDate`, `compatibilityFlags`, `allowExperimental`, and `limits` | Partial | Accepted and ignored. The dynamic Worker uses the parent's compatibility profile. |
 | `tails` and `streamingTails` | Not supported | Accepted. They receive no events. |
 
-Two differences reach most projects:
-
-- **A dynamic Worker cannot reach the host.** `node:fs` sees only its VM, and
-  it cannot connect to host loopback ports, whatever its `globalOutbound`.
-- **Idle dynamic Workers are not unloaded.** Each `load()` keeps its process
-  until `orange dev` stops.
-
-## How it works
-
-Dynamic Worker code is untrusted, so each dynamic Worker gets its own VM, as
-each gets its own isolate on Cloudflare. Two dynamic Workers share no
-filesystem, processes, or loopback. A dynamic Worker shares no globals, module
-state, `process.env`, or `env` with the parent Worker.
-
-- The VM boots on demand, when its dynamic Worker loads. If it cannot boot,
-  `get()` and `load()` calls fail with the boot error. Orange never falls back
-  to the host.
-- A dynamic Worker with the default `globalOutbound` gets a VM with network
-  access. With `globalOutbound: null` or a Fetcher, its VM has no network.
-- If a dynamic Worker's process exits, its pending calls reject, and the next
-  `get()` with that name loads it again.
-
-## Limits
+#### Limits
 
 Orange does not copy Cloudflare's 64 MiB code and 1 MiB `env` limits.
 agentOS's limits apply:
@@ -131,7 +126,24 @@ agentOS's limits apply:
 | All files in the VM | 64 MiB by default, including Orange's runtime files | agentOS's limit. Orange adds no check. |
 | `env` | No set limit. In a test with agentOS 0.4.1, 5 MiB worked. | At 10 MiB, the dynamic Worker exited with code 1. |
 
-<AiContext summary="RPC transport, the VM runtime, every deviation, and the test evidence">
+#### Isolation
+
+- Two dynamic Workers share no filesystem, processes, or loopback.
+- A dynamic Worker shares no globals, module state, `process.env`, or `env`
+  with the parent Worker.
+- A dynamic Worker cannot reach the host. `node:fs` sees only its VM, and it
+  cannot connect to host loopback ports, whatever its `globalOutbound`.
+- A dynamic Worker with the default `globalOutbound` gets a VM with network
+  access. With `globalOutbound: null` or a Fetcher, its VM has no network.
+
+#### Lifecycle
+
+- If the VM cannot boot, `get()` and `load()` calls fail with the boot error.
+  Orange never falls back to the host.
+- Idle dynamic Workers are not unloaded. Each `load()` keeps its process until
+  `orange dev` stops.
+- If a dynamic Worker's process exits, its pending calls reject, and the next
+  `get()` with that name loads it again.
 
 #### Transport
 
@@ -182,8 +194,9 @@ agentOS's limits apply:
 
 #### Deviations
 
-These add to the [Compatibility](#compatibility) table, its two differences,
-and the [Limits](#limits).
+These add to the [Compatibility](#compatibility) table, the
+[Limits](#limits), and the host isolation and unloading in
+[Isolation](#isolation) and [Lifecycle](#lifecycle).
 
 - A Worker that fails to load is forgotten, so the next `get()` with that name
   calls `getCode` again. Workerd keeps the failed Worker.

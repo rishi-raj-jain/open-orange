@@ -1,36 +1,37 @@
 ---
 title: Hyperdrive
-description: Use a Hyperdrive binding with OpenOrange. The Worker connects directly to the database.
+description: Use a Hyperdrive binding with OpenOrange. The Worker connects directly to your Postgres or MySQL database.
 ---
 
 # Hyperdrive
 
-**Status:** Supported. The Worker connects directly to the database.
+<BindingStatus
+  binding="hyperdrive"
+  works="`connectionString`, `host`, `port`, `user`, `password`, `database`, and `connect()`, with your Postgres or MySQL driver"
+  differs="The Worker connects straight to the database, so `host` and `port` name the database, not a Hyperdrive endpoint"
+  missing="Connection pooling and query caching"
+/>
 
-## Choose a provider
+A Hyperdrive binding on OpenOrange hands your Worker the connection string of
+your own Postgres or MySQL database. Your Worker code runs unchanged.
 
-Any PostgreSQL or MySQL database works. Use its connection string as the
-[local connection string](#configuration):
+## Quickstart
 
-| Provider | Connection string | Notes |
-| --- | --- | --- |
-| [PlanetScale Postgres](https://planetscale.com/docs/postgres/connecting/quickstart) | `postgresql://<role>.<branch ID>:<password>@<host>.horizon.psdb.cloud:5432/<database>?sslmode=verify-full` | Copy the host from the **Connect** page. |
-| [PlanetScale MySQL](https://planetscale.com/docs/vitess/connecting/connection-strings) | `mysql://<user>:<password>@<host>/<database>` | Copy the host from the **Connect** page, with the **Other** format. |
-| [Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_CommonTasks.Connect.html) | `postgres://<user>:<password>@<instance>.<ID>.<region>.rds.amazonaws.com:5432/<database>` | For MySQL, use `mysql://` and port `3306`. The instance must accept connections from the runner. |
-| [Neon](https://neon.com/docs/connect/connect-from-any-app) | `postgresql://<role>:<password>@ep-<compute ID>.<region>.aws.neon.tech/<database>?sslmode=require` | A `-pooler` host, such as `ep-<compute ID>-pooler`, uses Neon's connection pooler. |
-| [Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres) | `postgresql://postgres:<password>@db.<project ref>.supabase.co:5432/postgres` | The direct host uses IPv6 on the Free and Pro plans. On an IPv4-only network, use the session pooler: `postgresql://postgres.<project ref>:<password>@<pooler host>:5432/postgres`. |
-| A database that you run | `postgres://<user>:<password>@localhost:5432/<database>` | |
+You need a Postgres or MySQL database, its connection string, and a driver
+such as `postgres` in your Worker's packages.
 
-OpenOrange has no connection pool, so each connection that the Worker opens goes to the
-database. A provider's pooler, such as Neon's `-pooler` host or the Supabase pooler,
-can take more connections than the database itself.
+<Steps>
 
-## Configuration
+<Step title="Bind the database">
 
-OpenOrange reads the standard Wrangler `hyperdrive` configuration:
+Add a `hyperdrive` entry to `wrangler.jsonc`, with your database's connection
+string. Keep your Cloudflare `id`: Orange does not use it.
 
 ```jsonc
 {
+  "name": "hyperdrive",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
@@ -41,31 +42,110 @@ OpenOrange reads the standard Wrangler `hyperdrive` configuration:
 }
 ```
 
-`orange dev` finds the connection string the same way as `wrangler dev`:
+To keep the password out of the config, set
+`CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`
+instead. For Neon, Supabase, PlanetScale, and Amazon RDS, see
+[Connection strings](#connection-strings).
 
-1. The `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>` variable.
-2. The deprecated `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>`
-   variable. `orange dev` prints a deprecation warning.
-3. `localConnectionString` in the configuration.
+</Step>
 
-The variables can come from the shell, `.dev.vars`, or `.env`. If no
-connection string is set, `orange dev` stops with the Wrangler error.
+<Step title="Query it from your Worker">
 
-## Usage
-
-Worker code runs unchanged:
+Pass `env.HYPERDRIVE.connectionString` to your driver, as on Cloudflare.
 
 ```ts
 import postgres from "postgres";
 
+interface Env {
+  HYPERDRIVE: Hyperdrive;
+}
+
 export default {
-	async fetch(request, env) {
-		const sql = postgres(env.HYPERDRIVE.connectionString);
-		const rows = await sql`select now()`;
-		return Response.json(rows);
-	},
-};
+  async fetch(request, env, ctx): Promise<Response> {
+    const sql = postgres(env.HYPERDRIVE.connectionString);
+    const rows = await sql`select now()`;
+    ctx.waitUntil(sql.end());
+    return Response.json(rows);
+  },
+} satisfies ExportedHandler<Env>;
 ```
+
+</Step>
+
+<Step title="Run it">
+
+`orange dev` shows the binding as a direct connection.
+
+```sh
+orange dev
+```
+
+```text
+  Binding          Resource     Runs on
+  env.HYPERDRIVE   Hyperdrive   Direct connection
+```
+
+`curl localhost:8787` returns the row from `select now()`.
+
+</Step>
+
+</Steps>
+
+## How it works
+
+- `orange dev` reads the connection string when it starts, as `wrangler dev`
+  does.
+- `env.HYPERDRIVE` gives your driver that string and its parts, and the driver
+  connects straight to the database.
+- Orange has no connection pool, so every connection that your Worker opens
+  reaches the database. A provider's pooler, such as Neon's `-pooler` host or
+  the Supabase pooler, takes more connections than the database itself.
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `connectionString` | Supported | The connection string, as `new URL()` writes it. |
+| `host`, `port`, `user`, `password`, and `database` | Supported | They name the database itself. On Cloudflare, `host` and `port` name a Hyperdrive endpoint. |
+| `connect()` | Supported | Opens a TCP socket to `host:port`. |
+| PostgreSQL and MySQL | Supported | `postgres://`, `postgresql://`, and `mysql://` connection strings. |
+| Connection pooling | Not supported | Each connection that the Worker opens goes to the database. |
+| Query caching | Not supported | Every query reaches the database. |
+| `wrangler hyperdrive` commands | Not supported | `orange hyperdrive` prints that the command is not implemented. |
+
+#### Limits
+
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| Open connections | Your database's own limit. Orange adds no pool. | Your driver gets the database's error. Use the provider's pooler for more connections. |
+
+#### Where the connection string comes from
+
+`orange dev` finds the connection string the same way as `wrangler dev`:
+
+1. The `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>` variable.
+2. The deprecated `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>`
+   variable. `orange dev` prints the Wrangler warning:
+   `Using "WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING_NAME>" environment variable. This is deprecated. Please use "CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING_NAME>" instead.`
+3. `localConnectionString` in the configuration.
+
+- The variables can come from the shell, `.dev.vars`, or `.env`. The shell
+  wins, and an empty value counts as unset.
+- `id` is not read. A Cloudflare Hyperdrive ID works as it is.
+- With no connection string, `orange dev` stops at startup with the Wrangler
+  error:
+  `When developing locally, you should use a local Postgres connection string to emulate Hyperdrive functionality. Please setup Postgres locally and set the value of the 'CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE' variable or "HYPERDRIVE"'s "localConnectionString" to the Postgres connection string.`
+- Orange checks the string with Miniflare's rules: the `postgres`,
+  `postgresql`, or `mysql` scheme, and a host, user, password, and database.
+  A string that fails stops startup with
+  `Hyperdrive binding <BINDING> has an invalid local connection string: <Miniflare's message>`.
+  For a string that `new URL()` cannot parse, the message is `Invalid url`.
+- `orange serve` reads the connection string the same way when it starts,
+  from its own environment. No test covers a deployed Hyperdrive binding.
+
+#### Fields
 
 `env.HYPERDRIVE` has the same shape as the workerd `Hyperdrive` type:
 
@@ -73,19 +153,45 @@ export default {
 | --- | --- | --- |
 | `connectionString` | `string` | The connection string. |
 | `host` | `string` | The database host. |
-| `port` | `number` | The URL port, else 5432 for `postgres`/`postgresql` and 3306 for `mysql`. |
+| `port` | `number` | The URL port, else 5432 for `postgres` and `postgresql`, and 3306 for `mysql`. |
 | `user` | `string` | The URL-decoded user name. |
 | `password` | `string` | The URL-decoded password. |
 | `database` | `string` | The URL-decoded database name. |
 | `connect()` | `Socket` | A TCP socket to `host:port`. |
 
-OpenOrange checks the connection string with Miniflare's rules. It must use
-the `postgres`, `postgresql`, or `mysql` scheme and include a host, user,
-password, and database.
+#### Connection strings
 
-## Differences from Cloudflare
+Any PostgreSQL or MySQL database works. Use its connection string as the local
+connection string:
 
-- The Worker connects directly to the database. There is no connection
-  pooling and no query caching.
+| Provider | Connection string | Notes |
+| --- | --- | --- |
+| [PlanetScale Postgres](https://planetscale.com/docs/postgres/connecting/quickstart) | `postgresql://<role>.<branch ID>:<password>@<host>.horizon.psdb.cloud:5432/<database>?sslmode=verify-full` | Copy the host from the **Connect** page. |
+| [PlanetScale MySQL](https://planetscale.com/docs/vitess/connecting/connection-strings) | `mysql://<user>:<password>@<host>/<database>` | Copy the host from the **Connect** page, with the **Other** format. |
+| [Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_CommonTasks.Connect.html) | `postgres://<user>:<password>@<instance>.<ID>.<region>.rds.amazonaws.com:5432/<database>` | For MySQL, use `mysql://` and port `3306`. The instance must accept connections from the runner. |
+| [Neon](https://neon.com/docs/connect/connect-from-any-app) | `postgresql://<role>:<password>@ep-<compute ID>.<region>.aws.neon.tech/<database>?sslmode=require` | A `-pooler` host, such as `ep-<compute ID>-pooler`, uses Neon's connection pooler. |
+| [Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres) | `postgresql://postgres:<password>@db.<project ref>.supabase.co:5432/postgres` | The direct host uses IPv6 on the Free and Pro plans. On an IPv4-only network, use the session pooler: `postgresql://postgres.<project ref>:<password>@<pooler host>:5432/postgres`. |
+| A database that you run | `postgres://<user>:<password>@localhost:5432/<database>` | |
+
+#### Deviations
+
+- The Worker connects directly to the database. There is no connection pooling
+  and no query caching.
 - `host` and `port` name the database itself. On Cloudflare they name a
   Hyperdrive endpoint.
+- Orange also reads the connection string variables from `.dev.vars` and
+  `.env`, not only from the shell.
+
+#### Conformance
+
+- `tests/hyperdrive.test.ts` runs a Worker on a real `orange dev`. It checks
+  that the environment variable wins over `localConnectionString`, that the
+  fields of a percent-encoded MySQL string decode as in Miniflare, the default
+  ports, the binding table line, and the Wrangler error when no connection
+  string is set.
+- `src/commands/doctor.test.ts` checks that `orange doctor` loads a Hyperdrive
+  binding without printing its password.
+- The feature matrix lists the binding as `binding-hyperdrive`. No
+  truth-table claim covers Hyperdrive, so this page has no recorded results.
+
+</AiContext>

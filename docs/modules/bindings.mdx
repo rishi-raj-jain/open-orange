@@ -5,28 +5,99 @@ description: Which Wrangler bindings run on OpenOrange as is, which need a servi
 
 # Bindings
 
-OpenOrange reads bindings from the same Wrangler configuration as `wrangler dev`.
-Each binding is one of three kinds:
+OpenOrange reads your bindings from the same `wrangler.jsonc` as `wrangler dev`.
+Each binding runs as is, needs a service that you set, or is not supported, in
+which case it loads and its calls throw.
 
-- **Runs as is:** OpenOrange implements the Cloudflare API. You set nothing.
-- **Needs a service:** OpenOrange implements the Cloudflare API on a service
-  that you supply, such as your SMTP server. You set one variable that points
-  to it.
-- **Not supported:** the binding loads, but Orange has no backend for it. The
-  Worker loads, and `env.NAME` exists. Each method call throws an error that
-  names the binding and suggests an alternative. Analytics Engine is the
-  exception: `writeDataPoint()` accepts data points and drops them, as
-  `wrangler dev` does.
+## Quickstart
 
-`orange doctor` reports each binding of your project as one of these kinds. It does not
-list variables (`vars`, `.dev.vars`, and `.env`), because they need nothing on Rivet.
+You need a Worker project with a `wrangler.jsonc`, and the `orange` CLI.
 
-Where a binding stores data depends on the command. Under `orange dev`, Rivet
-Actors run on a local Rivet Engine, and data stays on your machine. Under
-`orange deploy`, they run on your Rivet cluster. A service binding sends data
-to the service that you set.
+<Steps>
 
-## Matrix
+<Step title="Check your bindings">
+
+Run `orange doctor` in the project. It lists each binding, what it runs on,
+and what it needs from you.
+
+```sh
+orange doctor
+```
+
+```text
+  Binding      Resource       On Rivet          Runs on
+! env.IMAGES   Images         not supported     stub · calls throw
+               Orange has no backend for this binding. Call the service's HTTP API with fetch(), or
+               keep this code off Orange.
+               https://github.com/rivet-dev/open-orange/blob/main/docs/modules/bindings.mdx
+  env.AI       Workers AI     needs a service   OpenAI-compatible API
+               Set OPENROUTER_API_KEY, or ORANGE_AI_BASE_URL for another provider.
+               https://github.com/rivet-dev/open-orange/blob/main/docs/modules/workers-ai.mdx
+  env.CACHE    KV Namespace   runs as is        Rivet Actor
+               https://github.com/rivet-dev/open-orange/blob/main/docs/modules/kv.mdx
+
+  1 of 3 bindings run as is, 1 needs a service, 1 is not supported
+```
+
+</Step>
+
+<Step title="Set up each service">
+
+Put the variable that `orange doctor` names in `.dev.vars`, next to
+`wrangler.jsonc`, and check again.
+
+```sh
+echo 'OPENROUTER_API_KEY=<your key>' >> .dev.vars
+orange doctor
+```
+
+```text
+✓ Workers AI    env.AI · OpenRouter
+
+● Ready for orange dev
+```
+
+</Step>
+
+<Step title="Start the Worker">
+
+When it starts, `orange dev` lists each binding and what it runs on.
+
+```sh
+orange dev
+```
+
+</Step>
+
+</Steps>
+
+## Replace a binding that is not supported
+
+The Worker still starts, and only the calls to that binding throw. Move those
+calls to a service that the Worker reaches with `fetch()`:
+
+| Binding | Use instead | How the Worker reaches it |
+| --- | --- | --- |
+| Vectorize | [pgvector](https://github.com/pgvector/pgvector) on [Neon](https://neon.com/docs/extensions/pgvector) or [Supabase](https://supabase.com/docs/guides/database/extensions/pgvector) | A [Hyperdrive](./hyperdrive) binding and a Postgres driver |
+| Vectorize | [Qdrant Cloud](https://qdrant.tech/documentation/cloud/authentication/) | `fetch()` to `https://<cluster host>:6333`, with the `api-key` header |
+| Vectorize | [Pinecone](https://docs.pinecone.io/guides/get-started/quickstart) | `fetch()` to the index host, with the `Api-Key` header |
+| Vectorize, a few thousand vectors | SQLite in a [Durable Object](./durable-objects) | Store the embeddings, and rank them by cosine similarity in JavaScript |
+| Images | [Cloudinary](https://cloudinary.com/documentation/image_transformations) | `fetch()` to its upload and transformation URLs |
+| Images | [imgproxy](https://imgproxy.net/) that you run | `fetch()` to its processing URLs |
+| Analytics Engine | Your analytics store | `fetch()` to its ingest API |
+
+## Set the variables on a deploy
+
+`orange deploy` keeps `.dev.vars` out of the image. Pass it as secrets
+instead. See [Variables and secrets](../deploy#variables-and-secrets).
+
+```sh
+orange deploy --secrets-file .dev.vars
+```
+
+<AiContext summary="Every binding and what it runs on, the configuration that stops orange dev, how stubs behave, and how variables load">
+
+#### Matrix
 
 | Binding | Wrangler key | Kind | Runs on | Notes |
 | --- | --- | --- | --- | --- |
@@ -39,7 +110,7 @@ to the service that you set.
 | Durable Objects | `durable_objects` | Runs as is | One Rivet Actor for each object | Partial. Same-Worker classes from `new_sqlite_classes` and `new_classes` migrations. See [Durable Objects](./durable-objects). |
 | Durable Objects from another Worker | `durable_objects` with `script_name` | Runs as is | The other Worker's Rivet Actors | Both Workers run in one `orange dev`. See [Multiple Workers](./multi-worker). |
 | Service bindings to this Worker | `services` | Runs as is | The Worker process | `fetch()`, JS RPC, named entrypoints, `props`, and `ctx.exports`. |
-| Service bindings to another Worker | `services` | Runs as is | The other Worker's process | Partial. Run both Workers in one `orange dev` with repeated `-c`. `connect()` and WebSocket upgrades throw. See [Multiple Workers](./multi-worker). |
+| Service bindings to another Worker | `services` | Runs as is | The other Worker's process | Partial. Run both Workers in one `orange dev` with repeated `-c`. WebSocket upgrades throw. See [Multiple Workers](./multi-worker). |
 | Dispatch namespaces | `dispatch_namespaces` | Runs as is | The Workers of the `orange dev` session | Partial. See [Multiple Workers](./multi-worker). |
 | KV | `kv_namespaces` | Runs as is | One Rivet Actor for each namespace | See [KV](./kv). |
 | D1 | `d1_databases` | Runs as is | One Rivet Actor for each database | See [D1](./d1). |
@@ -54,8 +125,8 @@ to the service that you set.
 | Browser Rendering | `browser` | Needs a service | A hosted browser or your Chrome, through its DevTools Protocol endpoint | Set `ORANGE_BROWSER_CDP_URL` to Browserbase, Browserless, or Steel. Without it, the binding throws. See [Browser Rendering](./browser-rendering). |
 | Hyperdrive | `hyperdrive` | Needs a service | Your database, with a direct connection | Set the local connection string, as for `wrangler dev`, such as PlanetScale, Amazon RDS, Neon, or Supabase. No pooling or query cache. See [Hyperdrive](./hyperdrive). |
 | Analytics Engine | `analytics_engine_datasets` | Not supported | Nothing | `writeDataPoint()` accepts data points and drops them, as `wrangler dev` does. |
-| Vectorize | `vectorize` | Not supported | Nothing | See [Other bindings](#other-bindings). |
-| Images, Media, Stream | `images`, `media`, `stream` | Not supported | Nothing | See [Other bindings](#other-bindings). |
+| Vectorize | `vectorize` | Not supported | Nothing | See [What to use instead](#replace-a-binding-that-is-not-supported). |
+| Images, Media, Stream | `images`, `media`, `stream` | Not supported | Nothing | See [What to use instead](#replace-a-binding-that-is-not-supported). |
 | Pipelines | `pipelines` | Not supported | Nothing | |
 | AI Search | `ai_search` | Not supported | Nothing | |
 | mTLS certificates | `mtls_certificates` | Not supported | Nothing | |
@@ -63,18 +134,51 @@ to the service that you set.
 | Legacy blobs | `text_blobs`, `data_blobs`, `wasm_modules` | Not supported | Nothing | Import the file from the Worker source instead. |
 | Other binding types | | Not supported | Nothing | Includes other `unsafe` binding types. |
 
-- Configuration that changes how the Worker runs, not what `env` contains, still stops `orange dev`
-  with `Unsupported Wrangler configuration`.
-- Examples are `streaming_tail_consumers` and `triggers.events`.
-- `orange dev` accepts `containers` with a warning and runs `@cloudflare/sandbox` classes on a
-  sandbox provider, such as E2B, Daytona, or Freestyle (see [Sandbox](./sandbox)).
-- `orange dev` runs `triggers.crons` (see [Cron Triggers](./cron-triggers)) and delivers
-  `queues.consumers` to the Worker's `queue()` handler (see [Queues](./queues)).
+#### Kinds
 
-## Bindings that are not supported
+- **Runs as is:** OpenOrange implements the Cloudflare API. You set nothing.
+- **Needs a service:** OpenOrange implements the Cloudflare API on a service
+  that you supply, such as your SMTP server. You set one variable that points
+  to it.
+- **Not supported:** Orange has no backend for the binding. The Worker loads,
+  and `env.NAME` exists. Each method call throws an error that names the
+  binding and suggests an alternative. Analytics Engine is the exception:
+  `writeDataPoint()` accepts data points and drops them, as `wrangler dev`
+  does. `orange doctor` shows it as `drops writes`.
 
-`orange dev` marks each binding that is not supported in its binding table at startup, with what to use
-instead on the next line:
+`orange doctor` reports each binding of your project as one of these kinds. It
+does not list variables (`vars`, `.dev.vars`, and `.env`), because they need
+nothing on Rivet. A binding that is not supported does not fail
+`orange doctor`, also with `--strict`.
+
+#### Where the data goes
+
+- Under `orange dev`, Rivet Actors run on a local Rivet Engine, and the data
+  stays on your machine.
+- Under `orange deploy`, they run on your Rivet cluster.
+- A binding that needs a service sends its data to the service that you set.
+
+#### Configuration that stops `orange dev`
+
+Configuration that changes how the Worker runs, not what `env` contains, stops
+`orange dev` with `Unsupported Wrangler configuration: <keys>`. The keys are
+`cloudchamber`, `connect`, `define`, `exports`, `legacy_assets`,
+`pages_build_output_dir`, `site`, `streaming_tail_consumers`,
+`triggers.events`, and any `unsafe` setting other than `unsafe.bindings`.
+
+These load instead:
+
+- `orange dev` accepts `containers` with a warning, and runs
+  `@cloudflare/sandbox` classes on a sandbox provider, such as E2B, Daytona,
+  or Freestyle. See [Sandbox](./sandbox).
+- `orange dev` runs `triggers.crons` (see [Cron Triggers](./cron-triggers)),
+  and delivers `queues.consumers` to the Worker's `queue()` handler (see
+  [Queues](./queues)).
+
+#### Stubs
+
+`orange dev` marks each binding that is not supported in its binding table at
+startup, with what to use instead on the next line:
 
 ```text
   Binding        Resource            Runs on
@@ -82,37 +186,20 @@ instead on the next line:
                                      See the OpenOrange bindings documentation for supported bindings.
 ```
 
-The binding is a stub, and it is safe to pass around. `typeof env.IMAGES` is `"object"`, reading a
-property returns a function, and awaiting the stub does not call it. Calling any
-method throws an `Error` with the same message:
+The binding is a stub, and it is safe to pass around. `typeof env.IMAGES` is
+`"object"`, reading a property returns a function, and awaiting the stub does
+not call it. Calling any method throws an `Error` with the same message:
 
 ```js
 await env.IMAGES.info(stream);
-// Error: Images binding "IMAGES" is not supported by OpenOrange. ...
+// Error: Images binding "IMAGES" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.
 ```
 
-## What to use instead
+The message's second sentence is the alternative for that binding type, such
+as a vector database for Vectorize, or an import for a Wasm module.
+`orange doctor` prints its own hint for each stub, with a link to this page.
 
-Most bindings that are not supported have a replacement. Most replacements
-use `fetch()` to an external service, or a Durable Object, which OpenOrange
-runs as a Rivet Actor with SQLite storage and alarms.
-
-### Other bindings
-
-OpenOrange does not support these bindings. Change the Worker to call one of these
-services instead:
-
-| Binding | Service to use instead | How the Worker reaches it |
-| --- | --- | --- |
-| Vectorize | [pgvector](https://github.com/pgvector/pgvector) on [Neon](https://neon.com/docs/extensions/pgvector) or [Supabase](https://supabase.com/docs/guides/database/extensions/pgvector) | A [Hyperdrive](./hyperdrive) binding and a Postgres driver |
-| Vectorize | [Qdrant Cloud](https://qdrant.tech/documentation/cloud/authentication/) | `fetch()` to `https://<cluster host>:6333`, with the `api-key` header |
-| Vectorize | [Pinecone](https://docs.pinecone.io/guides/get-started/quickstart) | `fetch()` to the index host, with the `Api-Key` header |
-| Vectorize, a few thousand vectors | SQLite in a Durable Object | Store the embeddings, and rank them by cosine similarity in JavaScript |
-| Images | [Cloudinary](https://cloudinary.com/documentation/image_transformations) | `fetch()` to its upload and transformation URLs |
-| Images | [imgproxy](https://imgproxy.net/) that you run | `fetch()` to its processing URLs |
-| Analytics Engine | Your analytics store | `fetch()` to its ingest API |
-
-## Variables and secrets
+#### Variables and secrets
 
 `orange dev` resolves variables with Wrangler's own `wrangler dev` logic:
 
@@ -123,9 +210,11 @@ services instead:
    the process environment.
 4. Loaded values become string bindings that replace `vars` with the same name.
 5. If `secrets.required` is set, only the listed keys load, and `orange dev`
-   warns about missing keys.
+   warns about missing keys with
+   `Missing required secrets: <keys>. Add them to .dev.vars, .env, or set as environment variables.`
 
-A `.dev.vars` entry named after another binding, such as a Secrets Store
-binding, stays that binding's local value and does not replace it.
+- A `.dev.vars` entry named after another binding, such as a Secrets Store
+  binding, stays that binding's local value and does not replace it.
+- Secret values never become part of the version metadata ID.
 
-Secret values never become part of the version metadata ID.
+</AiContext>

@@ -5,18 +5,182 @@ description: Move SQLite-backed Durable Objects and D1 databases from Cloudflare
 
 # Migrate from Cloudflare
 
-`orange migrate` moves Durable Objects and D1 databases from Cloudflare to Orange.
-Your app serves during the move, and your app code does not change.
+`orange migrate` moves your SQLite-backed Durable Objects and D1 databases from
+Cloudflare to Orange, and your code does not change. Each Durable Object copies
+itself on its first request to Orange, so your app keeps serving.
 
-- A Durable Object moves when it first gets a request on Orange. A backfill moves the rest.
-- A D1 database moves with one command, through Cloudflare's D1 export API. Its writes fail with a
-  clear error from the start of the move until the switch, and none is lost.
-- Orange never deletes anything on Cloudflare.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/readme-migrate-path-dark.svg" />
+  <img alt="Check with orange doctor, prepare the Worker, deploy it to Cloudflare, deploy to Rivet, move D1, point DNS at Rivet, run the backfill, then clean up. Traffic moves when you point DNS." src="images/readme-migrate-path.svg" />
+</picture>
 
-The Durable Object move uses
+## Quickstart
+
+You need:
+
+- A Rivet cluster where `orange deploy` works. See [Deploy](./deploy).
+- Your Worker's `workers.dev` URL, and a long random value for
+  `WORKER_MIGRATOR_TOKEN`.
+- A Cloudflare API token with Workers read and D1 edit permission, and your
+  account ID.
+- No test requests yet to Durable Objects on the deployed Orange. See
+  [Test Orange before the migration is on](#test-orange-before-the-migration-is-on).
+
+Set these in your shell, or in `.dev.vars`, for the `orange migrate` commands:
+
+```sh
+export ORANGE_MIGRATE_WORKER_URL=https://my-app.acme.workers.dev
+export WORKER_MIGRATOR_TOKEN=...
+export CLOUDFLARE_API_TOKEN=...
+export CLOUDFLARE_ACCOUNT_ID=...
+```
+
+<Steps>
+
+<Step title="Check your app">
+
+`orange doctor` checks that your app runs on Orange, and lists each Durable
+Object class that `orange migrate` can move.
+
+```sh
+orange doctor
+```
+
+</Step>
+
+<Step title="Prepare the Worker">
+
+`prepare` writes a wrapped copy of your Worker, and does not change your code.
+Add `wrangler.migrate.jsonc` and `.open-orange/` to `.gitignore`.
+
+```sh
+orange migrate prepare
+```
+
+```text
+✓ Prepared Room. Your code did not change.
+
+Deploy the prepared Worker to Cloudflare. Your users see no change:
+  wrangler secret put WORKER_MIGRATOR_TOKEN --config wrangler.migrate.jsonc
+  wrangler deploy --config wrangler.migrate.jsonc
+```
+
+</Step>
+
+<Step title="Deploy the prepared Worker to Cloudflare">
+
+Run the two commands that `prepare` printed, and enter your token. Your app
+works as before. Let it serve for a while before you move your domain.
+
+```sh
+wrangler secret put WORKER_MIGRATOR_TOKEN --config wrangler.migrate.jsonc
+wrangler deploy --config wrangler.migrate.jsonc
+```
+
+</Step>
+
+<Step title="Deploy to Rivet">
+
+Deploy the same app with your Worker's URL and the same token. This turns the
+migration on, and Orange gets no traffic yet. Using cron triggers? See
+[Cron triggers](#cron-triggers) first.
+
+```sh
+rivet cluster secret set WORKER_MIGRATOR_TOKEN
+orange deploy \
+  --var ORANGE_MIGRATE_WORKER_URL:https://my-app.acme.workers.dev \
+  --secret WORKER_MIGRATOR_TOKEN
+```
+
+`orange deploy` prints the Orange URL that the next steps use.
+
+</Step>
+
+<Step title="Move each D1 database" id="5-move-d1-databases">
+
+Run this once for each D1 database, at a quiet time: the database takes no
+writes until the command ends. `DB` is the binding.
+
+```sh
+orange migrate d1 DB --url https://<orange-url>
+```
+
+</Step>
+
+<Step title="Point your domain at Orange">
+
+Change your DNS to the Orange URL. Each Durable Object copies itself from
+Cloudflare on its first request, and your app keeps serving.
+
+</Step>
+
+<Step title="Backfill the Durable Objects">
+
+A few minutes later, move the objects that got no request. Run it again, a few
+minutes apart, until every class prints `0 moved, 0 failed`.
+
+```sh
+orange migrate backfill --url https://my-app.example.com
+```
+
+```text
+Room: 0 moved, 0 failed, already moved: 6.
+Run this command once more in a few minutes. Cloudflare lists new objects late.
+```
+
+</Step>
+
+<Step title="Clean up">
+
+When no traffic reaches Cloudflare and a backfill reports 0 failed, turn the
+migration off on Orange. Then delete the Cloudflare Worker and its data
+yourself.
+
+```sh
+rivet cluster env unset ORANGE_MIGRATE_WORKER_URL --pool <pool>
+```
+
+</Step>
+
+</Steps>
+
+## Cron triggers
+
+Run each cron in one place: deploy to Rivet with `--var ORANGE_CRONS:off`,
+remove the crons on Cloudflare when your domain moves, then turn them on in
+Orange.
+
+```sh
+rivet cluster env unset ORANGE_CRONS --pool <pool>
+```
+
+## What does not move
+
+`orange migrate` moves SQLite-backed Durable Objects and D1 databases. `prepare`
+names each other binding that holds data, such as KV or R2, in a `Not moved:`
+line. Copy that data yourself.
+
+## Roll back
+
+Point your domain back at Cloudflare, then set `MIGRATOR_DISABLED` to `true` on
+the prepared Worker. A moved D1 database stays on Orange.
+
+```sh
+wrangler secret put MIGRATOR_DISABLED --config wrangler.migrate.jsonc
+```
+
+<AiContext summary="What moves, every step in detail, rollback, failures, limits, flags, exit codes, variables, and error codes">
+
+#### What moves
+
+| Data | Migration | What users see |
+|---|---|---|
+| SQLite-backed Durable Objects | Live migration | The app keeps serving. Each object moves on its first request to Orange, and a backfill moves the rest. |
+| D1 databases | Migration with downtime | Writes fail with a clear error from the start of the move until the switch, about 3 minutes per GB, and none is lost. Every query fails while Cloudflare exports, about 47 seconds per GB. The move goes through Cloudflare's D1 export API. |
+| Other bindings that hold data | Not supported | See [What does not move](#what-does-not-move). |
+
+Orange never deletes anything on Cloudflare. The Durable Object move uses
 [`@rivet-dev/durable-object-migrator`](https://github.com/rivet-dev/durable-object-migrator).
-
-## What moves
 
 | Data | On Orange |
 |---|---|
@@ -28,7 +192,7 @@ The Durable Object move uses
 | D1 tables, indexes, views, triggers, and `AUTOINCREMENT` counters | The same, through the D1 binding |
 | D1 values: 64-bit integers, REALs including subnormals and infinities, BLOBs, and TEXT | Copied exactly, and checked row by row before the switch |
 
-## What does not move
+#### What does not move in detail
 
 | Item | What happens |
 |---|---|
@@ -46,38 +210,59 @@ The Durable Object move uses
 | Other bindings that hold data: KV namespaces, R2 buckets, Vectorize indexes, Queues, Workflows, Analytics Engine datasets, Secrets Store secrets, Pipelines, and AI Search | `orange migrate` does not move them. `prepare` names each one in a `Not moved:` line. Copy their data yourself. |
 | Writes made on Orange after a move | They stay on Orange. Nothing syncs back to Cloudflare. |
 
-## Before you start
+#### Before you start
 
-Check each item before step 1.
+- The app runs on Orange. `orange doctor` passes, and `orange dev` serves the
+  app.
+- Each Durable Object class to move is in `new_sqlite_classes` and has a
+  binding in `durable_objects.bindings`.
+- Wrangler bundles the Worker. `prepare` refuses a config with `no_bundle`.
+- You can deploy the Worker with `wrangler deploy`, and you can set a secret on
+  it.
+- You have a Rivet cluster, and `orange deploy` works. See [Deploy](./deploy).
+- You know a URL that reaches the Cloudflare Worker after your domain moves,
+  such as its `workers.dev` URL.
+- Cloudflare can reach the URL of the Orange deployment. The D1 move needs
+  this.
+- For the backfill, a Cloudflare API token with a Workers read permission. For
+  the D1 move, a token with D1 edit permission.
+- The DNS TTL of your domain is low. A client with stale DNS gets errors for
+  moved objects until its DNS updates.
+- Skip step 5 if the Worker has no D1 database, and step 7 if it has no Durable
+  Objects. Move the D1 databases before you point your domain at Orange: until
+  a database moves, the database on Orange is empty.
 
-- [ ] The app runs on Orange. `orange doctor` passes, and `orange dev` serves the app.
-- [ ] Each Durable Object class to move is in `new_sqlite_classes` and has a binding in `durable_objects.bindings`.
-- [ ] Wrangler bundles the Worker. `prepare` refuses a config with `no_bundle`.
-- [ ] You can deploy the Worker with `wrangler deploy`, and you can set a secret on it.
-- [ ] You have a Rivet cluster, and `orange deploy` works. See [Deploy](./deploy).
-- [ ] You know a URL that reaches the Cloudflare Worker after your domain moves, such as its `workers.dev` URL.
-- [ ] Cloudflare can reach the URL of the Orange deployment. The D1 move needs this.
-- [ ] You have a long random value for `WORKER_MIGRATOR_TOKEN`.
-- [ ] For the backfill, you have a Cloudflare API token with a Workers read permission, and your account ID.
-- [ ] For the D1 move, you have a Cloudflare API token with D1 edit permission, and your account ID.
-- [ ] The DNS TTL of your domain is low. A client with stale DNS gets errors for moved objects until its DNS updates.
+`orange doctor` checks Node.js, RivetKit, the Wrangler config, the bundle, and
+the port. It reports each binding as runs as is, needs a service, or not
+supported, and lists each Durable Object class with whether `orange migrate`
+can move its data. It changes nothing, and exits `0` when ready.
 
-### Test Orange before the migration is on
+`orange migrate prepare` refuses the whole Worker while a class is KV-backed, a
+SQLite class has no binding, or the config sets `no_bundle`. Then `doctor`
+prints why, marks no class as movable, and leaves `orange migrate` out of
+**Next**. With `-e`, `doctor` reads the migrations of that environment.
 
-A request that starts a Durable Object on a deployed Orange before step 4 leaves data on Orange,
-even a read, when the constructor writes, such as a `CREATE TABLE IF NOT EXISTS`.
-After step 4, that object does not copy itself from Cloudflare: its calls fail with
-`has data on Orange that did not come from this migration`, and each backfill run fails on it.
+#### Test Orange before the migration is on
+
+A request that starts a Durable Object on a deployed Orange before step 4
+leaves data on Orange, even a read, when the constructor writes, such as a
+`CREATE TABLE IF NOT EXISTS`. After step 4, that object does not copy itself
+from Cloudflare: its calls fail with
+`has data on Orange that did not come from this migration`, and each backfill
+run fails on it.
 
 | Safe before step 4 | Not safe before step 4 |
 |---|---|
 | `orange dev` on your machine. Its data is local. | A request to the deployed Orange that reaches a Durable Object that also exists on Cloudflare, such as an `idFromName("global")` singleton |
-| Requests to routes that use no Durable Object | A cron trigger on the deployed Orange that reaches such an object. See [Cron triggers](#cron-triggers). |
+| Requests to routes that use no Durable Object | A cron trigger on the deployed Orange that reaches such an object. See [Cron triggers in detail](#cron-triggers-in-detail). |
 | Durable Objects with names or IDs that Cloudflare never had and that production never uses | |
 
-If this happened, destroy the Durable Object actors on Orange before step 4. Until the migration
-is on, they hold only test data. Use the Rivet Engine API. `<engine-host>`, `<namespace>`, and the
-token are the parts of `RIVET_ENDPOINT`:
+##### Remove test data from Orange
+
+If this happened, destroy the Durable Object actors on Orange before step 4.
+Until the migration is on, they hold only test data. Use the Rivet Engine API.
+`<engine-host>`, `<namespace>`, and the token are the parts of
+`RIVET_ENDPOINT`:
 
 ```sh
 # The actor names of a class start with the class name in kebab case, such as room-1a2b3c4d.
@@ -86,88 +271,56 @@ curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?names
 curl -X DELETE -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/<actor_id>?namespace=<namespace>"
 ```
 
-After step 4, destroy only the actors whose calls fail with that message. The next request to the
-object starts a new actor, which copies the object from Cloudflare.
+After step 4, destroy only the actors whose calls fail with that message. The
+next request to the object starts a new actor, which copies the object from
+Cloudflare.
 
-### Cron triggers
+#### Cron triggers in detail
 
-Orange runs the Worker's `triggers.crons` from its first deploy, next to Cloudflare. Until your
-domain moves, both run each cron, so a side effect such as an email happens twice. After step 4,
-a cron on Orange that reaches a Durable Object also moves that object off Cloudflare, and
-Cloudflare then answers its users' requests with `migrator.moved`.
+Orange runs the Worker's `triggers.crons` from its first deploy, next to
+Cloudflare. Until your domain moves, both run each cron, so a side effect such
+as an email happens twice. After step 4, a cron on Orange that reaches a
+Durable Object also moves that object off Cloudflare, and Cloudflare then
+answers its users' requests with `migrator.moved`.
 
-Run each cron in one place at a time:
-
-1. Deploy to Orange with `--var ORANGE_CRONS:off` until step 6. Orange then runs no cron and deletes the jobs of crons that it ran before.
-2. In step 6, when your domain points at Orange, remove the cron triggers of the Worker on Cloudflare, in the Cloudflare dashboard under the Worker's settings. A later `wrangler deploy` of a config with `triggers.crons` adds them back.
-3. Then turn the crons on in Orange: `rivet cluster env unset ORANGE_CRONS --pool <pool>`. This rolls the pool.
+1. Deploy to Rivet with `--var ORANGE_CRONS:off` until step 6. Orange then
+   runs no cron and deletes the jobs of crons that it ran before.
+2. In step 6, when your domain points at Orange, remove the cron triggers of
+   the Worker on Cloudflare, in the Cloudflare dashboard under the Worker's
+   settings. A later `wrangler deploy` of a config with `triggers.crons` adds
+   them back.
+3. Then turn the crons on in Orange:
+   `rivet cluster env unset ORANGE_CRONS --pool <pool>`. This rolls the pool.
 
 `orange dev` runs crons too. Put `ORANGE_CRONS=off` in `.dev.vars` to stop them.
 
-## Steps at a glance
+#### What prepare writes
 
-| # | Step | Command | What users see |
-|---|---|---|---|
-| 1 | [Check the project](#1-check-the-project) | `orange doctor` | No change |
-| 2 | [Prepare the Worker](#2-prepare-the-worker) | `orange migrate prepare` | No change. Nothing is deployed. |
-| 3 | [Deploy the prepared Worker](#3-deploy-the-prepared-worker-to-cloudflare) | `wrangler deploy --config wrangler.migrate.jsonc` | No change |
-| 4 | [Deploy to Rivet](#4-deploy-to-rivet) | `orange deploy` | No change. Orange has no traffic yet. |
-| 5 | [Move D1 databases](#5-move-d1-databases) | `orange migrate d1` | Writes fail until the switch. All queries fail during the export, about 47 s per GB. |
-| 6 | [Point your domain at Orange](#6-point-your-domain-at-orange) | Your DNS provider | The first request to each object waits while the object copies. |
-| 7 | [Backfill](#7-backfill-the-durable-objects) | `orange migrate backfill` | No change |
-| 8 | [Clean up](#8-clean-up) | `rivet cluster env unset` | No change |
-
-Skip step 5 if the Worker has no D1 database.
-Skip step 7 if the Worker has no Durable Objects.
-
-Move the D1 databases before you point your domain at Orange. Until a database moves, the
-database on Orange is empty.
-
-## 1. Check the project
-
-```sh
-orange doctor
-```
-
-`doctor` checks Node.js, RivetKit, the Wrangler config, the bundle, and the port. It reports
-each binding as runs as is, needs a service, or not supported, and lists each Durable Object
-class with whether `orange migrate` can move its data. It changes nothing.
-
-`orange migrate prepare` refuses the whole Worker while a class is KV-backed, a SQLite class has
-no binding, or the config sets `no_bundle`. Then `doctor` prints why, marks no class as movable,
-and leaves `orange migrate` out of **Next**. With `-e`, `doctor` reads the migrations of that
-environment.
-
-**Check:** The exit code is `0`.
-
-## 2. Prepare the Worker
-
-```sh
-orange migrate prepare
-```
-
-### What happens
-
-`prepare` writes two files on your machine. It deploys nothing, and it does not change your code.
+`prepare` writes two files on your machine. It deploys nothing, and it does not
+change your code.
 
 | File | Content |
 |---|---|
 | `wrangler.migrate.jsonc` | A copy of your Wrangler config. Its `main` is the generated Worker. When the Worker serves static assets, `assets.run_worker_first` also lists `/__migrate/*` and `/__migrate-d1/*`, so these routes reach the Worker before the assets. A `run_worker_first: true` stays as it is. |
 | `.open-orange/migrate/worker.mjs` | A Worker that wraps your app |
 
-The generated Worker does these things:
+The generated Worker:
 
-- It exports your app as it is.
-- It passes each class in `new_sqlite_classes` through the migrator's `migratable()`, so an object can export itself.
-- It adds the routes `/__migrate/*` and `/__migrate-d1/*` in front of your `fetch` handler. Both need `WORKER_MIGRATOR_TOKEN`.
-- It wraps each D1 binding. After a database moves, the wrapped binding sends each query to Orange.
+- Exports your app as it is.
+- Passes each class in `new_sqlite_classes` through the migrator's
+  `migratable()`, so an object can export itself.
+- Adds the routes `/__migrate/*` and `/__migrate-d1/*` in front of your `fetch`
+  handler. Both need `WORKER_MIGRATOR_TOKEN`.
+- Wraps each D1 binding. After a database moves, the wrapped binding sends each
+  query to Orange.
 
 Do not edit or commit these files. Run `prepare` again to change them. Add
-`wrangler.migrate.jsonc` and `.open-orange/` to `.gitignore`. `prepare` prints a line
-that names each one that `.gitignore` does not ignore yet.
+`wrangler.migrate.jsonc` and `.open-orange/` to `.gitignore`. `prepare` prints
+a line that names each one that `.gitignore` does not ignore yet. `prepare`
+also fails when the Worker has no SQLite-backed class and no D1 database.
 
-**Check:** The command prints this output, with your class names and D1 bindings. The
-`Not moved:` line shows only when the Worker has bindings whose data stays on Cloudflare.
+Output, with your class names and D1 bindings. The `Not moved:` line shows only
+when the Worker has bindings whose data stays on Cloudflare:
 
 ```
 ✓ Prepared <classes and D1 bindings>. Your code did not change.
@@ -178,37 +331,26 @@ Deploy the prepared Worker to Cloudflare. Your users see no change:
   wrangler deploy --config wrangler.migrate.jsonc
 ```
 
-## 3. Deploy the prepared Worker to Cloudflare
+Use a long random value for the token, and keep it secret. After the two
+commands, the wrapped Worker serves your app on Cloudflare. Nothing moves yet,
+and Orange is not involved. An object saves its name when it gets a request.
+See [Names](#names).
 
-Run the two commands that `prepare` printed.
-
-```sh
-wrangler secret put WORKER_MIGRATOR_TOKEN --config wrangler.migrate.jsonc
-wrangler deploy --config wrangler.migrate.jsonc
-```
-
-Use a long random value for the token. Keep it secret.
-
-| Side | What happens |
-|---|---|
-| Cloudflare | The wrapped Worker serves your app. Nothing moves yet. An object saves its name when it gets a request. See [Names](#names). |
-| Orange | Nothing |
-
-**Check:** The app works as before. This request returns an ID, which shows that the route and
-the token work. Replace `MY_OBJECT` with a Durable Object binding.
+This request returns an ID, which shows that the route and the token work.
+Replace `MY_OBJECT` with a Durable Object binding:
 
 ```sh
 curl -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
   "https://my-app.acme.workers.dev/__migrate/MY_OBJECT/resolve?name=test"
 ```
 
-For a Worker with only D1 databases, use the `state` request in step 5 instead. It returns
-`"state":"none"`.
+For a Worker with only D1 databases, use the [`state` request](#d1-state)
+instead. It returns `"state":"none"`.
 
-## 4. Deploy to Rivet
+#### Deploy to Rivet in detail
 
-Deploy the same app with the same Wrangler config. Set two values on the Orange side, and
-`ORANGE_CRONS:off` when the Worker has cron triggers. See [Cron triggers](#cron-triggers).
+Deploy the same app with the same Wrangler config. Set two values on the
+Orange side, and `ORANGE_CRONS:off` when the Worker has cron triggers.
 
 | Setting | Value |
 |---|---|
@@ -220,41 +362,22 @@ Deploy the same app with the same Wrangler config. Set two values on the Orange 
 | `orange deploy` | `--var`, `--secret`, or `--secrets-file`. See [Variables and secrets](./deploy#variables-and-secrets). |
 | `orange dev` | `.dev.vars` |
 
-```sh
-rivet cluster secret set WORKER_MIGRATOR_TOKEN
-orange deploy \
-  --var ORANGE_MIGRATE_WORKER_URL:https://my-app.acme.workers.dev \
-  --secret WORKER_MIGRATOR_TOKEN
-```
+`--secret` reads a secret that the cluster already holds, so set the secret
+first.
 
-`--secret` reads a secret that the cluster already holds, so set the secret first.
+After step 4, Cloudflare still serves all traffic. On Orange, the migration is
+on: Orange answers `/__migrate/*` and `/__migrate-d1/*` for requests with the
+token, and each object copies itself from Cloudflare before its constructor
+first runs. `orange deploy` prints the URL of the pool. Steps 5 and 7 stop with
+an error if Orange does not answer as a migrating Worker at that URL.
 
-| Side | What happens |
-|---|---|
-| Cloudflare | Nothing. It still serves all traffic. |
-| Orange | The migration is on. Orange answers `/__migrate/*` and `/__migrate-d1/*` for requests with the token. Each object copies itself from Cloudflare before its constructor first runs. |
+#### The D1 move
 
-**Check:** `orange deploy` prints the URL of the pool. Steps 5 and 7 stop with an error if
-Orange does not answer as a migrating Worker at that URL.
-
-## 5. Move D1 databases
-
-Run this command one time for each D1 database. `DB` is the binding or the name of the database.
-
-```sh
-export ORANGE_MIGRATE_WORKER_URL=https://my-app.acme.workers.dev
-export WORKER_MIGRATOR_TOKEN=...
-export CLOUDFLARE_API_TOKEN=...      # D1 edit permission
-export CLOUDFLARE_ACCOUNT_ID=...
-orange migrate d1 DB --url https://<orange-url>
-```
-
-- `--url` is the URL of the Orange deployment from step 4. Cloudflare must be able to reach it.
-- The command reads the database's `database_id` from your Wrangler config, and the settings from
-  `.dev.vars` too. The shell wins.
-- **Your app takes no writes to this database during the move.** Plan the move for a quiet time.
-
-### What happens
+- `--url` is the URL of the Orange deployment from step 4. Cloudflare must be
+  able to reach it.
+- The command reads the database's `database_id` from your Wrangler config,
+  and the settings from `.dev.vars` too. The shell wins.
+- Your app takes no writes to this database during the move.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/docs-migrate-d1-dark.svg" />
@@ -270,31 +393,36 @@ orange migrate d1 DB --url https://<orange-url>
 | 4. Check | The schema has not changed since the freeze | Row counts and a SHA-256 of each page of rows equal Cloudflare's. The schema equals Cloudflare's. | Writes fail. Reads work. | 15 s |
 | 5. Switch | Sends every query on this database to Orange | Serves every query | One more round trip for a request that reaches Cloudflare | One query |
 
-The times come from a 1.04 GB database with one table of 750,000 rows and an index, moved into a
-local Engine. Writes failed for about 3 minutes in all.
+The times come from a 1.04 GB database with one table of 750,000 rows and an
+index, moved into a local Engine. Writes failed for about 3 minutes in all.
 
 - During the freeze, a write fails with
-  `orange-d1-frozen: DB is moving to Orange, so it takes no writes until the move ends`. The
-  triggers refuse writes from every client, also from other Workers and from Wrangler.
-- The freeze has a lease of 5 minutes plus 3 minutes per GB. The command renews it. If the command
-  dies, writes work again when the lease runs out, and the switch then refuses.
-- If a step fails before the switch, the command opens the freeze, so writes work on Cloudflare
-  again. Run the command again. It exports again and copies from the start: each export is new,
-  because the freeze writes to the database.
-- If the check finds a difference, the command names the table and the rows, and Orange drops its
-  copy. No data moves.
-- Ctrl-C opens the freeze too. During the export, D1 refuses that write, so the command waits for
-  the export to end. A second Ctrl-C stops it at once, and writes then work when the lease runs out.
-- The switch refuses if the lease ran out, or if the schema changed after the freeze: a table
-  created, dropped, or created again during the move. Such a table has no freeze triggers, so it can
-  take writes that the copy does not hold.
-- The switch comes first, and then Orange finishes its copy. Between the two, one commit, a query
-  fails on Orange's unfinished copy. If Orange does not finish, run the command again: it finishes
-  the copy.
-- One move at a time. A second `orange migrate d1` for the same database stops while the first
-  one's freeze holds.
+  `orange-d1-frozen: DB is moving to Orange, so it takes no writes until the move ends`.
+  The triggers refuse writes from every client, also from other Workers and
+  from Wrangler.
+- The freeze has a lease of 5 minutes plus 3 minutes per GB. The command
+  renews it. If the command dies, writes work again when the lease runs out,
+  and the switch then refuses.
+- If a step fails before the switch, the command opens the freeze, so writes
+  work on Cloudflare again. Run the command again. It exports again and copies
+  from the start: each export is new, because the freeze writes to the
+  database.
+- If the check finds a difference, the command names the table and the rows,
+  and Orange drops its copy. No data moves.
+- Ctrl-C opens the freeze too. During the export, D1 refuses that write, so
+  the command waits for the export to end. A second Ctrl-C stops it at once,
+  and writes then work when the lease runs out.
+- The switch refuses if the lease ran out, or if the schema changed after the
+  freeze: a table created, dropped, or created again during the move. Such a
+  table has no freeze triggers, so it can take writes that the copy does not
+  hold.
+- The switch comes first, and then Orange finishes its copy. Between the two,
+  one commit, a query fails on Orange's unfinished copy. If Orange does not
+  finish, run the command again: it finishes the copy.
+- One move at a time. A second `orange migrate d1` for the same database stops
+  while the first one's freeze holds.
 
-**Check:** The command ends with these lines.
+The command ends with these lines:
 
 ```
 Checked <rows> rows in <n> tables, value for value, in <seconds> s: Orange equals Cloudflare.
@@ -302,7 +430,10 @@ Checked <rows> rows in <n> tables, value for value, in <seconds> s: Orange equal
 Cloudflare now sends every query for DB to Orange. Move your traffic when ready.
 ```
 
-You can also read the state on Cloudflare. After the move, `state` is `moved` and `url` is the Orange URL.
+##### D1 state
+
+You can also read the state on Cloudflare. After the move, `state` is `moved`
+and `url` is the Orange URL.
 
 ```sh
 curl -X POST -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
@@ -316,9 +447,10 @@ curl -X POST -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
 | `expired` | A move stopped, and its lease ran out. Writes work. |
 | `moved` | Cloudflare forwards every query to the Orange URL. |
 
-### Copy an export file instead
+##### Copy an export file instead
 
-`--file` is the offline path. Use it only when you can stop all writes to the database.
+`--file` is the offline path. Use it only when you can stop all writes to the
+database.
 
 1. Stop the writes to the database.
 2. Export the database.
@@ -338,24 +470,21 @@ curl -X POST -H "authorization: Bearer $WORKER_MIGRATOR_TOKEN" \
 | Existing data | Orange refuses to overwrite tables or views. Pass `--replace` to replace them. |
 | Cloudflare | This path changes nothing on Cloudflare. Cloudflare does not forward queries. |
 
-## 6. Point your domain at Orange
+#### The Durable Object copy
 
-Wait until clients with long-lived WebSockets have reconnected since step 3. An object with an open
-WebSocket keeps running the code from before step 3 until its connections close, and that code has
-no export route. Its copy fails with `the object did not answer as a migrator`, and the request
+Before step 6, wait until clients with long-lived WebSockets have reconnected
+since step 3. An object with an open WebSocket keeps running the code from
+before step 3 until its connections close, and that code has no export route.
+Its copy fails with `the object did not answer as a migrator`, and the request
 that started it fails, until the connections close.
-
-Point your domain at the Orange deployment. If the Worker has cron triggers, move them to Orange
-now, as [Cron triggers](#cron-triggers) says.
-
-### What happens to a Durable Object
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/docs-migrate-durable-object-dark.svg" />
   <img alt="A first request or a backfill wake starts the object on Orange. Orange asks Cloudflare for the export and gets pages of about 4 MB. When no request is in flight, the object on Cloudflare marks itself moved. Then the object serves on Orange, and Cloudflare answers 503 migrator.moved." src="images/docs-migrate-durable-object.svg" />
 </picture>
 
-Each object moves one time, on its first use on Orange or when the backfill wakes it.
+Each object moves one time, on its first use on Orange or when the backfill
+wakes it.
 
 | # | Cloudflare side | Orange side |
 |---|---|---|
@@ -365,39 +494,40 @@ Each object moves one time, on its first use on Orange or when the backfill wake
 | 4 | The object marks itself as moved, removes its alarm, and closes hibernatable WebSockets with code 1012 | Orange stores the KV values and the alarm, and marks the copy as done |
 | 5 | The object answers app requests with HTTP 503 and `migrator.moved`, so no write can land on the old copy | The constructor runs, and the object serves |
 
-- The first request to an object waits for the copy. The wait is about one round trip to Cloudflare for each 4 MB of data.
+- The first request to an object waits for the copy. The wait is about one
+  round trip to Cloudflare for each 4 MB of data.
 - A slow object delays only its own requests.
-- An object that Orange created has no copy on Cloudflare, so Orange does not look for one.
+- An object that Orange created has no copy on Cloudflare, so Orange does not
+  look for one.
 
-**Check:** A request for an object returns the data that the object had on Cloudflare. The same
-request to the `workers.dev` URL returns HTTP 503 with `migrator.moved`.
+Check: a request for an object returns the data that the object had on
+Cloudflare. The same request to the `workers.dev` URL returns HTTP 503 with
+`migrator.moved`.
 
-## 7. Backfill the Durable Objects
+#### The backfill
 
-The backfill moves the objects that got no request. Wait a few minutes after step 6, because
-Cloudflare lists a new object late.
-
-```sh
-export ORANGE_MIGRATE_WORKER_URL=https://my-app.acme.workers.dev
-export WORKER_MIGRATOR_TOKEN=...
-export CLOUDFLARE_API_TOKEN=...      # Needs a Workers read permission
-export CLOUDFLARE_ACCOUNT_ID=...
-orange migrate backfill --url https://my-app.example.com
-```
+The backfill moves the objects that got no request. Wait a few minutes after
+step 6, because Cloudflare lists a new object late. Its token needs a Workers
+read permission. `--url` is any URL that reaches the Orange Worker, such as
+your domain after step 6.
 
 | Side | What happens |
 |---|---|
-| Cloudflare | The Cloudflare API lists the objects of each class. Each object exports itself, as in step 6. |
+| Cloudflare | The Cloudflare API lists the objects of each class. Each object exports itself, as in [the Durable Object copy](#the-durable-object-copy). |
 | Orange | The command wakes each object through `/__migrate/<binding>/wake`. The object copies itself. |
 | Your machine | The command saves its place in `.open-orange/migrate/backfill-<class>.json`. |
 
-1. Optional: run `orange migrate backfill --dry-run` to see how many objects each class has on Cloudflare. It moves nothing. A moved object keeps its data on Cloudflare, so the count includes the objects that already moved. It is the most that the backfill moves.
+1. Optional: run `orange migrate backfill --dry-run` to see how many objects
+   each class has on Cloudflare. It moves nothing. A moved object keeps its data
+   on Cloudflare, so the count includes the objects that already moved. It is
+   the most that the backfill moves.
 2. Run the command.
 3. If objects fail, run the command again. It retries them.
-4. After a run with 0 failed, wait a few minutes and run the command one more time. This run finds the objects that Cloudflare listed late.
+4. After a run with 0 failed, wait a few minutes and run the command one more
+   time. This run finds the objects that Cloudflare listed late.
 
-If you stop the command, or it crashes, run it again. It continues from its saved place. A run
-with no failures starts from the beginning the next time.
+If you stop the command, or it crashes, run it again. It continues from its
+saved place. A run with no failures starts from the beginning the next time.
 
 Each class prints one line:
 
@@ -412,25 +542,11 @@ Each class prints one line:
 | `already moved` | Orange already had them, for example because the app asked for them after step 6. The run copies nothing. |
 | `no data on Cloudflare` | Shown when not 0. They have no saved name and no rows, KV values, or alarm on Cloudflare, so Orange makes no copy. An object that Orange created and copied by name, empty, is one of them. |
 
-**Check:** A healthy backfill ends with two runs a few minutes apart. The first prints `0 failed`
-for each class. The second prints `0 moved, 0 failed` for each class. Both exit with `0`.
+A healthy backfill ends with two runs a few minutes apart. The first prints
+`0 failed` for each class. The second prints `0 moved, 0 failed` for each
+class. Both exit with `0`.
 
-## 8. Clean up
-
-Do these steps only when you trust the move.
-
-1. Make sure that no traffic reaches the Cloudflare Worker.
-2. Remove `ORANGE_MIGRATE_WORKER_URL` from Orange, after a backfill reports 0 failed. See [Variables and secrets](./deploy#variables-and-secrets).
-3. Delete the Cloudflare Worker and its data yourself. Orange never deletes anything on Cloudflare.
-
-| Action | Cloudflare side | Orange side |
-|---|---|---|
-| Remove `ORANGE_MIGRATE_WORKER_URL` | Nothing | Orange stops all contact with Cloudflare. New objects start without a lookup. Moved objects and databases keep their data. The `/__migrate/*` and `/__migrate-d1/*` routes go away. |
-
-After step 2, a query that Cloudflare forwards fails, because Orange no longer answers the
-route. This is why step 1 comes first.
-
-## Roll back
+#### Roll back in detail
 
 | Stage | How to go back | Automated |
 |---|---|---|
@@ -440,48 +556,57 @@ route. This is why step 1 comes first.
 | Step 5, before the switch | Stop the command. Cloudflare still serves the database. See [Stop a D1 move](#stop-a-d1-move). | Partly |
 | Step 5, after the state is `moved` | **There is no automated way back.** See [After a D1 database has moved](#after-a-d1-database-has-moved). | No |
 | Steps 6 and 7 | Point your domain back and set `MIGRATOR_DISABLED`. See [Roll back Durable Objects](#roll-back-durable-objects). | Yes. Writes on Orange do not sync back. |
-| After step 8 | None. The data on Cloudflare is old or deleted. | No |
+| After clean up | None. The data on Cloudflare is old or deleted. | No |
 
-### Roll back Durable Objects
+##### Roll back Durable Objects
 
-1. Point your domain back at Cloudflare. If the Worker has cron triggers, stop them on Orange with `rivet cluster env set --env ORANGE_CRONS=off --pool <pool>`, and add them back on Cloudflare, for example with `wrangler deploy --config wrangler.migrate.jsonc`.
-2. Set `MIGRATOR_DISABLED` to `true` on the prepared Worker:
-
-   ```sh
-   wrangler secret put MIGRATOR_DISABLED --config wrangler.migrate.jsonc
-   ```
+1. Point your domain back at Cloudflare. If the Worker has cron triggers, stop
+   them on Orange with
+   `rivet cluster env set --env ORANGE_CRONS=off --pool <pool>`, and add them
+   back on Cloudflare, for example with
+   `wrangler deploy --config wrangler.migrate.jsonc`.
+2. Set `MIGRATOR_DISABLED` to `true` on the prepared Worker, with
+   `wrangler secret put MIGRATOR_DISABLED --config wrangler.migrate.jsonc`.
 
 - Every object serves on Cloudflare again, from its state when it moved.
 - An object gets its alarm back.
 - A busy object can keep refusing requests for up to 5 minutes.
 - Writes made on Orange after the move stay on Orange. They do not sync back.
-- `MIGRATOR_DISABLED` does not change D1. A moved D1 database stays on Orange, and Cloudflare still forwards its queries. Keep Orange running with both settings.
+- `MIGRATOR_DISABLED` does not change D1. A moved D1 database stays on Orange,
+  and Cloudflare still forwards its queries. Keep Orange running with both
+  settings.
 
-### Stop a D1 move
+##### Stop a D1 move
 
 Before the state is `moved`, Cloudflare holds the current data.
 
-1. Stop the command with Ctrl-C. It removes the freeze, and writes work again. During the export,
-   D1 refuses that write, so the command waits until the export ends. Press Ctrl-C again to stop
-   at once. Writes then work when the lease runs out.
+1. Stop the command with Ctrl-C. It removes the freeze, and writes work again.
+   During the export, D1 refuses that write, so the command waits until the
+   export ends. Press Ctrl-C again to stop at once. Writes then work when the
+   lease runs out.
 2. To move later, run the same command again.
 
-If the command dies without Ctrl-C, writes work again when the freeze's lease runs out: 5
-minutes plus 3 minutes per GB. Orange keeps its partial copy and refuses app queries on that
-database until a move finishes. The next move drops the partial copy by itself. `--replace` is
-only for data that Orange holds outside a copy: a finished copy, or the app's own writes.
+If the command dies without Ctrl-C, writes work again when the freeze's lease
+runs out: 5 minutes plus 3 minutes per GB. Orange keeps its partial copy and
+refuses app queries on that database until a move finishes. The next move drops
+the partial copy by itself. `--replace` is only for data that Orange holds
+outside a copy: a finished copy, or the app's own writes.
 
-### After a D1 database has moved
+##### After a D1 database has moved
 
 There is no automated way back after the state is `moved`.
 
-- Orange holds the only current copy. The copy on Cloudflare stops at the switch.
-- Triggers on Cloudflare's D1 refuse every write to the old copy, from every client.
-- Do not deploy your original Worker to Cloudflare. It reads old data, and its writes fail.
+- Orange holds the only current copy. The copy on Cloudflare stops at the
+  switch.
+- Triggers on Cloudflare's D1 refuse every write to the old copy, from every
+  client.
+- Do not deploy your original Worker to Cloudflare. It reads old data, and its
+  writes fail.
 - To serve from Cloudflare again, you must copy the data back yourself.
-- `wrangler d1 migrations apply --remote` fails, because the triggers also refuse writes to
-  `d1_migrations`. Remove it from scripts such as `predeploy`. To change the schema, apply the
-  migrations on Orange. The applied migrations moved with the data, so only new ones run:
+- `wrangler d1 migrations apply --remote` fails, because the triggers also
+  refuse writes to `d1_migrations`. Remove it from scripts such as
+  `predeploy`. To change the schema, apply the migrations on Orange. The
+  applied migrations moved with the data, so only new ones run:
 
   ```sh
   RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> orange d1 migrations apply DB --remote
@@ -489,11 +614,28 @@ There is no automated way back after the state is `moved`.
 
   See [D1](./modules/d1#commands) for `--remote`.
 
-## Failures
+#### Clean up in detail
+
+Do these steps only when you trust the move.
+
+1. Make sure that no traffic reaches the Cloudflare Worker.
+2. Remove `ORANGE_MIGRATE_WORKER_URL` from Orange, after a backfill reports 0
+   failed. See [Variables and secrets](./deploy#variables-and-secrets).
+3. Delete the Cloudflare Worker and its data yourself. Orange never deletes
+   anything on Cloudflare.
+
+When you remove `ORANGE_MIGRATE_WORKER_URL`, nothing changes on Cloudflare.
+Orange stops all contact with Cloudflare. New objects start without a lookup.
+Moved objects and databases keep their data. The `/__migrate/*` and
+`/__migrate-d1/*` routes go away. After that, a query that Cloudflare forwards
+fails, because Orange no longer answers the route. This is why no traffic may
+reach the Cloudflare Worker first.
+
+#### Failures
 
 | What happens | Result |
 |---|---|
-| An object already has data on Orange when you turn the migration on | Its calls fail with an error. Orange keeps its data and leaves the Cloudflare copy alone. To serve the Cloudflare data, destroy the object's actor on Orange. See [Test Orange before the migration is on](#test-orange-before-the-migration-is-on). To serve the Orange data, remove `ORANGE_MIGRATE_WORKER_URL`. |
+| An object already has data on Orange when you turn the migration on | Its calls fail with an error. Orange keeps its data and leaves the Cloudflare copy alone. To serve the Cloudflare data, destroy the object's actor on Orange. See [Remove test data from Orange](#remove-test-data-from-orange). To serve the Orange data, remove `ORANGE_MIGRATE_WORKER_URL`. |
 | `ORANGE_MIGRATE_WORKER_URL` is removed while the copy of an object is unfinished | Its calls fail with an error and never return partial data. Set the variable again to finish the copy. |
 | Cloudflare is down during the first request to an object | The request fails. The object never serves empty data. A later request tries again. |
 | Static assets answer the migrator's routes before the Worker, for example a single-page-application fallback | The copy fails with `the Worker on Cloudflare did not answer as a migrator (HTTP 200)`. Run `prepare` again, which adds the routes to `assets.run_worker_first`, and deploy `wrangler.migrate.jsonc`. |
@@ -502,7 +644,7 @@ There is no automated way back after the state is `moved`.
 | A client with stale DNS writes after a move | It gets `migrator.moved`. |
 | Orange restarts during a copy | The next start clears the partial copy and starts over. |
 | The `orange migrate d1` command fails before the switch | Writes work on Cloudflare again. Run it again. It exports again, and Orange drops its partial copy and copies from the start. |
-| Another `orange migrate d1` moves the same database | The second one stops before it changes anything, with `Another orange migrate d1 is moving`. |
+| Another `orange migrate d1` moves the same database | The second one stops before it changes anything, with ``Another `orange migrate d1` is moving``. |
 | The freeze's lease runs out before the switch | The switch refuses with `the write freeze ran out`. Writes work on Cloudflare. Run the command again. |
 | A table is created, dropped, or created again on Cloudflare after the freeze | The switch refuses with `schema changed on Cloudflare after the freeze`. Writes work on Cloudflare. Run the command again. |
 | Cloudflare switches, and Orange does not finish its copy | Queries fail on Orange's unfinished copy. Neither side takes writes. Run the command again: it finishes the copy. |
@@ -521,23 +663,28 @@ There is no automated way back after the state is `moved`.
 
 Also from the migrator:
 
-- Background work that is neither awaited nor passed to `ctx.waitUntil` can write after a move, and that write is lost.
+- Background work that is neither awaited nor passed to `ctx.waitUntil` can
+  write after a move, and that write is lost.
 - A socket accepted with `ws.accept()` is not closed by a move.
-- Every finished export marks the object as moved. There is no backup-only export.
+- Every finished export marks the object as moved. There is no backup-only
+  export.
 
-## Names
+#### Names
 
-Cloudflare does not return the name of an object. The migrator saves the name when the object
-gets a request through the prepared Worker. The backfill moves an object with no saved name by its ID.
-It skips such an object when it has no data on Cloudflare, so an empty object does not become a
-second object on Orange.
+Cloudflare does not return the name of an object. The migrator saves the name
+when the object gets a request through the prepared Worker. The backfill moves
+an object with no saved name by its ID. It skips such an object when it has no
+data on Cloudflare, so an empty object does not become a second object on
+Orange.
 
-To find out, the backfill reads the first page of the object's export. An object whose export
-fits in one page, about 4 MB, then finishes its export: it marks itself moved, removes its
-alarm, and closes its WebSockets, as in step 6. If the wake that follows fails, the object
-refuses app traffic on Cloudflare until Orange copies it. Orange still gets the export of a
-moved object, so the next request to the object on Orange copies it, and the next backfill run
-retries it. A larger object does not finish its export on the first page.
+To find out, the backfill reads the first page of the object's export. An
+object whose export fits in one page, about 4 MB, then finishes its export: it
+marks itself moved, removes its alarm, and closes its WebSockets, as in
+[the Durable Object copy](#the-durable-object-copy). If the wake that follows
+fails, the object refuses app traffic on Cloudflare until Orange copies it.
+Orange still gets the export of a moved object, so the next request to the
+object on Orange copies it, and the next backfill run retries it. A larger
+object does not finish its export on the first page.
 
 A named object with no saved name gets two copies on Orange, in either order:
 
@@ -546,55 +693,68 @@ A named object with no saved name gets two copies on Orange, in either order:
 | The backfill moves the object, and then the app asks for it by name | Orange copies it again, under the name, from the unchanged copy on Cloudflare. The app sees correct data. |
 | The app asks for the object by name on Orange, and then the backfill runs | Orange's copy does not save the name on Cloudflare, so the backfill copies the object again, by ID. The backfill counts it as moved, in the `had no saved name` line. |
 
-In both cases the copy under the ID holds the data from the time of its copy. The app never
-reaches it, but an alarm that it holds also fires there, so the alarm handler runs twice.
-Orange cannot tell these objects apart from objects created with `newUniqueId()`.
+In both cases the copy under the ID holds the data from the time of its copy.
+The app never reaches it, but an alarm that it holds also fires there, so the
+alarm handler runs twice. Orange cannot tell these objects apart from objects
+created with `newUniqueId()`.
 
-To avoid this, let the prepared Worker serve traffic for a while before step 6, when your domain
-moves to Orange, so that active objects save their names. An object that gets no request in that
-time, and has an alarm, is at risk.
+To avoid this, let the prepared Worker serve traffic for a while before step 6,
+when your domain moves to Orange, so that active objects save their names. An
+object that gets no request in that time, and has an alarm, is at risk.
 
-## Limits
+#### Limits
 
-### Long copies
+##### Long copies
 
-- A first request waits for the copy of its object. If a client or gateway gives up first, the copy continues, and a retry waits for the same copy.
-- A copy starts over if the object on Cloudflare restarts during it. Each page must arrive before Cloudflare evicts an idle object.
+- A first request waits for the copy of its object. If a client or gateway
+  gives up first, the copy continues, and a retry waits for the same copy.
+- A copy starts over if the object on Cloudflare restarts during it. Each page
+  must arrive before Cloudflare evicts an idle object.
 - In a test, a request that waited 114 seconds got its data with no error.
-- In a test, a 24 MB object with a client still writing to Cloudflare took 23 seconds.
+- In a test, a 24 MB object with a client still writing to Cloudflare took 23
+  seconds.
 
-### Small clusters
+##### Small clusters
 
-An import writes to the Engine's storage as fast as Cloudflare answers. On a Free-1 cluster,
-this overloaded the Engine in tests:
+An import writes to the Engine's storage as fast as Cloudflare answers. On a
+Free-1 cluster, this overloaded the Engine in tests:
 
 | Largest object | Result |
 |---|---|
 | 160 MB | The Engine fenced and restarted during the copy. The object never finished, and retries added load. |
 | 60 MB | Finished with all data correct. The Engine fenced one time, and 52 requests failed in a window of about 67 seconds. |
 
-No data was lost in either run, and no call returned empty data. For large objects, use a
-larger cluster, and lower `--concurrency` from its default of 8.
+No data was lost in either run, and no call returned empty data. For large
+objects, use a larger cluster, and lower `--concurrency` from its default of 8.
 
-### D1
+##### D1 limits
 
-- Writes fail for the whole move: about 3 minutes per GB in a test. Every query fails during the export: about 47 seconds per GB.
-- Each run exports again, and Orange copies from the start. A rerun does not go on with an earlier run's copy.
-- Cloudflare's export API has no change stream, so the move can't let writes continue.
-- Orange commits about 1 MiB at a time, under RivetKit's 128 MiB per commit and the Engine's 32 MiB per message. An index builds in one commit, so one index must fit in 128 MiB. For a database larger than 128 MiB, the command estimates each index from 1,000 rows, and stops before the freeze when one may not fit.
-- After the switch, a request that still reaches Cloudflare takes one more round trip to Orange.
-- Run `orange migrate prepare` again and deploy the result after you update Orange.
+- Writes fail for the whole move: about 3 minutes per GB in a test. Every
+  query fails during the export: about 47 seconds per GB.
+- Each run exports again, and Orange copies from the start. A rerun does not go
+  on with an earlier run's copy.
+- Cloudflare's export API has no change stream, so the move can't let writes
+  continue.
+- Orange commits about 1 MiB at a time, under RivetKit's 128 MiB per commit and
+  the Engine's 32 MiB per message. An index builds in one commit, so one index
+  must fit in 128 MiB. For a database larger than 128 MiB, the command
+  estimates each index from 1,000 rows, and stops before the freeze when one
+  may not fit.
+- After the switch, a request that still reaches Cloudflare takes one more
+  round trip to Orange.
+- Run `orange migrate prepare` again and deploy the result after you update
+  Orange.
 
-### Measured on Cloudflare
+##### Measured on Cloudflare
 
 | Step | Result |
 |---|---|
 | Time until the list API showed every object | About 6.5 minutes. The first 3 backfill passes moved nothing. |
 | Time until objects served again after a rollback | About 5 minutes |
 
-## Reference
+#### Reference
 
-### Commands and flags
+##### Commands and flags
 
 | Command | Flag | Meaning |
 |---|---|---|
@@ -617,35 +777,37 @@ larger cluster, and lower `--concurrency` from its default of 8.
 | | `--allow-real-as-integer` | With `--file`: copy a default-format export although a column that keeps any type gets `2` for a REAL `2.0` |
 | | `-c`, `--config <path>` | Wrangler configuration file |
 
-Every `orange migrate` command also takes Wrangler's `-e`, `--env <name>` and `--cwd <dir>`,
-before or after the command, as in `orange --cwd app -e staging migrate prepare`. With `-e`,
-`prepare` prints the deploy commands with the same `-e`.
+Every `orange migrate` command also takes Wrangler's `-e`, `--env <name>` and
+`--cwd <dir>`, before or after the command, as in
+`orange --cwd app -e staging migrate prepare`. With `-e`, `prepare` prints the
+deploy commands with the same `-e`.
 
-### Exit codes
+##### Exit codes
 
 | Command | `0` | `1` | `2` | `130` |
 |---|---|---|---|---|
 | `orange doctor` | Ready | A check failed, or something needs setup with `--strict` | Invalid arguments | |
 | `orange migrate` | Done | An error, or objects that did not move | Unknown subcommand | A backfill or D1 move that you stopped |
 
-### Environment variables
+##### Environment variables
 
 | Variable | Where you set it | Used by | Meaning |
 |---|---|---|---|
 | `WORKER_MIGRATOR_TOKEN` | Cloudflare Worker, Orange, and your machine | All migration routes, `backfill`, `d1` | The shared secret. Use the same value in all three places. |
 | `ORANGE_MIGRATE_WORKER_URL` | Orange and your machine | Orange, `backfill`, `d1` | URL of the Cloudflare Worker. On Orange, it turns the migration on. |
 | `MIGRATOR_DISABLED` | Cloudflare Worker | Prepared Worker | `true` rolls the Durable Objects back. |
-| `ORANGE_CRONS` | Orange | Orange | `off` runs no cron trigger on Orange. See [Cron triggers](#cron-triggers). |
+| `ORANGE_CRONS` | Orange | Orange | `off` runs no cron trigger on Orange. See [Cron triggers in detail](#cron-triggers-in-detail). |
 | `CLOUDFLARE_API_TOKEN` | Your machine | `backfill`, `d1` | `backfill` lists the objects, and needs a Workers read permission. `d1` exports the database, and needs D1 edit permission. |
 | `CLOUDFLARE_ACCOUNT_ID` | Your machine | `backfill`, `d1` | The account of the Worker and the database |
 | `CLOUDFLARE_API_BASE_URL` | Your machine | `backfill`, `d1` | Optional. Another base URL for the Cloudflare API, as in Wrangler. |
 | `RIVET_ENDPOINT` | Your machine | `d1 --file --remote` | The Rivet Engine to copy into |
 
-On your machine, `backfill` and `d1` read `WORKER_MIGRATOR_TOKEN`, `ORANGE_MIGRATE_WORKER_URL`,
-`CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_ACCOUNT_ID` from the shell, then from the variables of the
-Worker, such as `.dev.vars`.
+On your machine, `backfill` and `d1` read `WORKER_MIGRATOR_TOKEN`,
+`ORANGE_MIGRATE_WORKER_URL`, `CLOUDFLARE_API_TOKEN`, and
+`CLOUDFLARE_ACCOUNT_ID` from the shell, then from the variables of the Worker,
+such as `.dev.vars`.
 
-### Files
+##### Files
 
 | File | Written by | Purpose |
 |---|---|---|
@@ -653,7 +815,7 @@ Worker, such as `.dev.vars`.
 | `.open-orange/migrate/worker.mjs` | `prepare` | The prepared Worker |
 | `.open-orange/migrate/backfill-<class>.json` | `backfill` | The saved place of an unfinished backfill |
 
-### Error codes
+##### Error codes
 
 Routes answer with JSON: `{"error": {"code": "...", "message": "..."}}`.
 
@@ -698,3 +860,5 @@ Routes answer with JSON: `{"error": {"code": "...", "message": "..."}}`.
 | `migrate_d1.storage_busy` | 503 | Orange | The Engine's storage could not keep up. The command waits and continues. |
 | `migrate_d1.query_failed` | 400 | Orange | A forwarded query failed. The app gets the error as a `D1_ERROR`. |
 | `migrate_d1.failed` | 500 | Both | Another error. The message holds the reason. |
+
+</AiContext>

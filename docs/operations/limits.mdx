@@ -6,7 +6,22 @@ description: Which Rivet limits apply to Durable Objects on OpenOrange, and how 
 # Limits
 
 OpenOrange does not copy Cloudflare's quotas. Your Durable Objects get the memory and CPU of
-the machine they run on, and Rivet's limits apply.
+the machine they run on, and Rivet sets the rest.
+
+## Change a limit
+
+- **More memory and CPU:** deploy to a bigger machine with `orange deploy --machine-type <type>`.
+- **More awake objects on one runner:** on a self-hosted Rivet Engine, raise
+  `pegboard.sqlite_sessions`.
+
+## Learn more
+
+- [Rivet Actor limits](https://rivet.dev/actors/docs/limits/): the limits Rivet sets
+- [Durable Objects](../modules/durable-objects#limits): OpenOrange's own limits
+
+<AiContext summary="Every limit, compared with Cloudflare">
+
+#### Compared with Cloudflare
 
 | Limit | Cloudflare | OpenOrange |
 |---|---|---|
@@ -22,18 +37,19 @@ Cloudflare's values are for the Workers Paid plan, from its
 [Durable Objects limits](https://developers.cloudflare.com/durable-objects/platform/limits/)
 and [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) in November 2026.
 
+#### Over a limit
+
 - A write or an RPC call over its limit throws a `RangeError` that names the limit. Split a large
   write, and send large data with `stub.fetch()`, which streams.
 - OpenOrange also does not copy Cloudflare's limits on WebSocket tags, sockets per object,
   attachment size, or automatic responses.
-- On a self-hosted Rivet Engine, raise the awake-object limit with `pegboard.sqlite_sessions`.
-  See [One runner holds at most 4,000 awake objects](../modules/durable-objects#one-runner-holds-at-most-4000-awake-objects).
+- For the awake-object limit, see
+  [One runner holds at most 4,000 awake objects](../modules/durable-objects#one-runner-holds-at-most-4000-awake-objects).
 
-The full list of OpenOrange's own limits is on the
-[Durable Objects](../modules/durable-objects#limits) page.
-
-## Rivet's limits
+#### Rivet's limits
 
 Rivet sets the rest, such as how long a request waits for an object to start, how many requests
-can wait for one object, and the size of one WebSocket message. See
-[Rivet Actor limits](https://rivet.dev/actors/docs/limits/).
+can wait for one object, and the size of one WebSocket message. The full list of OpenOrange's
+own limits is on the [Durable Objects](../modules/durable-objects#limits) page.
+
+</AiContext>

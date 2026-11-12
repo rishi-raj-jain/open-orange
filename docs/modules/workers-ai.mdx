@@ -1,13 +1,154 @@
 ---
 title: Workers AI
-description: Run Workers AI text generation and embedding models with OpenOrange through an OpenAI-compatible provider.
+description: Run Workers AI text generation and embedding models on OpenOrange through OpenRouter or any OpenAI-compatible provider.
 ---
 
 # Workers AI
 
-**Status:** Partial. Needs a service: an OpenAI-compatible provider.
+<BindingStatus
+  binding="workers-ai"
+  works="`run()` with text generation, streams, tool calls, JSON output, and embeddings, plus `models()`"
+  differs="Models run on the provider you choose, OpenRouter by default, and each `@cf/` model maps to one of its models"
+  missing="Image, speech, translation, and reranker models, `env.AI.gateway()`, `autorag()`, `aiSearch()`, and `toMarkdown()`"
+/>
 
-## Choose a provider
+On OpenOrange, `env.AI` sends each model call to an OpenAI-compatible provider:
+[OpenRouter](https://openrouter.ai) by default, another hosted API, or a model
+on your machine. Your Workers AI code and Wrangler configuration run unchanged.
+
+## Quickstart
+
+You need an [OpenRouter API key](https://openrouter.ai/docs/quickstart), or the
+base URL of another OpenAI-compatible API.
+
+<Steps>
+
+<Step title="Bind the AI binding">
+
+Add an `ai` entry to `wrangler.jsonc`, as for Wrangler.
+
+```jsonc
+{
+  "name": "workers-ai",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "ai": { "binding": "AI" }
+}
+```
+
+</Step>
+
+<Step title="Call a model">
+
+Call `env.AI.run()` with a Workers AI model name, as on Cloudflare.
+
+```ts
+interface Env {
+  AI: Ai;
+}
+
+export default {
+  async fetch(request, env): Promise<Response> {
+    const { response } = (await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+      messages: [{ role: "user", content: await request.text() }],
+    })) as { response?: string };
+    return new Response(response);
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+</Step>
+
+<Step title="Set your provider key">
+
+Put the key in `.dev.vars`. For OpenAI, Groq, a local Ollama, or another
+provider, see [Providers](#providers).
+
+```dotenv
+OPENROUTER_API_KEY=sk-or-...
+```
+
+On a cluster, pass the same file with
+[`orange deploy --secrets-file .dev.vars`](../deploy#variables-and-secrets).
+
+</Step>
+
+<Step title="Run it">
+
+`orange dev` shows the binding on an OpenAI-compatible API.
+
+```sh
+orange dev
+```
+
+```text
+  Binding   Resource     Runs on
+  env.AI    Workers AI   OpenAI-compatible API
+```
+
+Ask a question. The Worker returns the model's answer.
+
+```sh
+curl localhost:8787 -d 'What is a Durable Object?'
+```
+
+</Step>
+
+</Steps>
+
+For streaming, tool calls, embeddings, and an OpenAI-shape model, see
+[`examples/workers-ai`](../../examples/workers-ai).
+
+## How it works
+
+- `env.AI` is a port of workerd's AI client. Each `run()` becomes a request to
+  your provider's `/chat/completions` or `/embeddings` API, with no Rivet Actor
+  in between.
+- Each `@cf/` model name maps to one provider model. Common models map to
+  OpenRouter out of the box, and `ORANGE_AI_MODELS` adds the rest. See
+  [Models](#models).
+- Results and streams keep the shape that Cloudflare returns for each model,
+  and `orange dev` logs each call with its model, status, and latency.
+
+<AiContext summary="Compatibility, limits and details">
+
+#### Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `run()` text generation with `prompt` or `messages` | Supported | For each [mapped model](#models). |
+| `stream: true` | Supported | Server-Sent Events in the model's shape. The framing is not checked against recordings from Cloudflare. |
+| `tools` and tool calls | Supported | |
+| `response_format` | Supported | `response` is the model's JSON text. |
+| Embeddings | Supported | `{ shape, data }`, in input order. |
+| `returnRawResponse: true` | Supported | Returns the `Response`, also a failed one. |
+| `models()` | Partial | Lists only mapped models. Applies `search` and `task`, and ignores the other filters. |
+| The `gateway` option of `run()` | Partial | Goes to the provider directly, without gateway caching or logs. `aiGatewayLogId` is `null`, and `orange dev` warns once. |
+| Responses API input (`input` and `instructions`), as for gpt-oss | Not supported | Throws. Pass `messages` instead. |
+| Image, speech, translation, and reranker models | Not supported | No mapping, so `run()` throws. |
+| `env.AI.gateway()`, `autorag()`, `aiSearch()`, and `toMarkdown()` | Not supported | Throw `NotSupportedError`. |
+| `websocket: true`, and `ReadableStream` or `FormData` inputs | Not supported | Throw `NotSupportedError`. |
+| `new Ai()` from `cloudflare:ai` | Not supported | Throws `NotSupportedError`. Use the `ai` binding. |
+
+Three differences reach most projects:
+
+- **The text comes from another host,** so answers differ from Cloudflare's
+  for the same model name. The result shape follows the Workers AI schema.
+- **A model without a mapping never falls back to another model.** `run()`
+  throws until you map it in `ORANGE_AI_MODELS`.
+- **Cloudflare's default `max_tokens` is not applied.** The provider's default
+  applies.
+
+#### Limits
+
+Orange sets no limits of its own on model calls.
+
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| Requests and tokens | Your provider's rate limits and quotas | `run()` throws `InferenceUpstreamError` with `<HTTP status>: <provider message>`, such as `429: ...`. With `returnRawResponse: true`, it returns the failed `Response` instead. |
+| Overlapping calls on one `env.AI` | None set by Orange | Each call keeps its own options. |
+
+#### Providers
 
 | Provider | Set in `.dev.vars` | Notes |
 | --- | --- | --- |
@@ -17,44 +158,38 @@ description: Run Workers AI text generation and embedding models with OpenOrange
 | [Together AI](https://docs.together.ai/docs/openai-api-compatibility) | `ORANGE_AI_BASE_URL=https://api.together.ai/v1`<br />`ORANGE_AI_API_KEY=<API key>` | Map each model with `ORANGE_AI_MODELS`. |
 | [Fireworks AI](https://docs.fireworks.ai/tools-sdks/openai-compatibility) | `ORANGE_AI_BASE_URL=https://api.fireworks.ai/inference/v1`<br />`ORANGE_AI_API_KEY=<API key>` | Map each model with `ORANGE_AI_MODELS`. |
 | Any OpenAI-compatible API | `ORANGE_AI_BASE_URL=<base URL>`<br />`ORANGE_AI_API_KEY=<API key>` | The API must serve `/chat/completions`, and `/embeddings` for embedding models. |
-| A model on your machine | `ORANGE_AI_BASE_URL=http://127.0.0.1:11434/v1` | See [Run a model locally](#run-a-model-locally). |
+| [Ollama](https://docs.ollama.com/api/openai-compatibility) on your machine | `ORANGE_AI_BASE_URL=http://127.0.0.1:11434/v1` | No key. Map each model to one that the server has. |
+| [LM Studio](https://lmstudio.ai/docs/app/api/endpoints/openai) on your machine | `ORANGE_AI_BASE_URL=http://127.0.0.1:1234/v1` | No key. Map each model to one that the server has. |
 
-The built-in mappings send OpenRouter model IDs, such as `meta-llama/llama-3.3-70b-instruct`.
-Another provider uses its own IDs, so add a mapping in `ORANGE_AI_MODELS` for each model that
-the Worker calls. See [Models](#models).
+Another provider uses its own model IDs, so add a mapping in `ORANGE_AI_MODELS`
+for each model that the Worker calls. For a local Ollama:
 
-## Configuration
-
-OpenOrange reads the standard Wrangler AI binding:
-
-```jsonc
-{
-  "ai": { "binding": "AI" }
-}
+```dotenv
+ORANGE_AI_BASE_URL=http://127.0.0.1:11434/v1
+ORANGE_AI_MODELS='{"@cf/meta/llama-3.1-8b-instruct":{"model":"llama3.1:8b","task":"text"}}'
 ```
 
-OpenOrange sends model calls to an OpenAI-compatible provider. The default is
-[OpenRouter](https://openrouter.ai). Put the provider settings in `.dev.vars`
-or the process environment:
+#### Settings
+
+Put the settings in `.dev.vars` or the process environment. A value in
+`.dev.vars` wins.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `ORANGE_AI_API_KEY` | `OPENROUTER_API_KEY` | Bearer token for the provider. Required for OpenRouter. |
-| `ORANGE_AI_BASE_URL` | `https://openrouter.ai/api/v1` | Base URL of the OpenAI-compatible API. |
-| `ORANGE_AI_MODELS` | none | JSON that adds or replaces model mappings. |
+| `ORANGE_AI_API_KEY` | `OPENROUTER_API_KEY` | Bearer token for the provider. `ORANGE_AI_API_KEY` wins when both are set. |
+| `ORANGE_AI_BASE_URL` | `https://openrouter.ai/api/v1` | Base URL of the OpenAI-compatible API. A trailing `/` is dropped. |
+| `ORANGE_AI_MODELS` | none | JSON that adds or replaces [model mappings](#models). |
 
-```dotenv
-OPENROUTER_API_KEY=sk-or-...
-```
+- Without `ORANGE_AI_BASE_URL`, a key is required. If no key is set,
+  `orange dev` prints one warning at startup, and `run()` throws. See
+  [Errors](#errors).
+- With `ORANGE_AI_BASE_URL` set, the key is optional. Without a key, Orange
+  sends no `Authorization` header, and prints no warning.
+- `orange doctor` checks each `ai` binding. It reports `env.AI · OpenRouter`
+  with a key, `env.AI · <base URL>` with `ORANGE_AI_BASE_URL`, and an action
+  with neither.
 
-Without `ORANGE_AI_BASE_URL`, a key is required. If no key is set, `orange dev`
-prints one warning at startup, and `env.AI.run()` throws an
-`InferenceUpstreamError` that names both variables.
-
-With `ORANGE_AI_BASE_URL` set, the key is optional. Without a key, OpenOrange
-sends no `Authorization` header.
-
-## Models
+#### Models
 
 Each Workers AI model name maps to one provider model. A text model also has
 the result shape that Cloudflare returns for it:
@@ -79,100 +214,113 @@ the result shape that Cloudflare returns for it:
 
 The shapes come from workerd's model types. GLM 4.7 Flash and Kimi K2.7 Code
 return `ChatCompletionsOutput`. gpt-oss returns it for `messages` input.
+OpenRouter does not serve `@cf/baai/bge-small-en-v1.5`, so it has no mapping.
 
-Add or replace mappings with `ORANGE_AI_MODELS`. Each entry needs a provider
-model and a task, `text` or `embeddings`. `shape` is optional and defaults to
+`ORANGE_AI_MODELS` merges over this table. Each entry needs a provider `model`
+and a `task`, `text` or `embeddings`. `shape` is optional and defaults to
 `legacy`:
 
 ```dotenv
 ORANGE_AI_MODELS='{"@cf/meta/llama-3-8b-instruct":{"model":"meta-llama/llama-3-8b-instruct","task":"text"},"@cf/zai-org/glm-5.2":{"model":"z-ai/glm-5.2","task":"text","shape":"openai"}}'
 ```
 
-A model without a mapping never falls back to another model. `run()` throws:
-
-```text
-InferenceUpstreamError: 5007: Model "@cf/baai/bge-small-en-v1.5" has no OpenOrange mapping. Add it to ORANGE_AI_MODELS.
-```
-
 Map an embedding model only to the same model on the provider. Another model
-returns vectors that do not match vectors you stored before.
+returns vectors that do not match the vectors you stored before.
 
-## Run a model locally
+A bad `ORANGE_AI_MODELS` fails every call. `run()` throws
+`InferenceUpstreamError` with `3000: <message>`, and `models()` throws
+`AiInternalError` with the message:
 
-A local server with an OpenAI-compatible API needs no key. Set only its base URL, and map
-each model to a model that the server has:
+- A value that is not JSON: `ORANGE_AI_MODELS is not valid JSON: <cause>`.
+- A value that is not a JSON object:
+  `ORANGE_AI_MODELS must be a JSON object that maps Workers AI model names to {"model", "task"}.`
+- An entry with another shape:
+  `ORANGE_AI_MODELS entry "<name>" must be {"model": "<provider model>", "task": "text" | "embeddings", "shape"?: "legacy" | "openai"}.`
 
-| Server | `ORANGE_AI_BASE_URL` |
-| --- | --- |
-| [Ollama](https://docs.ollama.com/api/openai-compatibility) | `http://127.0.0.1:11434/v1` |
-| [LM Studio](https://lmstudio.ai/docs/app/api/endpoints/openai) | `http://127.0.0.1:1234/v1` |
+#### Requests and results
 
-```dotenv
-ORANGE_AI_BASE_URL=http://127.0.0.1:11434/v1
-ORANGE_AI_MODELS='{"@cf/meta/llama-3.1-8b-instruct":{"model":"llama3.1:8b","task":"text"}}'
-```
-
-## How it works
-
-`env.AI` is a port of workerd's AI client. Its requests go to an in-process
-backend that translates them to the provider:
+`env.AI` sends workerd's AI requests to an in-process backend, which
+translates them for the provider:
 
 | Call | Provider request | Result |
 | --- | --- | --- |
 | `run()` with a `legacy` text model | `POST {base}/chat/completions` | `{ response, tool_calls, usage }` |
 | `run()` with an `openai` text model | `POST {base}/chat/completions` | The provider's chat completion |
 | `run()` with `stream: true` | Same, with `stream: true` | `text/event-stream` |
-| `run()` with an embedding model | `POST {base}/embeddings` | `{ shape, data }` |
-| `models()` | none | The mapped models |
+| `run()` with an embedding model | `POST {base}/embeddings`, with `text` as `input` | `{ shape, data }` |
+| `models()` | none | The mapped models, each described as `Served by OpenOrange as <provider model>.` |
 
 - A `prompt` becomes one user message.
 - For a `legacy` model, `messages`, `max_tokens`, `temperature`, `top_p`,
   `top_k`, `seed`, `frequency_penalty`, `presence_penalty`,
-  `repetition_penalty`, `tools`, and `response_format` are forwarded.
-- For an `openai` model, every input field is forwarded unchanged.
+  `repetition_penalty`, `tools`, and `response_format` are forwarded. Legacy
+  tools, `{ name, description, parameters }`, are wrapped as OpenAI
+  `{ type: "function", function }` tools. A `json_schema` format is wrapped
+  under `json_schema.schema` with the name `response`.
+- For an `openai` model, every input field except `prompt` is forwarded
+  unchanged.
+- An embedding `text` is a string or an array of strings.
+- In the `legacy` shape, each tool call has both the `{ name, arguments }`
+  shape and the `{ id, type, function }` shape, as Workers AI declares.
 - A `legacy` stream sends `data: {"response":"..."}` events. One last event
   holds the tool calls and usage, then `data: [DONE]`.
 - An `openai` stream forwards each provider chunk, then `data: [DONE]`.
+- Comment lines in the provider's stream, such as OpenRouter's
+  `: OPENROUTER PROCESSING`, are dropped.
 - Libraries that read Workers AI streams, such as `workers-ai-provider`, parse
   both shapes.
-- A provider error throws `InferenceUpstreamError` with
-  `<HTTP status>: <provider message>`. `returnRawResponse: true` returns the
-  failed `Response` instead.
-- `orange dev` logs each call with the model, the provider model, the status,
-  and the latency.
+- `orange dev` logs each call to stderr as
+  `[ai] <Workers AI model> -> <provider model> <status> <latency>ms`.
 
-## Conformance
+#### Errors
 
-An end-to-end `orange dev` test runs a Worker against a mock provider, which is
-a real HTTP server. It covers both result shapes, tool calls, streaming in both
-shapes, provider `429` and `500` errors, a provider error during a stream,
-embeddings, the `gateway` option, unmapped models, a missing OpenRouter key, a
-local provider without a key, and overlapping calls with different options. The generated `Ai` type is not registered in the
-type-conformance checks. No test calls a real provider.
+A provider or backend error throws `InferenceUpstreamError` with
+`<code>: <message>`, unless the call passed `returnRawResponse: true`.
 
-## Limits and deviations
+| Situation | What the Worker sees |
+| --- | --- |
+| No key, and no `ORANGE_AI_BASE_URL` | `10000: Workers AI needs an API key for https://openrouter.ai/api/v1. Set ORANGE_AI_API_KEY or OPENROUTER_API_KEY in .dev.vars or the environment.` At startup, `orange dev` prints the same text with `Calls to env.AI.run() throw until it is set.` |
+| A model without a mapping | `5007: Model "@cf/baai/bge-small-en-v1.5" has no OpenOrange mapping. Add it to ORANGE_AI_MODELS.` No provider call is made. |
+| The provider answers with an error | `<HTTP status>: <provider message>`, such as `429: Rate limit exceeded: free-models-per-day`. |
+| The provider cannot be reached | `3000: Could not reach the AI provider at <base URL>: <cause>` |
+| The provider fails during a stream | The stream fails with `Error: The AI provider failed during the stream: <message>`, not an `InferenceUpstreamError`. |
+| Responses API input (`input`) without `messages` or `prompt` | ``5006: OpenOrange does not support Responses API input (`input`) yet. Pass `messages` instead.`` |
+| Text generation without `prompt` or `messages` | ``5006: Text generation needs a `prompt` string or a `messages` array.`` |
+| Embeddings without `text` | ``5006: Text embeddings need a `text` string or array of strings.`` |
+| `env.AI.gateway()` | ``NotSupportedError: env.AI.gateway() is not supported by OpenOrange. Pass the `gateway` option to env.AI.run() instead. OpenOrange ignores gateway caching and logs.`` |
+| `autorag()`, `aiSearch()`, `toMarkdown()` | `NotSupportedError`, with `Query your vector store with fetch().`, `Query your search index with fetch().`, or `Convert documents with a library in the Worker.` |
+| `websocket: true` | ``NotSupportedError: Workers AI WebSocket mode is not supported by OpenOrange. Call run() without `websocket` to use the provider over HTTP.`` |
+| `new Ai()` from `cloudflare:ai` | `NotSupportedError: cloudflare:ai Ai is not implemented by OpenOrange because it needs Cloudflare's AI service. Call the model provider's HTTP API with fetch().` |
 
-- The text comes from a different host, so it differs from Cloudflare. The
-  result shape follows the Workers AI schema.
+#### Deviations
+
+These add to the differences under [Compatibility](#compatibility).
+
 - An `openai` model returns the provider's chat completion as it is. Its `id`
   and `model` fields are the provider's values.
-- gpt-oss with Responses API input (`input` and `instructions`) throws.
-  Pass `messages` instead.
-- In the `legacy` shape, each tool call has both the `{ name, arguments }`
-  shape and the `{ id, type, function }` shape.
-- The stream framing is not checked against recordings from Cloudflare.
-- With `response_format`, `response` is the model's JSON text.
-- Cloudflare's default `max_tokens` is not applied. The provider's default
-  applies.
-- The `gateway` option works, but requests go to the provider directly.
-  There is no gateway caching or logging, and `aiGatewayLogId` is `null`.
-  `orange dev` warns once.
-- `env.AI.gateway()`, `autorag()`, `aiSearch()`, and `toMarkdown()` throw
-  `NotSupportedError`.
-- `websocket: true` and `ReadableStream` or `FormData` inputs throw
-  `NotSupportedError`.
-- Image, speech, translation, and reranker models have no mapping.
-- `models()` lists only mapped models. It applies `search` and `task` and
-  ignores the other filters.
-- `lastRequestId` is `null`.
-- `new Ai()` from `cloudflare:ai` still throws. Use the `ai` binding.
+- `lastRequestId` is `null`, and `getLogs()` returns an empty array.
+- Each `run()` keeps its own options. workerd stores them on the binding while
+  a request is in flight, so overlapping calls could see each other's.
+
+#### Conformance
+
+- `src/runtime/ai-binding.test.ts` runs a Worker under `orange dev` against a
+  mock provider, which is a real HTTP server. It covers both result shapes,
+  tool calls, streaming in both shapes, provider `429` and `500` errors, a
+  provider error during a stream, embeddings, the `gateway` option, unmapped
+  models, a missing OpenRouter key, a local provider without a key, and
+  overlapping calls with different options.
+- `tests/runnable-examples.test.ts` runs
+  [`examples/workers-ai`](../../examples/workers-ai) against a mock provider:
+  chat, streaming, a tool call, embeddings, an `openai`-shape model,
+  `returnRawResponse`, `models()`, a provider error, and a provider that is
+  down.
+- `src/commands/doctor.test.ts` checks the binding's row in `orange doctor`.
+- The generated `Ai` type is not registered in the type-conformance checks.
+- No test calls a real provider.
+
+##### Recorded results
+
+<BindingEvidence bindings={["workers-ai"]} />
+
+</AiContext>

@@ -1,73 +1,169 @@
 ---
 title: Fetch events
-description: How OpenOrange supplies the execution context of a Worker's fetch() handler, including context.props, context.exports and waitUntil().
+description: Your Worker's fetch() handler runs unchanged on OpenOrange, with a new execution context for each request for waitUntil(), props, and exports.
 ---
 
 # Fetch events
 
-**Status:** Partial
+Your Worker's `fetch(request, env, ctx)` handler runs unchanged on OpenOrange.
+Orange calls it once for each request, with a new `ctx` each time, as
+Cloudflare does.
 
-## Configuration
+## Write the handler
 
-No Orange-specific configuration is required. A module Worker exports a
-Wrangler-compatible `fetch(request, env, context)` handler.
+Export `fetch` on the default object, as on Cloudflare. A default class that
+extends `WorkerEntrypoint` works too, and gets a new instance for each request.
 
-## How it works
+```ts
+export default {
+  async fetch(request, env, ctx): Promise<Response> {
+    // Runs after the response is sent.
+    ctx.waitUntil(fetch("https://example.com/log", { method: "POST", body: request.url }));
+    return new Response(`Hello from ${new URL(request.url).pathname}`);
+  },
+} satisfies ExportedHandler<Env>;
+```
 
-OpenOrange creates one execution context per request. `context.props` contains
-the runtime-supplied properties, `context.exports` contains the supplied
-loopback export object, and `context.waitUntil(promise)` registers background
-work. The runtime controller drains all registered promises, including work
-registered while an earlier promise is settling, and retains fulfilled and
-rejected outcomes for later diagnostics.
+Run it with `orange dev`, and call it on port 8787:
 
-- The controlled loader constructs an extensible environment from configured bindings, installs the
-  Cloudflare global manifest, imports the Worker, preserves its named exports, and rejects
-  unsupported event handlers.
-- The `env`, `exports`, `withEnv()`, `withExports()`, and `withEnvAndExports()` exports of
-  `cloudflare:workers` follow workerd: `env` is readable while the Worker module evaluates, both
-  proxies follow the current async-context override, and mutations through `env` change the
-  environment object passed to handlers.
-- Orange does not read the `disallow_importable_env` flag.
-- Durable Object classes appear in `context.exports` and `exports` as their namespaces.
-- `WorkerEntrypoint` is exported as a base class that stores `ctx` and `env`. A default export
-  that extends `WorkerEntrypoint` handles each request with a new instance.
-- Dispatch invokes the default module Worker's `fetch` handler and requires it to return an
-  OpenOrange `Response`.
-- The dispatch result includes that response and a promise for all `waitUntil()` outcomes.
+```sh
+orange dev
+curl localhost:8787/hello
+```
 
-For development, a dedicated Node.js child owns the HTTP listener and runtime
-lifecycle. It streams request and response bodies, dispatches requests inside
-the child, and reports readiness, startup failures, request failures,
-background failures, signals, and clean shutdown to the parent CLI over IPC.
+## What `ctx` gives you
 
-`request.url` uses the request's `Host` header. Under `orange serve`, its scheme
-is `https:` when the cluster's gateway sends `X-Forwarded-Proto: https`, so a
-Worker sees the URL its client used, as on Cloudflare. `orange dev` takes
-requests directly and ignores that header.
+- **`ctx.waitUntil(promise)`** keeps work running after the response. Orange
+  waits for every promise, and `orange dev` prints each one that rejects.
+- **`ctx.props`** holds the `props` of the service binding that called this
+  entrypoint. See [Multiple Workers](./multi-worker).
+- **`ctx.exports`** holds this Worker's entrypoints as service stubs and its
+  Durable Object classes as namespaces. `exports` from `cloudflare:workers` is
+  the same object, and `env` from it works even while the module loads.
+- **`request.url`** is the URL the client used, built from its `Host` header.
 
-Unsupported context APIs fail when called instead of being silently ignored.
-`ctx.cache` is `undefined`, as in local workerd.
+<AiContext summary="Every ctx member, request and response rules, the dev process, every deviation, and the test coverage">
 
-## Conformance
+#### Context API
 
-The conformance check compiles a module Worker against the pinned
-`ExportedHandler<Env>` fetch signature and proves an invalid response type is
-rejected. The generated event registry check verifies the context has exactly
-the Cloudflare `ExecutionContext` keys and is assignable to its generic contract.
-Runtime tests cover entrypoint ordering, named exports, environment injection,
-response validation, `waitUntil()` draining, each unsupported API, and the
-dedicated process lifecycle over a real HTTP socket.
+| Member | Status | Notes |
+| --- | --- | --- |
+| `ctx.waitUntil(promise)` | Supported | Orange drains every registered promise, including work registered while an earlier promise is settling, and keeps both fulfilled and rejected outcomes. |
+| `ctx.props` | Supported | An empty object when the caller passes no `props`, as in workerd. |
+| `ctx.exports` | Supported | Named `WorkerEntrypoint` classes and handler objects become service stubs. Durable Object classes appear as their namespaces. |
+| `ctx.passThroughOnException()` | Partial | A no-op. See [Deviations](#deviations). |
+| `ctx.abort(reason)` | Partial | Releases the context's I/O objects, then throws. See [Deviations](#deviations). |
+| `ctx.tracing` | Partial | No-op spans. See [Deviations](#deviations). |
+| `ctx.cache` and `ctx.access` | Not supported | `undefined`, as in local workerd. |
+| `env` and `exports` from `cloudflare:workers` | Supported | Follow workerd. See [`cloudflare:workers`](#cloudflareworkers). |
+| `withEnv()`, `withExports()`, and `withEnvAndExports()` | Supported | Override the importable `env` and `exports` for a callback. |
+| `waitUntil()` from `cloudflare:workers` | Supported | Registers the promise on the running event. At module scope it throws workerd's `Disallowed operation called within global scope` error. |
+| `WorkerEntrypoint` | Supported | A base class that stores `ctx` and `env`. |
+| The `disallow_importable_env` flag | Not supported | Orange does not read it. |
 
-## Deviations
+Copying every `ctx` property, as Sentry does, works: `ctx.cache` reads as
+`undefined` instead of throwing.
+
+#### Handlers
+
+- The default export's `fetch` handles each request. A default class that
+  extends `WorkerEntrypoint` handles each request with a new instance.
+- A Worker that also exports `scheduled`, `queue`, or other handlers still
+  serves `fetch`. Each other handler has its own dispatch.
+- A Worker without a `fetch` handler loads, and each request fails with
+  `Handler does not export a fetch() function.`, as in workerd.
+- A module without a default export serves only its named entrypoints.
+- A default export that is not an object or a `WorkerEntrypoint` class fails
+  with `Worker entrypoint must have a default object export`.
+
+#### Responses
+
+The handler must return an OpenOrange `Response`. The request fails when:
+
+| What the handler returns | Error |
+| --- | --- |
+| Something that is not a `Response` | `TypeError: Worker fetch handler must return a Response` |
+| `Response.error()` | `TypeError: Return value from serve handler must not be an error response (like Response.error())` |
+| A `Response` whose body was already read | `TypeError: Body has already been used. It can only be used once. Use tee() first if you need to read it twice.` |
+
+A handler that throws fails the request with a 500 response. Its `waitUntil()`
+work still settles first.
+
+Through a service binding or a Durable Object stub, the caller's `fetch()`
+rejects with workerd's remote error instead. A missing handler gives
+`Handler does not export a fetch() function.`, a result that is not a
+`Response` gives
+`TypeError: Incorrect type for Promise: the Promise did not resolve to 'Response'.`,
+and a thrown error keeps its name, message, and own properties, such as `code`.
+
+#### Requests
+
+- `request.url` uses the request's `Host` header. Under `orange serve`, its
+  scheme is `https:` when the cluster's gateway sends `X-Forwarded-Proto:
+  https`, so a Worker sees the URL its client used, as on Cloudflare.
+  `orange dev` takes requests directly and ignores that header.
+- `request.cf` is the placeholder object that Miniflare uses when it cannot
+  download the real one, such as `colo: "DFW"` and `city: "Austin"`, with
+  `httpProtocol` set from the request. It is the same under `orange dev` and
+  `orange serve`.
+- Orange sets `CF-Connecting-IP` to the client's address, unless the request
+  already has one, as Miniflare does.
+
+#### `cloudflare:workers`
+
+- The `env`, `exports`, `withEnv()`, `withExports()`, and
+  `withEnvAndExports()` exports follow workerd.
+- `env` is readable while the Worker module evaluates.
+- Both proxies follow the current async-context override.
+- Changes through `env` change the environment object passed to handlers.
+- `exports` is the same object as `ctx.exports`.
+
+#### How Orange runs the handler
+
+- The controlled loader builds an extensible environment from the configured
+  bindings, installs the Cloudflare global manifest, imports the Worker, and
+  keeps its named exports.
+- Dispatch calls the default module Worker's `fetch` handler inside the
+  request's execution context.
+- The dispatch result holds the response and a promise for every
+  `waitUntil()` outcome.
+- In development, a dedicated Node.js child process owns the HTTP listener and
+  the runtime lifecycle. It streams request and response bodies and runs each
+  request inside the child.
+- The child reports readiness, startup failures, request failures, background
+  failures, signals, and a clean shutdown to the parent CLI over IPC.
+- The child returns background outcomes to the runtime, which reports each
+  rejected one to the CLI for local diagnostics. `orange dev` prints it as an
+  error with its stack.
+
+#### Deviations
 
 - `passThroughOnException()` is a no-op, because Orange has no origin to fall
   back to. An exception after the call still fails the request with a 500
   response.
-- `abort()` releases the context's I/O objects and throws the reason, because
-  Node.js cannot stop running JavaScript.
-- `context.cache` and `context.access` are `undefined`, as in local workerd.
-- `context.tracing` runs every span callback with a no-op span whose `isTraced`
-  is `false`, because Orange has no trace collector.
-- Background promise outcomes are returned to the runtime process, which
-  reports rejected work to the parent CLI for local diagnostics.
+- `abort()` releases the context's I/O objects, such as RPC stubs, and then
+  throws the reason, because Node.js cannot stop running JavaScript. Without a
+  reason it throws `Worker execution was aborted due to call to ctx.abort().`
+- `ctx.cache` and `ctx.access` are `undefined`, as in local workerd.
+- `ctx.tracing` runs every span callback with a no-op span whose `isTraced` is
+  `false`, because Orange has no trace collector.
+- `request.cf` holds placeholder values, not the client's location.
+
+#### Conformance
+
+- The conformance check compiles a module Worker against the pinned
+  `ExportedHandler<Env>` fetch signature, and proves that an invalid response
+  type is rejected.
+- The generated event registry check verifies that the context has exactly the
+  Cloudflare `ExecutionContext` keys, and that it is assignable to its generic
+  contract.
+- Runtime tests cover entrypoint ordering, named exports, environment
+  injection, response validation, `waitUntil()` draining, each unsupported
+  API, and the dedicated process lifecycle over a real HTTP socket.
+- `tests/execution-context.test.ts` runs Workers under `orange dev` and checks
+  a missing, throwing, or non-`Response` handler, `passThroughOnException()`,
+  `ctx.props` with and without `props`, and copying every `ctx` property.
+- The feature matrix rows for the Workers runtime are in the Compatibility
+  section below.
+
+</AiContext>

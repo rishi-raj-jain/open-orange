@@ -5,50 +5,99 @@ description: Export traces with OpenTelemetry, scrape Prometheus metrics, and re
 
 # Monitoring
 
-Each Durable Object runs as a Rivet Actor inside `orange serve`, so Rivet's
-observability covers your objects. You turn it on with environment variables, and your
-code does not change.
+Each Durable Object runs as a Rivet Actor, so Rivet's traces, metrics, and logs cover your
+objects. You turn them on with environment variables, and your code does not change.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/monitoring-dark.svg" />
   <img alt="Inside orange serve, your Worker calls your Durable Objects, which run as Rivet Actors. RivetKit sends their traces over OTLP to a collector such as Jaeger, Tempo, or Honeycomb, and Prometheus scrapes the runner's metrics endpoint." src="../images/monitoring.svg" />
 </picture>
 
-## Traces
+## Quickstart
 
-Set an OTLP endpoint, and RivetKit exports a span for each Durable Object request and
-RPC call, with the SQLite work inside it. Each span carries `rivet.actor.name`, which is the
-class in kebab case and a short hash, such as `greeter-5c8cd02c`, and `rivet.actor.key`,
-which is the object's ID. The Worker's own handlers get no spans.
+You need a Rivet Cloud cluster and an OTLP collector, such as Jaeger, Tempo, or Honeycomb.
+
+<Steps>
+
+<Step title="Send traces to your collector">
 
 ```sh
-# Rivet Cloud
 orange deploy \
   --var OTEL_SERVICE_NAME:my-app \
   --var OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:https://collector.example.com/v1/traces
+```
 
-# Self-hosted
+</Step>
+
+<Step title="Find an object's spans">
+
+Each request and RPC call to a Durable Object is one span. Its `rivet.actor.key` is the
+object's ID.
+
+</Step>
+
+<Step title="Open metrics and logs">
+
+On Rivet Cloud these need no setup. The Rivet dashboard shows your cluster's metrics, and its
+Logs page shows your Worker's output.
+
+</Step>
+
+</Steps>
+
+## Try it locally
+
+`orange dev` reads the same variables from your shell.
+
+```sh
+export OTEL_SERVICE_NAME=my-app
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://collector.example.com/v1/traces
+orange dev
+```
+
+## Self-host
+
+Pass the same variables to the container. Set `RIVETKIT_METRICS_PORT` to serve Prometheus
+metrics, and scrape them from a sidecar in the same pod.
+
+```sh
 docker run \
   -e OTEL_SERVICE_NAME=my-app \
   -e OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://collector.example.com/v1/traces \
+  -e RIVETKIT_METRICS_PORT=9464 \
   -e RIVET_ENDPOINT=... my-worker
 ```
 
-- `orange dev` reads the same variables from your shell, so you can try a local collector first.
-- `--var` also puts the variable in the Worker's `env`. See [Variables and secrets](../deploy#variables-and-secrets).
-- If the collector needs an API key in `OTEL_EXPORTER_OTLP_HEADERS`, pass it with `--secrets-file`, not `--var`.
+## Learn more
 
-## Metrics
+- [OpenTelemetry](https://rivet.dev/docs/tracing/): span names, sampling, and application spans
+- [Performance monitoring](https://rivet.dev/actors/docs/performance-monitoring/): PromQL for actors and SQLite
+- [Logging](https://rivet.dev/actors/docs/logging/): log levels and formats
+
+<AiContext summary="Spans, metrics, and log output in detail">
+
+#### Traces
+
+- With an OTLP endpoint set, RivetKit exports a span for each Durable Object request and RPC
+  call, with the SQLite work inside it. The Worker's own handlers get no spans.
+- Each span carries `rivet.actor.name`, which is the class in kebab case and a short hash, such
+  as `greeter-5c8cd02c`, and `rivet.actor.key`, which is the object's ID.
+- `--var` also puts the variable in the Worker's `env`. See
+  [Variables and secrets](../deploy#variables-and-secrets).
+- If the collector needs an API key in `OTEL_EXPORTER_OTLP_HEADERS`, pass it with
+  `--secrets-file`, not `--var`.
+
+#### Metrics
 
 RivetKit serves Prometheus metrics at `http://127.0.0.1:$RIVETKIT_METRICS_PORT/metrics`.
 
 - **Rivet Cloud** sets `RIVETKIT_METRICS_PORT` on each runner, collects the metrics, and shows
   them in the Rivet dashboard. `orange deploy` refuses to set it with `--var`.
-- **Self-hosted:** set `RIVETKIT_METRICS_PORT`, such as `9464`. The endpoint listens on
-  `127.0.0.1` only, so `docker run -p` does not expose it. Scrape it from the same network
-  namespace, such as a sidecar in the same Kubernetes pod.
-- `orange dev` serves no metrics. With several Workers, only the first Worker's runtime serves
-  them, so they cover that Worker's objects only.
+- **Self-hosted:** the endpoint listens on `127.0.0.1` only, so `docker run -p` does not expose
+  it. Scrape it from the same network namespace, such as a sidecar in the same Kubernetes pod.
+- `orange dev` serves no metrics.
+- With several Workers, only the first Worker's runtime serves metrics, so they cover that
+  Worker's objects only.
 
 | Metric | What it shows |
 |---|---|
@@ -56,15 +105,11 @@ RivetKit serves Prometheus metrics at `http://127.0.0.1:$RIVETKIT_METRICS_PORT/m
 | `rivet_rivetkit_actor_http_requests_active` | Requests and RPC calls in progress |
 | `rivet_rivetkit_actor_inbox_depth` | Work waiting to run |
 
-## Logs
+#### Logs
 
-`orange dev` prints each request and your Worker's `console` output. `orange serve` prints
-the `console` output and RivetKit's warnings and errors. On Rivet Cloud, read them on your
-cluster's Logs page in the Rivet dashboard. Self-hosted, read the container's output. Set
-`RIVET_LOG_LEVEL=info` to add RivetKit's info logs.
+- `orange dev` prints each request and your Worker's `console` output.
+- `orange serve` prints the `console` output and RivetKit's warnings and errors.
+- Self-hosted, read the container's output.
+- Set `RIVET_LOG_LEVEL=info` to add RivetKit's info logs.
 
-## Learn more
-
-- [OpenTelemetry](https://rivet.dev/docs/tracing/): span names, sampling, and application spans
-- [Performance monitoring](https://rivet.dev/actors/docs/performance-monitoring/): PromQL for actors and SQLite
-- [Logging](https://rivet.dev/actors/docs/logging/): log levels and formats
+</AiContext>
