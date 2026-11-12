@@ -1,8 +1,7 @@
 name: release
 
 # Started by `pnpm release` (scripts/release/main.ts, phase setup-local) after it commits the
-# version bump. Publishes to npm and tags v<version>. GitHub release creation is disabled for
-# now; see PHASES in scripts/release/main.ts.
+# version bump. Publishes to npm, tags v<version>, and creates the GitHub release.
 on:
   workflow_dispatch:
     inputs:

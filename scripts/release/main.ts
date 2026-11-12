@@ -3,8 +3,8 @@
 //
 // - `setup-local` (default, on your machine): bump package.json, run checks, commit and push the
 //   version bump on the current bookmark, then trigger the release workflow on that bookmark.
-// - `complete-ci` (in .github/workflows/release.yaml): run checks again, publish to npm, and push
-//   the `v<version>` tag. Creating the GitHub release is disabled for now (see PHASES).
+// - `complete-ci` (in .github/workflows/release.yaml): run checks again, publish to npm, push the
+//   `v<version>` tag, and create the GitHub release.
 //
 // Usage: pnpm release --version 0.1.0 | --patch | --minor | --major [--no-latest]
 import { readFileSync, writeFileSync } from "node:fs";
@@ -63,10 +63,9 @@ const PHASES = {
 		"run-checks",
 		"publish-npm",
 		"push-tag",
-		// Disabled while we publish preview versions to npm: a GitHub release fires the
-		// repository's release webhooks. Re-enable for real launches. It can also run alone with
+		// Fires the repository's release webhooks. It can also run alone with
 		// `--only-steps create-github-release`.
-		// "create-github-release",
+		"create-github-release",
 	],
 } satisfies Record<string, Step[]>;
 type Phase = keyof typeof PHASES;
