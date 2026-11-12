@@ -7,6 +7,7 @@
 <p align="center">Run your Cloudflare Workers and Durable Objects on Rivet with no changes to your app code.</p>
 
 <p align="center">
+  <a href="https://openorange.dev/docs">Docs</a> ·
   <a href="docs/deploy.mdx">Deploy</a> ·
   <a href="docs/migrate.mdx">Migrate</a> ·
   <a href="docs/modules/bindings.mdx">Bindings</a> ·
@@ -14,71 +15,9 @@
   <a href="https://rivet.dev/discord">Discord</a>
 </p>
 
-OpenOrange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a [Rivet Actor](https://rivet.dev/docs/actors/) with its own SQLite database.
+OpenOrange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a [Rivet Actor](https://rivet.dev/docs/actors/) with its own SQLite database. Full docs: [openorange.dev/docs](https://openorange.dev/docs).
 
-## Install the MCP
-
-Connect your coding agent to Rivet. Approve the Rivet sign-in when it opens.
-
-**Claude Code**
-
-```sh
-claude mcp add --transport http rivet "https://mcp.rivet.dev/mcp"
-```
-
-**Codex**
-
-```sh
-codex mcp add rivet --url https://mcp.rivet.dev/mcp
-```
-
-**Cursor** (add to your MCP configuration)
-
-```json
-{ "mcpServers": { "rivet": { "url": "https://mcp.rivet.dev/mcp" } } }
-```
-
-**VS Code**
-
-```sh
-code --add-mcp '{"name":"rivet","type":"http","url":"https://mcp.rivet.dev/mcp"}'
-```
-
-For other clients, see [Rivet MCP](https://rivet.dev/mcp). The Rivet dashboard shows the same commands under **Settings > MCP**.
-
-After you [install OpenOrange](#step-1-install), `orange mcp` says whether your coding agent has the Rivet MCP. If it does not, it prints the one command for the agent you use, pinned to your linked cluster:
-
-```text
-! Rivet MCP is not set up. Connect Claude Code:
-  claude mcp add --transport http rivet "https://mcp.rivet.dev/mcp?cluster=prod"
-```
-
-`orange mcp --json` gives the command for every agent. Orange does not change your agent's configuration.
-
-## Check compatibility
-
-After you [install OpenOrange](#step-1-install), run `orange doctor` in your Worker project:
-
-```sh
-orange doctor
-```
-
-`orange doctor` reads your Wrangler configuration. It skips variables (`vars`, `.dev.vars`, and `.env`), because they need nothing on Rivet. It reports each other binding as one of three kinds:
-
-- **Runs as is.** The binding needs no setup.
-- **Needs a service you supply.** Set a variable that points to the service.
-- **Not supported.** The binding loads, but Orange has no backend for it. Each call throws an error that names the binding. Analytics Engine accepts writes and drops them.
-
-Each row links to the binding's docs. A row that needs something from you also has a hint, such as the variable to set. `orange doctor` also:
-
-- Checks that each variable a binding needs is set in `.dev.vars`, `.env`, or your shell. A missing one counts as a thing to set up.
-- Says when a binding to another Worker works only with that Worker in the same `orange dev` session.
-- Says which triggers run as is, such as Cron Triggers and Tail Workers.
-- Lists each Durable Object class and whether `orange migrate` can move its data. `orange migrate prepare` refuses the whole Worker while a class is KV-backed (`new_classes`) or a SQLite class has no binding. Then `orange doctor` says why, and marks no class as movable.
-- Checks Node.js, the Worker bundle, the port, and the free disk for the local Rivet Engine.
-- Ends with a **Next** block of the commands to run next.
-
-For a coding agent, `--json` prints the same report as JSON Lines. `--strict` exits with 1 when something needs setup.
+## What runs where
 
 | Cloudflare binding | Runs on | You set |
 |---|---|---|
@@ -100,13 +39,9 @@ For a coding agent, `--json` prints the same report as JSON Lines. `--strict` ex
 
 See the [compatibility matrix](docs/modules/bindings.mdx) for every binding and Wrangler key.
 
-## Set up
+## Quickstart
 
-You need:
-
-- A Worker project with a `wrangler.jsonc`, `wrangler.json`, or `wrangler.toml`. If you have none, use [`examples/hello-durable-object`](examples/hello-durable-object).
-- Node.js 22 or later, and pnpm.
-- Docker, to deploy.
+You need a Worker project with a `wrangler.jsonc`, `wrangler.json`, or `wrangler.toml` (or use [`examples/hello-durable-object`](examples/hello-durable-object)), Node.js 22 or later, pnpm, and Docker to deploy.
 
 ### Step 1: Install
 
@@ -115,15 +50,23 @@ You need:
   <img alt="OpenOrange reads the wrangler.jsonc and source files that your Worker already has" src="docs/images/step-1-install.svg">
 </picture>
 
-Install the CLI globally:
-
 ```sh
 pnpm add -g open-orange
 ```
 
-You now have the `orange` command. Run it in your Worker project. Your code and your Wrangler configuration did not change.
+Your code and your Wrangler configuration do not change.
 
-### Step 2: Run your Worker
+### Step 2: Check your Worker
+
+Run this in your Worker project:
+
+```sh
+orange doctor
+```
+
+It lists each binding as **runs as is**, **needs a service you supply** (with the variable to set), or **not supported**, says which Durable Object classes `orange migrate` can move, and ends with the commands to run next. Add `--json` for a coding agent.
+
+### Step 3: Run your Worker
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/step-2-dev-dark.svg">
@@ -149,7 +92,7 @@ The `Agent` row shows until an agent configuration has the Rivet MCP.
 
 Your Worker now answers on `http://localhost:8787`. Its data is in `.open-orange/` and stays there when you restart. Add `.open-orange/` to your `.gitignore`.
 
-### Step 3: Deploy
+### Step 4: Deploy
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/step-3-deploy-dark.svg">
@@ -201,6 +144,36 @@ orange deploy --dry-run --outdir out
 docker build --platform linux/amd64 -f out/Dockerfile -t my-worker out/context
 docker run --rm -p 8080:8080 -e RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> my-worker
 ```
+
+## Connect your coding agent
+
+Add the Rivet MCP to your agent, then approve the Rivet sign-in.
+
+**Claude Code**
+
+```sh
+claude mcp add --transport http rivet "https://mcp.rivet.dev/mcp"
+```
+
+**Codex**
+
+```sh
+codex mcp add rivet --url https://mcp.rivet.dev/mcp
+```
+
+**Cursor** (add to your MCP configuration)
+
+```json
+{ "mcpServers": { "rivet": { "url": "https://mcp.rivet.dev/mcp" } } }
+```
+
+**VS Code**
+
+```sh
+code --add-mcp '{"name":"rivet","type":"http","url":"https://mcp.rivet.dev/mcp"}'
+```
+
+For other clients, see [Rivet MCP](https://rivet.dev/mcp). `orange mcp` checks whether your agent has it and prints the command for your linked cluster.
 
 ## Migrate
 
