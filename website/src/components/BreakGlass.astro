@@ -6,6 +6,9 @@
 //   break-glass-open.webp  the same box with the glass gone
 //   break-glass-pane.webp  only the glass: the printed text and the reflection,
 //                          as white with alpha, so open + pane = intact
+// break-glass.webp is made by drawing the pane over the open box (alpha "over",
+// then lossy WebP at quality 92), so the orange is the same pixels before and
+// after the break. Remake it whenever either of the other two changes.
 //
 // Clicking breaks the pane where it was hit. Cracks run out from the impact as a
 // spider web, the web's cells come loose and fall as 3D shards (with the printed
