@@ -1,11 +1,7 @@
 ---
 import BreakGlass from './BreakGlass.astro';
 import { CHEAPER_COMPUTE, CHEAPER_DATABASE, HERO } from '@/data/site';
-import aws from '@/assets/migrator/aws.svg?raw';
-import gcp from '@/assets/migrator/gcp.svg?raw';
-import azure from '@/assets/migrator/azure.svg?raw';
-import rivet from '@/assets/migrator/rivet-white.svg?raw';
-import server from '@/assets/migrator/server.svg?raw';
+import { CLOUDS } from '@/data/clouds';
 
 // Where it runs, as logos under the title. Sized by CSS, so the SVGs lose their width/height.
 const fit = (svg: string) =>
@@ -14,13 +10,7 @@ const fit = (svg: string) =>
 		const viewBox = /viewBox=/.test(attrs) ? '' : ` viewBox="0 0 ${size('width')} ${size('height')}"`;
 		return `<svg${attrs.replace(/\s(width|height|class)="[^"]*"/g, '')}${viewBox} class="h-full w-auto" aria-hidden="true">`;
 	});
-const clouds = [
-	{ name: 'AWS', svg: fit(aws.replaceAll('#252F3E', 'currentColor')), label: false },
-	{ name: 'Google Cloud', svg: fit(gcp), label: true },
-	{ name: 'Azure', svg: fit(azure), label: true },
-	{ name: 'Rivet Cloud', svg: fit(rivet), label: true },
-	{ name: 'Your servers', svg: fit(server), label: true },
-];
+const clouds = CLOUDS.map((c) => ({ ...c, svg: fit(c.ink ? c.svg.replaceAll(c.ink, 'currentColor') : c.svg) }));
 
 const stats = [
 	{ value: `${CHEAPER_COMPUTE.toFixed(1)}×`, label: 'cheaper compute', href: '#cost' },
@@ -48,14 +38,16 @@ const stats = [
 				<a href="/architecture/" class="btn-secondary">How it works</a>
 			</div>
 
-			<dl class="mt-12 flex flex-wrap gap-x-8 gap-y-4 md:mt-14">
+			<ul class="mt-12 flex flex-wrap gap-x-8 gap-y-4 md:mt-14">
 				{stats.map((stat) => (
-					<a href={stat.href} class="flex items-baseline gap-2">
-						<dd class="stat text-[1.75rem]">{stat.value}</dd>
-						<dt class="text-[15px] text-ink-faint">{stat.label}</dt>
-					</a>
+					<li>
+						<a href={stat.href} class="flex items-baseline gap-2">
+							<span class="stat text-[1.75rem]">{stat.value}</span>
+							<span class="text-[15px] text-ink-faint">{stat.label}</span>
+						</a>
+					</li>
 				))}
-			</dl>
+			</ul>
 		</div>
 
 		<BreakGlass />

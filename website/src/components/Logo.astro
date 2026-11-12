@@ -1,6 +1,7 @@
 ---
 // The OpenOrange logo: a glossy orange half with a leaf, on a transparent
-// background so it reads the same on light and dark surfaces.
+// background so it reads the same on light and dark surfaces. logo-64.webp is
+// public/images/logo.png at 64 px, enough for the sizes the site uses.
 interface Props {
 	class?: string;
 	size?: number;
@@ -8,4 +9,4 @@ interface Props {
 const { class: className = '', size = 24 } = Astro.props;
 ---
 
-<img class={className} src="/images/logo.png" width={size} height={size} alt="" aria-hidden="true" decoding="async" />
+<img class={className} src="/images/logo-64.webp" width={size} height={size} alt="" aria-hidden="true" decoding="async" />

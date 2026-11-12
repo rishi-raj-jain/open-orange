@@ -9,17 +9,18 @@ import ResultCount from '@/components/compat/ResultCount.astro';
 import MatrixRow from '@/components/compat/MatrixRow.astro';
 import { BINDINGS, bindingPage } from '@/data/bindings';
 import { PROVIDERS } from '@/data/site';
+import { DOCS_PAGES } from '@/data/docs-pages';
 import { CLAIM_LABEL, PRODUCT_LABEL, SUMMARY, TONE_CLASS, inline, type ProductStatus } from '@/data/conformance';
 
 const order: ProductStatus[] = ['drop-in', 'pluggable', 'partial', 'stub'];
 const counts = order.map((id) => ({ id, ...PRODUCT_LABEL[id], count: BINDINGS.filter((b) => b.product.status === id).length }));
-const working = BINDINGS.filter((b) => b.product.status !== 'stub').length;
 const stubs = BINDINGS.filter((b) => b.product.status === 'stub');
 ---
 
 <Docs
-	title="Binding status"
-	description={`${working} of ${BINDINGS.length} Cloudflare bindings run on OpenOrange, with the same wrangler.jsonc and the same env. Each binding's page has how it runs, what differs, and the tests behind it.`}
+	title={DOCS_PAGES['/docs/bindings/'].title}
+	description={DOCS_PAGES['/docs/bindings/'].description}
+	metaDescription={DOCS_PAGES['/docs/bindings/'].metaDescription}
 	href="/docs/bindings/"
 	prose={false}
 	wide

@@ -8,7 +8,7 @@ export const SITE = {
 	domain: 'openorange.dev',
 	tagline: 'Your Cloudflare project. Region: your datacenter.',
 	description:
-		'OpenOrange runs your Cloudflare Workers, Durable Objects, KV, Queues and Workflows unchanged on AWS, GCP, Azure or your own servers. Open source. wrangler dev becomes openorange dev.',
+		'OpenOrange runs your Cloudflare Workers, Durable Objects, KV, Queues and Workflows unchanged on AWS, GCP, Azure or your own servers. Open source, Apache 2.0.',
 	github: 'https://github.com/rivet-dev/open-orange',
 	// /docs/ renders the repository's docs/*.mdx.
 	docs: '/docs/',
@@ -21,6 +21,14 @@ export const SITE = {
 	talkToEngineer: 'https://rivet.dev/talk-to-an-engineer/',
 	verified: '2026-10-08',
 } as const;
+
+// Comparison pages that are still placeholders (src/pages/vs-[competitor].astro).
+// They are noindex and left out of the sitemap until written.
+export const PLACEHOLDER_COMPARISONS = [
+	{ slug: 'celld', name: 'celld' },
+	{ slug: 'miniflare', name: 'Miniflare' },
+	{ slug: 'rivet', name: 'Rivet' },
+] as const;
 
 export const NAV = [
 	{ label: 'Documentation', href: SITE.docs },
@@ -279,7 +287,7 @@ export const PROVIDERS: Record<string, { hosted: Provider[]; local: Provider[]; 
 		],
 		local: [
 			{ name: 'agentOS VM', href: 'https://github.com/rivet-dev/agentos' },
-			{ name: 'Local directory', href: 'https://github.com/rivet-dev/open-orange/blob/main/docs/modules/sandbox.mdx' },
+			{ name: 'Local directory', href: '/docs/bindings/sandbox/' },
 		],
 		note: 'Pick one with ORANGE_SANDBOX_PROVIDER.',
 	},
@@ -304,7 +312,7 @@ export const PROVIDERS: Record<string, { hosted: Provider[]; local: Provider[]; 
 			{ name: 'Backblaze B2', href: 'https://www.backblaze.com/cloud-storage' },
 		],
 		local: [
-			{ name: 'Actor storage', href: 'https://github.com/rivet-dev/open-orange/blob/main/docs/modules/r2.mdx' },
+			{ name: 'Actor storage', href: '/docs/bindings/r2/' },
 			{ name: 'MinIO', href: 'https://min.io/' },
 		],
 		note: 'Any S3-compatible store, set per bucket with ORANGE_R2_<BUCKET>_S3_*.',

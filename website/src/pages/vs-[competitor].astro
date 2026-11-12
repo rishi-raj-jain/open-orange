@@ -3,20 +3,17 @@
 // vs-workerd.astro, once it is written.
 import Base from '@/layouts/Base.astro';
 import Cta from '@/components/Cta.astro';
-import { SITE } from '@/data/site';
+import { PLACEHOLDER_COMPARISONS, SITE } from '@/data/site';
 
 export function getStaticPaths() {
-	return [
-		{ params: { competitor: 'celld' }, props: { name: 'celld' } },
-		{ params: { competitor: 'miniflare' }, props: { name: 'Miniflare' } },
-		{ params: { competitor: 'rivet' }, props: { name: 'Rivet' } },
-	];
+	return PLACEHOLDER_COMPARISONS.map(({ slug, name }) => ({ params: { competitor: slug }, props: { name } }));
 }
 
 const { name } = Astro.props;
 ---
 
-<Base title={`${SITE.name} vs ${name}`} description={`${SITE.name} compared with ${name}.`}>
+<!-- Placeholders stay out of search results until they are written. astro.config.ts leaves them out of the sitemap. -->
+<Base title={`${SITE.name} vs ${name}`} description={`${SITE.name} compared with ${name}.`} noindex>
 	<section>
 		<div class="container-x pt-20 pb-20 md:pt-28 md:pb-28">
 			<div class="relative grid gap-4 md:grid-cols-2 md:gap-6">

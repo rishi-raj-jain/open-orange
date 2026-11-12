@@ -3,14 +3,33 @@ import '@/styles/global.css';
 import Nav from '@/components/Nav.astro';
 import Footer from '@/components/Footer.astro';
 import { SITE } from '@/data/site';
+import { SITE_OG_IMAGE } from '@/og/paths';
+// The same hashed files as the @font-face rules in global.css.
+import interUrl from '@/assets/fonts/inter/Inter-Variable-latin.woff2?url';
+import monoUrl from '@/assets/fonts/jetbrains-mono/JetBrainsMono-Variable-latin.woff2?url';
 
 interface Props {
 	title: string;
 	description?: string;
+	/** Site path of the page's 1200×630 Open Graph image (src/pages/og*). Defaults to the site-wide card. */
+	image?: string;
+	/** `article` for docs pages. */
+	type?: 'website' | 'article';
+	/** Keep the page out of search results. Also leave it out of the sitemap (astro.config.ts). */
+	noindex?: boolean;
+	/** schema.org objects for the page, rendered as JSON-LD. */
+	structuredData?: Record<string, unknown>[];
 }
 
-const { title, description = SITE.description } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.site ?? `https://${SITE.domain}`).href;
+const { title, description = SITE.description, image = SITE_OG_IMAGE, type = 'website', noindex = false, structuredData = [] } = Astro.props;
+const origin = Astro.site ?? `https://${SITE.domain}`;
+// Always the production origin, so previews and aliases point search engines at openorange.dev.
+const canonical = new URL(Astro.url.pathname, origin).href;
+const imageUrl = new URL(image, origin).href;
+// `<` escaped so text in the data can't close the script element.
+const jsonLd = structuredData.length
+	? JSON.stringify({ '@context': 'https://schema.org', '@graph': structuredData }).replaceAll('<', '\\u003c')
+	: undefined;
 ---
 
 <!doctype html>
@@ -27,18 +46,31 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? `https://${SITE.doma
 		</script>
 		<title>{title}</title>
 		<meta name="description" content={description} />
+		{noindex && <meta name="robots" content="noindex" />}
 		<meta name="theme-color" content="#F26B1D" />
-		<link rel="canonical" href={canonical} />
+		{!noindex && <link rel="canonical" href={canonical} />}
+		<link rel="sitemap" href="/sitemap-index.xml" />
 		<link rel="icon" href="/favicon.png" type="image/png" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-		<link rel="preload" href="/fonts/inter/Inter-Variable-latin.woff2" as="font" type="font/woff2" crossorigin />
-		<link rel="preload" href="/fonts/jetbrains-mono/JetBrainsMono-Variable-latin.woff2" as="font" type="font/woff2" crossorigin />
-		<meta property="og:type" content="website" />
+		<link rel="preload" href={interUrl} as="font" type="font/woff2" crossorigin />
+		<link rel="preload" href={monoUrl} as="font" type="font/woff2" crossorigin />
+		<meta property="og:type" content={type} />
 		<meta property="og:title" content={title} />
 		<meta property="og:description" content={description} />
 		<meta property="og:url" content={canonical} />
 		<meta property="og:site_name" content={SITE.name} />
+		<meta property="og:locale" content="en_US" />
+		<meta property="og:image" content={imageUrl} />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content={title} />
 		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={title} />
+		<meta name="twitter:description" content={description} />
+		<meta name="twitter:image" content={imageUrl} />
+		<meta name="twitter:image:alt" content={title} />
+		{jsonLd && <script type="application/ld+json" set:html={jsonLd} />}
 	</head>
 	<body class="flex min-h-screen flex-col overflow-x-clip">
 		<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-plate focus:px-3 focus:py-2 focus:text-white">Skip to content</a>

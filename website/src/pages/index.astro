@@ -12,9 +12,10 @@ import Modules from '@/components/Modules.astro';
 import Faq from '@/components/Faq.astro';
 import Cta from '@/components/Cta.astro';
 import { SITE } from '@/data/site';
+import { ORGANIZATION, SOFTWARE, WEBSITE } from '@/data/structured-data';
 ---
 
-<Base title={`${SITE.name} — ${SITE.tagline}`}>
+<Base title={`${SITE.name} — ${SITE.tagline}`} structuredData={[ORGANIZATION, WEBSITE, SOFTWARE]}>
 	<Hero />
 	<Walkthrough />
 	<RunAnywhere />

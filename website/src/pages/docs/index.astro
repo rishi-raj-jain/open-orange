@@ -3,6 +3,7 @@ import { Code } from 'astro:components';
 import { getEntry } from 'astro:content';
 import Docs from '@/layouts/Docs.astro';
 import { docHref } from '@/components/docs/nav';
+import { DOCS_PAGES } from '@/data/docs-pages';
 import type { ImageMetadata } from 'astro';
 
 const images = import.meta.glob<ImageMetadata>('../../../../docs/images/*.svg', { eager: true, import: 'default' });
@@ -62,8 +63,9 @@ const sections = await Promise.all(
 ---
 
 <Docs
-	title="Documentation"
-	description="Run your Cloudflare Workers and Durable Objects on Rivet with no changes to your app code."
+	title={DOCS_PAGES['/docs/'].title}
+	description={DOCS_PAGES['/docs/'].description}
+	headTitle="OpenOrange documentation"
 	href="/docs/"
 	headings={[
 		{ depth: 2, slug: 'quickstart', text: 'Quickstart' },

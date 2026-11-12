@@ -1,0 +1,21 @@
+---
+// Served with a 404 status for any path without a page (deploy-to-bucket
+// returns /404.html when a key is missing).
+import Base from '@/layouts/Base.astro';
+import { SITE } from '@/data/site';
+---
+
+<Base title={`Page not found — ${SITE.name}`} description="This page does not exist. Start from the OpenOrange home page or the docs." noindex>
+	<section>
+		<div class="container-x pt-20 pb-28 md:pt-28 md:pb-36">
+			<p class="label text-orange-deep">404</p>
+			<h1 class="h-hero mt-3 max-w-3xl">Page not found.</h1>
+			<p class="lede mt-6 max-w-xl">The page may have moved. The docs and the binding status page cover everything OpenOrange runs.</p>
+			<div class="mt-9 flex flex-col gap-3 sm:flex-row">
+				<a href={SITE.docs} class="btn-primary">Read the docs</a>
+				<a href={SITE.docsBindings} class="btn-secondary">Binding status</a>
+				<a href="/" class="btn-secondary">Home page</a>
+			</div>
+		</div>
+	</section>
+</Base>
