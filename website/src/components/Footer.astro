@@ -1,0 +1,62 @@
+---
+import Logo from './Logo.astro';
+import { NAV, SITE } from '@/data/site';
+
+const linkClass = 'text-ink-soft transition-colors hover:text-ink motion-reduce:transition-none';
+---
+
+<footer class="border-t border-line">
+	<div class="container-x grid gap-12 py-16 md:grid-cols-[1.6fr_1fr_1fr_1fr]">
+		<div>
+			<a href="/" class="flex items-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em]">
+				<Logo size={26} />
+				<span>Open<span class="text-orange">Orange</span></span>
+			</a>
+			<p class="mt-5 max-w-sm text-[14px] leading-relaxed text-ink-soft">
+				An open-source project from <a href={SITE.rivet} class="link">Rivet</a>. Run the Cloudflare developer platform on the cloud you choose.
+			</p>
+			<p class="caption mt-5 max-w-sm">
+				OpenOrange is not affiliated with or endorsed by Cloudflare, Inc. Cloudflare, Workers, Durable Objects, KV, Queues, Workflows, R2, D1, Hyperdrive and Wrangler are trademarks of Cloudflare, Inc. AWS, Google Cloud and Azure are trademarks of their respective owners. Names are used only to identify the services OpenOrange is compatible with or runs on.
+			</p>
+		</div>
+		<div>
+			<p class="label">Site</p>
+			<ul class="mt-4 space-y-2.5 text-[14px]">
+				{NAV.map((item) => (
+					<li><a href={item.href} class={linkClass}>{item.label}</a></li>
+				))}
+				<li><a href="/architecture/" class={linkClass}>Architecture</a></li>
+				<li><a href="/compatibility/" class={linkClass}>Compatibility</a></li>
+			</ul>
+		</div>
+		<div>
+			<p class="label">Compare</p>
+			<ul class="mt-4 space-y-2.5 text-[14px]">
+				<li><a href="/vs-workerd/" class={linkClass}>vs workerd</a></li>
+				<li><a href="/vs-celld/" class={linkClass}>vs celld</a></li>
+				<li><a href="/vs-miniflare/" class={linkClass}>vs Miniflare</a></li>
+				<li><a href="/vs-rivet/" class={linkClass}>vs Rivet</a></li>
+			</ul>
+		</div>
+		<div>
+			<p class="label">Rivet</p>
+			<ul class="mt-4 space-y-2.5 text-[14px]">
+				<li><a href={SITE.github} class={linkClass} rel="noopener">OpenOrange on GitHub</a></li>
+				<li><a href="https://github.com/rivet-dev/rivet" class={linkClass} rel="noopener">Rivet on GitHub</a></li>
+				<li><a href={`${SITE.rivet}/docs/`} class={linkClass}>Rivet docs</a></li>
+				<li><a href={`${SITE.rivet}/pricing/`} class={linkClass}>Rivet Cloud pricing</a></li>
+				<li><a href={SITE.talkToEngineer} class={linkClass}>Talk to an engineer</a></li>
+			</ul>
+		</div>
+	</div>
+	<div class="border-t border-line">
+		<div class="container-x flex flex-col gap-2 py-5 text-[13px] text-ink-faint sm:flex-row sm:items-center sm:justify-between">
+			<span>© {new Date().getFullYear()} Rivet Gaming, Inc. · Apache 2.0</span>
+			<span class="flex flex-wrap gap-x-5 gap-y-1">
+				<a href={`${SITE.rivet}/privacy/`} class={linkClass}>Privacy</a>
+				<a href={`${SITE.rivet}/terms/`} class={linkClass}>Terms</a>
+				<a href={SITE.talkToEngineer} class={linkClass}>Contact</a>
+			</span>
+		</div>
+	</div>
+</footer>

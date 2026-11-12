@@ -1,0 +1,26 @@
+{
+	"id": "email",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"local": true,
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "",
+	"devVars": {
+		"ORANGE_EMAIL_SMTP_URL": "smtp://127.0.0.1:11025",
+		"ORANGE_EMAIL_INBOUND_SECRET": "local-only-inbound-secret"
+	},
+	"durableObjects": {
+		"classes": ["none"],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"none: this probe checks Send Email and inbound email"
+		]
+	},
+	"changes": []
+}

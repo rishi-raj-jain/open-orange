@@ -1,0 +1,8 @@
+{
+	"name": "sweep-producer",
+	"main": "worker.js",
+	"compatibility_date": "2025-09-01",
+	"queues": {
+		"producers": [{ "binding": "JOBS", "queue": "jobs" }]
+	}
+}

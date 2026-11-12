@@ -1,0 +1,15 @@
+{
+	"name": "orange-config-unsupported",
+	"main": "./worker.ts",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"ai": { "binding": "AI" },
+	"d1_databases": [
+		{ "binding": "DB", "database_name": "app", "database_id": "database-id", "preview_database_id": "preview-database-id" }
+	],
+	"kv_namespaces": [
+		{ "binding": "CACHE", "id": "00000000000000000000000000000000" },
+		{ "binding": "LOCAL_ONLY" }
+	],
+	"r2_buckets": [{ "binding": "BUCKET", "bucket_name": "uploads" }]
+}

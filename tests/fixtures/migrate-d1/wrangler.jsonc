@@ -1,0 +1,6 @@
+{
+	"name": "migrate-d1",
+	"main": "worker.js",
+	"compatibility_date": "2026-08-01",
+	"d1_databases": [{ "binding": "DB", "database_name": "migrate-d1", "database_id": "00000000-0000-4000-8000-000000000001" }]
+}

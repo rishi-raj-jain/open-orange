@@ -1,0 +1,42 @@
+{
+	"id": "free4chat",
+	"repo": "i365dev/free4chat",
+	"commit": "28f7f77fecc623bec4afc58d84d49b81c729cfac",
+	"stars": 1225,
+	"origin": "search",
+	"directory": "app",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": "app",
+	"install": "yarn install --ignore-scripts",
+	"build": [
+		"yarn cf-build"
+	],
+	"devVars": {
+		"TURNSTILE_DISABLED": "true"
+	},
+	"durableObjects": {
+		"classes": [
+			"RoomSession"
+		],
+		"file": "app/src/do/RoomSession.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"setAlarm",
+			"alarm",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a resident Agent's event socket stays open while the Room hibernates, and a message wakes it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

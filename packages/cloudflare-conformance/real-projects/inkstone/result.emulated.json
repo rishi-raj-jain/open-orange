@@ -1,0 +1,98 @@
+{
+	"schemaVersion": 1,
+	"id": "inkstone",
+	"repo": "shuaiplus/inkstone",
+	"commit": "f59087f66e8c524c465eb7a7ec9ab7883057af02",
+	"stars": 1163,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:08:22.513Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 9,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 12,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "a fresh instance serves the app and reports that it has no owner",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.5
+		},
+		{
+			"name": "the first account gets its starter notes, and a new note is stored",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "a change on one device notifies the other through SyncHub",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "two-factor setup and sign-in go through CredentialVault",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.6
+		},
+		{
+			"name": "a socket stays connected while SyncHub hibernates",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.4
+		},
+		{
+			"name": "CredentialVault still opens the stored secret after it sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 11.1
+		},
+		{
+			"name": "the account, notes, and vault key survive a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 16.6
+		}
+	],
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Replaces the [exports.SyncHub] and [exports.CredentialVault] tables in wrangler.toml with one migration that creates both SQLite classes.",
+			"why": "Unmodified, orange dev exits with: Unsupported Wrangler configuration: exports. The build copies that field into dist/inkstone/wrangler.json, the config that npm run deploy uses. The patch shows what lies behind that Orange bug."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"SyncHub",
+			"CredentialVault"
+		],
+		"file": "src/worker/durable/credential-vault.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"blockConcurrencyWhile",
+			"storage.get",
+			"storage.put"
+		]
+	}
+}

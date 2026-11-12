@@ -1,0 +1,7 @@
+{
+	"name": "worker-env",
+	"main": "worker.js",
+	"compatibility_date": "2026-08-01",
+	"kv_namespaces": [{ "binding": "CACHE", "id": "test" }],
+	"vars": { "GREETING": "from the image" }
+}

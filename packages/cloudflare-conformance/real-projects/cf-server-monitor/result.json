@@ -1,0 +1,94 @@
+{
+	"schemaVersion": 1,
+	"id": "cf-server-monitor",
+	"repo": "huilang-me/CF-Server-Monitor",
+	"commit": "609cc0b0998793510453be8eadced2064b28ad7d",
+	"stars": 2907,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:16:25.798Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 6,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "the dashboard and its config are served",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "the admin logs in and adds a server, which is stored in D1",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the broadcaster counts its subscribers across requests",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a probe's HTTP report reaches a subscribed browser",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 5.1
+		},
+		{
+			"name": "a probe reports over WebSocket, gets an ack, and reaches the browser",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a browser stays subscribed while the broadcaster hibernates",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 45.1,
+			"error": "Some actor was still awake 45000ms after the last client activity"
+		},
+		{
+			"name": "the server and the login survive a restart, and reports flow again",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 13
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"MetricsBroadcaster"
+		],
+		"file": "src/durable/MetricsBroadcaster.js",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"setWebSocketAutoResponse",
+			"storage.get",
+			"storage.put",
+			"storage.setAlarm",
+			"alarm"
+		]
+	}
+}

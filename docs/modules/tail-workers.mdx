@@ -1,0 +1,144 @@
+---
+title: Tail Workers
+description: Send a Worker's logs, exceptions, and outcomes to the tail() handler of Workers that it lists in tail_consumers, through Rivet Durable Streams.
+---
+
+# Tail Workers
+
+**Status:** Partial
+
+## Configuration
+
+OpenOrange reads the standard Wrangler `tail_consumers` list. A consumer can be
+the Worker itself or another Worker of the same `orange dev` session:
+
+```jsonc
+{
+  "name": "my-worker",
+  "tail_consumers": [{ "service": "my-tail-worker" }]
+}
+```
+
+The consumer exports a `tail()` handler:
+
+```js
+export default {
+  async tail(events, env, ctx) {
+    for (const event of events) {
+      console.log(event.outcome, event.event?.request?.url, event.logs);
+    }
+  },
+};
+```
+
+A `WorkerEntrypoint` default export can define `tail(events)` instead.
+
+## How it works
+
+The producer Worker appends events to a Rivet Durable Streams stream. The
+consumer's tail actor reads the stream from its saved offset and calls `tail()`.
+
+- Each `fetch`, service binding `fetch()`, `scheduled`, and `queue` event of the
+  Worker records its `console.debug/info/log/warn/error` calls, the errors that
+  its handler throws, and its outcome.
+- When the event ends, after its `waitUntil()` tasks, its `TraceItem` goes to
+  the [Rivet Durable Streams](https://rivet.dev/docs/integrations/durable-streams)
+  stream of each consumer's current segment, `tail/<consumer>/<n>`. The append
+  runs in the background after the response, so the request does no I/O for it.
+- Each consumer has one internal actor, `openorange:tail`, which runs in the
+  consumer Worker. It reads the stream from its saved offset and calls `tail()`
+  once per read, with the events of that read.
+- The offset moves only after `tail()` returns. When `tail()` throws, the same
+  events come again after 1 s, then 2 s, and so on up to 60 s. After 10 failed
+  calls, the events are dropped and the dev output shows an error.
+- Events wait in the stream while the consumer is not running. When the
+  consumer starts, it gets every event since its offset, up to the retention.
+- Log messages, `errorInfo`, exception fields, and the redaction of request
+  headers and URLs follow workerd. `request.getUnredacted()` returns the
+  original values.
+- A `tail()` invocation is not traced, so a Worker can tail itself.
+
+### Delivery guarantees
+
+| Case | Result |
+| --- | --- |
+| Consumer is not running | It gets the events when it starts. |
+| `tail()` throws | The same events come again. |
+| The runtime crashes during `tail()` | The same events come again after a restart. |
+| The runtime crashes after `tail()` returns, before the offset is saved | The last batch comes again. |
+| Overlapping requests | Each `TraceItem` holds only its own event's logs and exceptions. |
+| A producer stops before its append | Events not yet appended, at most a few milliseconds' worth, are lost. |
+
+Delivery is at least once. A consumer can get an event twice, so a `tail()`
+handler that writes to an external system should tolerate duplicates.
+
+### Segments and retention
+
+Each consumer's events go to one stream per time window, a segment. The
+consumer deletes a segment once it has read past it. A segment that no consumer
+reads expires on its own after the retention.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `ORANGE_TAIL_SEGMENT_SECONDS` | 3600 | Length of one segment |
+| `ORANGE_TAIL_RETENTION_SECONDS` | 604800 (7 days) | How long an undelivered segment is kept after it ends |
+
+Set both in the environment of `orange dev` or `orange serve`, not in a
+Worker's vars, so every Worker of the deployment uses the same values. Orange
+keeps at most 2,048 segments in the retention, and makes segments longer to stay
+under it.
+
+The clocks of a cluster's nodes must agree to within 60 seconds. An event that a
+node with a slow clock appends to a segment that the consumer has already left
+is lost.
+
+### Rivet Services
+
+Durable Streams runs in Rivet Services, which ships with RivetKit as
+`@rivet-dev/services`.
+
+- `orange dev` starts one Services process for the session, next to its local
+  Rivet Engine, when a Worker of the session uses `tail_consumers`. It stops
+  with the session, also when the runtime crashes. Its log is in
+  `.open-orange/rivetkit/<id>/.rivetkit/var/logs/rivet-services/`.
+- Orange calls the streams through the Engine, so the Services HTTP port is not
+  used. Services binds a free port on 127.0.0.1.
+- Without the Services binary, a Worker with `tail_consumers` fails to start
+  with an error that says how to install it. `RIVET_SERVICES_BINARY` points to
+  another binary.
+
+### On a cluster
+
+`orange serve` does not start Services. The cluster's Rivet namespace needs a
+Services deployment in the envoy pool `services`, next to the Orange pool:
+
+1. Deploy the `rivetdev/services` image of the same version as
+   `@rivet-dev/services` in Orange's lockfile, with `RIVET_ENDPOINT`,
+   `RIVET_NAMESPACE`, and `RIVET_TOKEN` of the namespace. Its pool name is
+   always `services`.
+2. Orange's token needs to create and call actors in that namespace.
+
+Until Services runs, the producers keep events in memory, up to 10,000 per
+consumer. The first failed append prints an error that names the missing
+`services` pool.
+
+## Conformance coverage
+
+- `tests/tail-consumers.test.ts` compares a Worker that tails itself and
+  another Worker with workerd 1.20260903.1, including a handler that throws and
+  20 overlapping requests. It also covers a consumer that was not running, a
+  `tail()` that throws, a runtime that crashes during `tail()`, a missing
+  Services binary, the deletion of a delivered segment, the expiry of an
+  undelivered one, and Services after its runtime is killed.
+- The upstream `self-logger-test` and `errorinfo-tail-test` files run with the
+  Worker as its own tail consumer.
+
+## Known deviations
+
+- Durable Object events, JS RPC calls, `connect()`, alarms, and WebSocket events
+  are not traced.
+- `cpuTime` is always 0. `wallTime` is the event's wall time in milliseconds.
+- `diagnosticsChannelEvents` is always empty.
+- Cloudflare does not keep events for a consumer that is not deployed. OpenOrange
+  keeps them until the consumer reads them, up to the retention.
+- `streaming_tail_consumers` and Worker Loader `tails` are not supported.

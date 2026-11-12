@@ -1,0 +1,27 @@
+{
+	"id": "lifecycle",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"local": true,
+	"baseline": true,
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "",
+	"durableObjects": {
+		"classes": [
+			"Room"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"alarms",
+			"hibernatable WebSockets",
+			"storage.put"
+		]
+	},
+	"changes": []
+}

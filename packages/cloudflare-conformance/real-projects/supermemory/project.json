@@ -1,0 +1,30 @@
+{
+	"id": "supermemory",
+	"repo": "supermemoryai/supermemory",
+	"commit": "16ed414e0e0c61c946b7687ec813b2064fe75dd4",
+	"stars": 31518,
+	"origin": "search",
+	"directory": "apps/mcp",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "bun install --ignore-scripts",
+	"build": [
+		"bun run build:widget"
+	],
+	"durableObjects": {
+		"classes": [
+			"SpaceState"
+		],
+		"file": "apps/mcp/src/server/space-state.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"storage.transaction",
+			"storage.setAlarm"
+		]
+	},
+	"changes": []
+}

@@ -1,0 +1,19 @@
+---
+// Inline text with more detail on hover or keyboard focus. The text gets a
+// dotted underline; the detail shows above it. `align` keeps the tip inside
+// narrow columns: start and end pin it to that edge of the text.
+interface Props {
+	tip: string;
+	align?: 'start' | 'center' | 'end';
+	class?: string;
+}
+const { tip, align = 'center', class: className } = Astro.props;
+const id = `tip-${Math.random().toString(36).slice(2, 9)}`;
+const pos = { start: 'left-0', center: 'left-1/2 -translate-x-1/2', end: 'right-0' }[align];
+---
+
+<span class:list={['group/tip relative inline cursor-help focus-visible:outline-none', className]} tabindex="0" aria-describedby={id}><span class="underline decoration-current/35 decoration-dotted underline-offset-[3px] group-focus-visible/tip:decoration-orange"><slot /></span><span
+		id={id}
+		role="tooltip"
+		class={`pointer-events-none absolute bottom-full z-30 mb-2 w-64 whitespace-normal rounded-lg bg-plate px-3.5 py-2.5 text-left font-sans text-[13px] font-normal normal-case leading-snug tracking-normal text-paper dark:text-cream opacity-0 shadow-lg transition-opacity group-hover/tip:opacity-100 group-focus/tip:opacity-100 motion-reduce:transition-none ${pos}`}
+	>{tip}</span></span>

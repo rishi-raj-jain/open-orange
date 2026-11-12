@@ -1,0 +1,44 @@
+{
+	"id": "agents",
+	"repo": "cloudflare/agents",
+	"commit": "455b47ec93f99f306f644ac06bc8b72b0627c1fc",
+	"stars": 5942,
+	"origin": "official",
+	"directory": "examples/playground",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts",
+	"build": [
+		"pnpm --filter @cloudflare/agents-playground^... build"
+	],
+	"devVars": {
+		"EMAIL_SECRET": "local-only-email-secret"
+	},
+	"durableObjects": {
+		"classes": [
+			"StateAgent",
+			"ScheduleAgent",
+			"SqlAgent",
+			"SupervisorAgent",
+			"ChildAgent"
+		],
+		"file": "examples/playground/src/server.ts",
+		"uses": [
+			"storage.sql",
+			"setAlarm",
+			"acceptWebSocket",
+			"serializeAttachment",
+			"rpc"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a client socket stays open while the agent hibernates, and a call wakes it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

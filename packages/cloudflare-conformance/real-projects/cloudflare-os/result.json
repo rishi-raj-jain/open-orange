@@ -1,0 +1,109 @@
+{
+	"schemaVersion": 1,
+	"id": "cloudflare-os",
+	"repo": "cloudflare/cloudflare-os",
+	"commit": "b533f8aa1a64ecfce29e43d29f1d925b9d57c10c",
+	"stars": 11666,
+	"origin": "official",
+	"directory": "packages/workshop-backend",
+	"ranAt": "2026-11-05T14:40:57.702Z",
+	"orange": {
+		"sha": "96efb7b",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 11,
+		"command": "pnpm install --ignore-scripts --frozen-lockfile"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 5,
+		"command": "node scripts/build-bundled-blueprints.ts && pnpm --dir ../.. exec vp run --cache @gadgets/typed-storage#build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 14
+	},
+	"steps": [
+		{
+			"name": "the RPC endpoint refuses a plain GET and serves its config over a WebSocket",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "an account is created in its object, and bad logins are refused",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 1
+		},
+		{
+			"name": "a session changes the user's profile, and a later session reads it",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a second account has its own object and profile",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the account and profile come back after the objects sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 13.1
+		},
+		{
+			"name": "a workspace is created in its Overseer object, titled, and reopened from a new session",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the Overseer object sleeps once the workspace's sessions have ended",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 13
+		},
+		{
+			"name": "the account and profile survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 16
+		},
+		{
+			"name": "an agent answers in a workspace",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"AI provider API key"
+			]
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"UserDurableObject",
+			"OverseerDurableObject",
+			"AdminSettings",
+			"PendingLogin",
+			"UserDirectoryDurableObject"
+		],
+		"file": "packages/workshop-backend/src/user.ts",
+		"uses": [
+			"storage.sql",
+			"RPC",
+			"ctx.exports",
+			"getByName",
+			"RPC callbacks"
+		]
+	},
+	"changes": []
+}

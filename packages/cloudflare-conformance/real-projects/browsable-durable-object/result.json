@@ -1,0 +1,96 @@
+{
+	"schemaVersion": 1,
+	"id": "browsable-durable-object",
+	"repo": "outerbase/browsable-durable-object",
+	"commit": "1299aa4e99f09a51a7d6a48970c4a3f49e9db90f",
+	"stars": 44,
+	"origin": "awesome-list",
+	"directory": "consumer",
+	"ranAt": "2026-11-05T02:18:12.649Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 5,
+		"command": "pnpm install --frozen-lockfile --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "/query/raw writes with bound parameters, and another request reads the rows",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "/query/raw runs a transaction list, and returns one result for each statement",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "other routes reach the class's own fetch, and a preflight gets the CORS headers",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a failed statement returns a server error, and the rows stay",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Studio refuses wrong credentials, and serves its pages with the right ones",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Studio reads and writes through __studio RPC, and a failing transaction rolls back",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the rows survive the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10
+		},
+		{
+			"name": "the rows survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.3
+		}
+	],
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Adds consumer/: the README's @Browsable() class and studio() Worker, importing the committed dist/index.js, with a Wrangler config and a tsconfig.json with target es2024.",
+			"why": "library: no deployable Worker in the repository. The consumer needs its own tsconfig.json because the library's (target ES2020) makes the decorated class throw 'Must call super constructor' when it has a class field, on wrangler dev too."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"MyDurableObject"
+		],
+		"file": "src/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"RPC"
+		]
+	}
+}

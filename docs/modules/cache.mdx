@@ -1,0 +1,83 @@
+---
+title: Cache API
+description: Use caches.default and caches.open() with OpenOrange, backed by a local Rivet Actor.
+---
+
+# Cache API
+
+**Status:** Partial. Runs on one Rivet Actor for each cache name.
+
+## Configuration
+
+The Cache API needs no configuration. `caches.default` and `caches.open(name)`
+store entries by default.
+
+To get the `workers.dev` behaviour, where every call succeeds and nothing is
+stored, set `ORANGE_CACHE=off` before `orange dev`:
+
+```sh
+ORANGE_CACHE=off orange dev
+```
+
+`ORANGE_CACHE` accepts `on` (the default) and `off`. Other values stop
+`orange dev` with an error.
+
+## How it works
+
+Each cache name is one internal Durable Object (`openorange:cache`), which runs
+as a Rivet Actor with SQLite storage. `caches.default` uses the name `default`
+and `caches.open("x")` uses `named:x`, as Miniflare does. Entries persist
+across `orange dev` restarts in the project's `.open-orange` directory.
+
+The rules follow workerd and Miniflare's cache plugin:
+
+- `put()` throws workerd's `TypeError` for a non-GET request, a `206`
+  response, a `Vary: *` header, an error response, or a WebSocket response.
+  A `304` response is ignored.
+- Freshness comes from `Cache-Control` (`s-maxage`, then `max-age`) and
+  `Expires`, evaluated as a shared cache. The request `Cache-Control` is
+  ignored.
+- `no-store`, `private`, `no-cache`, and any `Set-Cookie` header mean the
+  entry is not stored. `put()` still resolves, as in workerd.
+  `Cache-Control: private=Set-Cookie` stores the response without its
+  `Set-Cookie` header.
+- `match()` returns the entry with `cf-cache-status: HIT`, or `undefined`.
+  Expired entries miss.
+- `match()` honours `If-None-Match` and `If-Modified-Since` (`304`), and
+  `Range` (`206`, or `416` with `Content-Range: bytes */<size>`).
+- `match()` and `delete()` treat a non-GET request as a miss unless
+  `ignoreMethod: true`.
+- `delete()` returns `true` only when a live entry was removed.
+- `request.cf.cacheKey` replaces the URL as the key when set.
+
+Orange does not copy Cloudflare's 512 MB limit on a cached body. Bodies are
+stored in 512 KiB chunks, one commit each, so Rivet's commit limit does not
+bound an entry either. A put commits its body atomically, so a
+concurrent `match()` reads one whole body, never a mix of two puts.
+
+### `fetch()` with `cf.cacheTtl` or `cf.cacheEverything`
+
+These options do not use the Cache API. Subrequests always go to the origin.
+`wrangler dev` (Miniflare) does the same. On Cloudflare they control the zone's
+edge cache, which is separate from the Cache API.
+
+## Conformance
+
+`src/runtime/cache.test.ts` drives the Cache API through a real `orange dev`
+over HTTP: hits, expiry, uncacheable responses, `304`, `206` and `416`,
+concurrent puts on one URL, restarts, and `ORANGE_CACHE=off`.
+
+## Limits and deviations
+
+- There is one cache per project, not one per data center. Entries are not
+  evicted before they expire.
+- `Vary` is ignored for matching. Only `Vary: *` changes behaviour: `put()`
+  throws.
+- A `Range` with several ranges gets the whole body with `200`. Miniflare
+  sends `multipart/byteranges`.
+- Orange serves `206` for any stored entry. Cloudflare requires a stored
+  `Content-Length`.
+- The per-request call limit (50 or 1,000) is not enforced.
+- `cache.add()` and `cache.addAll()` are not defined.
+- In a Worker with no Durable Objects or storage bindings, the first Cache API
+  call starts the Rivet Engine and waits a few seconds.

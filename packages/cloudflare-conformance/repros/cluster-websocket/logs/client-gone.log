@@ -1,0 +1,11 @@
+06:13:18 OPEN live-acc accepted
+06:13:19 OPEN live-std standard
+06:13:22 KILLED connection cut, no close frame
+06:13:23 KILLED lastClose after 0s {"at":"2026-11-05T06:13:23.038Z","code":1006,"reason":"WebSocket disconnected without sending Close frame.","wasClean":false} sameBoot=true
+06:13:23 KILLED object slept: true
+06:15:14 SILENT client saw close 1006 after 90s pings=2
+06:15:16 SILENT lastClose after 92s {"at":"2026-11-05T06:15:14.532Z","code":1006,"reason":"WebSocket disconnected without sending Close frame.","wasClean":false} sameBoot=true pings=2
+06:15:16 SILENT object slept: true
+06:18:57 LIVE OPEN live-acc at 340s pings=11
+06:18:57 LIVE OPEN live-std at 340s pings=11
+06:18:57 GONEDONE

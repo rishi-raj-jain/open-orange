@@ -1,0 +1,96 @@
+{
+	"schemaVersion": 1,
+	"id": "durable-utils",
+	"repo": "lambrospetrou/durable-utils",
+	"commit": "038d378b06f320e66539d3284eff5e1dfbb95b84",
+	"stars": 97,
+	"origin": "named",
+	"directory": "test",
+	"ranAt": "2026-11-05T02:22:14.360Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 8,
+		"command": "npm ci --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 4
+	},
+	"steps": [
+		{
+			"name": "StaticShardedDO spreads writes over shards, and all() reads each one back",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "SQLSchemaMigrations records the last migration in each shard's storage",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "tryAll keeps a failure in its shard, and all() throws the first error",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "tryN retries a failing object call until it succeeds",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "wikis and migration state survive a sleep, and the ALTER TABLE does not run again",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "wikis and migration state survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.5
+		},
+		{
+			"name": "RegionPlacer runs a Worker method through a placed object, by both of its routes",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		}
+	],
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Adds the README's TenantDO class to the test fixture Worker (test/workers-test.ts), routes that use SQLSchemaMigrations, StaticShardedDO, stubByName, and tryN, and its binding and migration in test/wrangler.toml.",
+			"why": "library: no deployable Worker in the repository. The fixture Worker and the region-placer example serve only the region placer routes, and do not reach the library's state API."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"TenantDO",
+			"RegionPlacerDO",
+			"SQLiteDO",
+			"CASPaxosDO"
+		],
+		"file": "src/sql-migrations.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.kv",
+			"storage.transactionSync",
+			"RPC",
+			"WorkerEntrypoint",
+			"RpcTarget"
+		]
+	}
+}

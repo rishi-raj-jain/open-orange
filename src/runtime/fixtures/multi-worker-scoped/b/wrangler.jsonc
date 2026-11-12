@@ -1,0 +1,10 @@
+{
+	"name": "scoped-b",
+	"main": "worker.js",
+	"compatibility_date": "2025-09-01",
+	"vars": { "NAME": "scoped-b" },
+	"triggers": { "crons": ["* * * * *"] },
+	"queues": {
+		"consumers": [{ "queue": "jobs", "max_batch_timeout": 0 }]
+	}
+}

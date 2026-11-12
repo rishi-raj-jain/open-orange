@@ -1,0 +1,32 @@
+{
+	"name": "@open-orange/cloudflare-conformance",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Cloudflare API and Wrangler CLI conformance tooling for OpenOrange",
+	"license": "Apache-2.0",
+	"type": "module",
+	"scripts": {
+		"generate": "tsx src/bin.ts generate",
+		"check": "tsx src/bin.ts check",
+		"upstream": "tsx src/bin.ts upstream",
+		"results:save": "tsx src/bin.ts save-results",
+		"report": "pnpm --dir ../../website build",
+		"real-projects": "tsx src/bin.ts real-projects",
+		"example-results": "tsx src/bin.ts example-results",
+		"truth-table": "tsx src/bin.ts truth-table",
+		"test": "tsx --test 'src/**/*.test.ts'",
+		"typecheck": "tsc --noEmit",
+		"site": "pnpm --dir ../../website dev"
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"devDependencies": {
+		"@open-orange/runtime-node": "workspace:*",
+		"@types/node": "24.3.0",
+		"tsx": "4.20.5",
+		"typescript": "5.9.3",
+		"workerd": "1.20260903.1",
+		"wrangler": "4.129.0"
+	}
+}

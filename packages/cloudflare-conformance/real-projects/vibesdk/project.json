@@ -1,0 +1,49 @@
+{
+	"id": "vibesdk",
+	"repo": "cloudflare/vibesdk",
+	"commit": "32c9e429cd2712ea5959a89f65ae434162b89229",
+	"stars": 5451,
+	"origin": "official",
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "bun install --ignore-scripts",
+	"build": [
+		"bun run build"
+	],
+	"d1Migrations": [
+		"DB"
+	],
+	"devVars": {
+		"ENVIRONMENT": "dev",
+		"JWT_SECRET": "corpus-local-jwt-secret-0123456789abcdef",
+		"WEBHOOK_SECRET": "corpus-local-webhook-secret-0123456789",
+		"CUSTOM_DOMAIN": "localhost"
+	},
+	"durableObjects": {
+		"classes": [
+			"DORateLimitStore",
+			"ThinkAgent",
+			"SpaceDO",
+			"CodeGeneratorAgent",
+			"UserAppSandboxService",
+			"UserSecretsStore"
+		],
+		"file": "worker/services/rate-limit/DORateLimitStore.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"RPC methods",
+			"agents Agent"
+		]
+	},
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Two imports in worker/api/controllers/artifacts/controller.ts use the relative path that the wrangler.jsonc alias names",
+			"why": "Orange ignores the Wrangler alias field, and orange dev exits with: No such module \"artifacts-viewer\". The patch shows what lies behind that error. Repro: repros/wrangler-alias-field."
+		}
+	]
+}

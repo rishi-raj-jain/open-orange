@@ -1,0 +1,872 @@
+---
+import Base from '@/layouts/Base.astro';
+import Cta from '@/components/Cta.astro';
+import Chip from '@/components/compat/Chip.astro';
+import TipScript from '@/components/compat/TipScript.astro';
+import Row from '@/components/compat/Row.astro';
+import RowHead from '@/components/compat/RowHead.astro';
+import ClaimRow from '@/components/compat/ClaimRow.astro';
+import ResultCount from '@/components/compat/ResultCount.astro';
+import ProjectRow from '@/components/compat/ProjectRow.astro';
+import MatrixRow from '@/components/compat/MatrixRow.astro';
+import TestGrid from '@/components/compat/TestGrid.astro';
+import RunChart from '@/components/compat/RunChart.astro';
+import {
+	AREA_PROGRESS,
+	CAUSES,
+	CAUSE_MEANING,
+	CHANGES,
+	CLAIM_LABEL,
+	CONFORMANCE,
+	DO_FAILING,
+	GAINED,
+	HISTORY_RUNS,
+	MATRIX,
+	MATRIX_CATEGORIES,
+	MATRIX_LABEL,
+	PROJECT_LABEL,
+	RUN_LIST,
+	SUMMARY,
+	SYNTHETIC_FILES,
+	TEMPLATES,
+	TEMPLATE_LABEL,
+	TEMPLATE_MODES,
+	TEMPLATE_MODE_TOTALS,
+	TESTS,
+	TONE_CLASS,
+	TRUTH,
+	fmt,
+	inline,
+	percent,
+	shortFile,
+	utcTime,
+	type Area,
+	type MatrixStatus,
+	type ProjectStatus,
+	type TestRow,
+} from '@/data/conformance';
+import { BINDINGS, BINDING_SLUG_BY_CLAIM, BINDING_SLUG_BY_MATRIX } from '@/data/bindings';
+
+const { totals } = SUMMARY;
+const score = percent(totals.all.pass, totals.all.total);
+const projects = TRUTH.summary.projects;
+const projectCount = TRUTH.projects.length;
+const claims = TRUTH.summary.claims;
+const claimTotal = Object.values(claims).reduce((a, b) => a + b, 0);
+const failing = totals.all.total - totals.all.pass;
+
+/** Notices are claims about features on the way; they lead the areas. */
+const areas: Area[] = [
+	...(TRUTH.notices.length
+		? [{ id: 'coming-soon', title: 'Coming soon', summary: 'On the roadmap. Each row says what happens today and what to do until it lands.', claims: TRUTH.notices }]
+		: []),
+	...TRUTH.areas,
+];
+
+const projectFilters: { id: ProjectStatus | 'all'; label: string; count: number }[] = [
+	{ id: 'all', label: 'All', count: projectCount },
+	{ id: 'works', label: PROJECT_LABEL.works.label, count: projects.works },
+	{ id: 'works-emulated', label: PROJECT_LABEL['works-emulated'].label, count: projects['works-emulated'] ?? 0 },
+	{ id: 'partial', label: PROJECT_LABEL.partial.label, count: projects.partial },
+	{ id: 'needs-secrets', label: PROJECT_LABEL['needs-secrets'].label, count: projects['needs-secrets'] },
+	{ id: 'fails', label: PROJECT_LABEL.fails.label, count: projects.fails },
+].filter((f) => f.count > 0 || f.id === 'all');
+
+const matrixStatuses = (Object.keys(MATRIX_LABEL) as MatrixStatus[]).map((id) => ({
+	id,
+	...MATRIX_LABEL[id],
+	count: MATRIX.filter((e) => e.status === id).length,
+}));
+
+const sortedProjects = [...TRUTH.projects].sort((a, b) => b.stars - a.stars);
+
+const bindingName = new Map(BINDINGS.map((b) => [b.slug, b.product.product]));
+const bindingLink = (slug: string | undefined) => (slug ? { href: `/docs/bindings/#${slug}`, name: bindingName.get(slug) ?? slug } : undefined);
+
+const emulated = TRUTH.emulatedHibernation;
+const cloud = TRUTH.cloud;
+const upstreamDo = SUMMARY.perArea['Durable Objects'] ?? { pass: 0, total: 0 };
+const doFailingCount = DO_FAILING.tests.length;
+const firstRun = HISTORY_RUNS[0];
+const runsShown = 6;
+const notSupported = Object.entries(SUMMARY.notSupported);
+const quotaTests = TESTS.filter((t) => t.status === 'quota');
+const testName = (t: TestRow) => `${shortFile(t.file)} › ${t.test}`;
+const minutes = SUMMARY.wallSeconds ? Math.round(SUMMARY.wallSeconds / 60) : null;
+const sources = TRUTH.sources;
+const dateOf = (iso: string) => iso.slice(0, 10);
+const cloudDates = [...new Set(cloud.projects.map((p) => dateOf(p.ranAt)))].sort();
+---
+
+<Base
+	title="Compatibility — OpenOrange"
+	description={`${fmt(totals.all.pass)} of ${fmt(totals.all.total)} conformance tests pass. What works, what is partial and what does not, from recorded runs against workerd's test suite and ${projectCount} real open-source projects.`}
+>
+	<section>
+		<div class="container-x pt-20 md:pt-28">
+			<h1 class="h-hero max-w-4xl">{score}% of conformance tests pass.</h1>
+			<p class="lede mt-7 max-w-2xl">
+				Scored against workerd's own test suite, probes run side by side with workerd, and {projectCount} real open-source projects. Every number comes from a recorded run. Hover a dot for the test; open a row for the error.
+			</p>
+			<dl class="mt-12 flex flex-wrap gap-x-12 gap-y-4">
+				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{fmt(totals.all.pass)}<span class="text-[0.6em] text-ink-faint"> / {fmt(totals.all.total)}</span></dd><dt class="text-[15px] text-ink-faint">tests pass</dt></div>
+				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{projectCount}</dd><dt class="text-[15px] text-ink-faint">real projects run</dt></div>
+				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{TRUTH.summary.unmodified}</dd><dt class="text-[15px] text-ink-faint">of them unmodified</dt></div>
+				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{claims.works}<span class="text-[0.6em] text-ink-faint"> / {claimTotal}</span></dd><dt class="text-[15px] text-ink-faint">claims fully hold</dt></div>
+			</dl>
+			<p class="caption mt-6">
+				Run {SUMMARY.date} · OpenOrange <code class="code-chip">{SUMMARY.orange.sha}</code> · RivetKit <code class="code-chip">{SUMMARY.rivetkit.split('.').pop()}</code> · <a href={CONFORMANCE.workerdUrl} class="link" rel="noopener">workerd {SUMMARY.workerd.tag}</a>
+			</p>
+		</div>
+
+		<div class="container-x pt-14 pb-16 md:pt-16 md:pb-24">
+			<div class="card p-6 md:p-10">
+				<TestGrid />
+				<div class="mt-10 grid gap-10 border-t border-line pt-8 md:grid-cols-2 md:gap-14">
+					<div>
+						<p class="label">Why {fmt(failing)} tests fail</p>
+						<ul class="mt-4 divide-y divide-line">
+							{CAUSES.map((c) => (
+								<li class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-3 text-[14px]">
+									<span class="text-ink">{c.cause}</span>
+									<span class="row-num">{c.count}</span>
+									{CAUSE_MEANING[c.cause] ? <span class="text-[13px] leading-snug text-ink-faint">{CAUSE_MEANING[c.cause]}</span> : null}
+								</li>
+							))}
+						</ul>
+					</div>
+					<div>
+						<p class="label">What is counted</p>
+						<ul class="mt-4 divide-y divide-line text-[14px] text-ink">
+							<li class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-3"><span>workerd's own suite</span><span class="row-num">{fmt(totals.upstream.pass)} / {fmt(totals.upstream.total)}</span></li>
+							<li class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-3"><span>OpenOrange's Durable Object tests<span class="block text-[13px] leading-snug text-ink-faint">Counted under Durable Objects above.</span></span><span class="row-num">{totals.synthetic.pass} / {totals.synthetic.total}</span></li>
+							<li class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-3"><span>Not counted<span class="block text-[13px] leading-snug text-ink-faint">{fmt(totals.workerdOnly)} workerd-only tests that fail on plain Node.js too, {totals.infraExcluded} the runner could not host{totals.cloudflareQuotaCut ? `, and ${totals.cloudflareQuotaCut} cut short by a Cloudflare quota` : ''}.</span></span><span class="row-num">{fmt(totals.workerdOnly + totals.infraExcluded + (totals.cloudflareQuotaCut ?? 0))}</span></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="rule" id="claims">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">What works, by area.</h2>
+				<div class="lg:pt-2">
+					<p class="lede">A claim is <span class="font-medium text-ink">Works</span> when every recorded result behind it passed, <span class="font-medium text-ink">Partial</span> when some did, and <span class="font-medium text-ink">Does not work</span> when none did.</p>
+					<ul class="mt-6 flex flex-wrap gap-2">
+						{areas.map((a) => (
+							<li><a href={`#area-${a.id}`} class="pill">{a.title} <span class="text-ink-faint">{a.claims.length}</span></a></li>
+						))}
+					</ul>
+				</div>
+			</div>
+
+			<div class="mt-16 space-y-16">
+				{areas.map((a) => (
+					<div id={`area-${a.id}`} class="scroll-mt-24">
+						<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10">
+							<h3 class="h-sub">{a.title}</h3>
+							<p class="text-[15px] leading-[1.6] text-ink-soft" set:html={inline(a.summary)} />
+						</div>
+						<div class="mt-6">
+							<RowHead name={a.id === 'bindings' ? 'Binding' : 'Feature'} a="On Cloudflare" b="On OpenOrange" end="Results" />
+							<div class="rows">
+								{a.claims.map((c) => (
+									<ClaimRow claim={c} binding={bindingLink(BINDING_SLUG_BY_CLAIM[c.id])} />
+								))}
+							</div>
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+	</section>
+
+	<section class="rule" id="beyond">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">Past Cloudflare's limits.</h2>
+				<p class="lede lg:pt-2">Where OpenOrange does more than the platform allows. Each row is a probe that ran.</p>
+			</div>
+			<div class="mt-12">
+				<RowHead name="Limit" a="On Cloudflare" b="On OpenOrange" end="Results" />
+				<div class="rows">
+					{TRUTH.beyond.map((c) => (
+						<ClaimRow claim={c} />
+					))}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="rule" id="scaling">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">What each binding scales by.</h2>
+				<p class="lede lg:pt-2">The unit that adds capacity, and what runs one of them.</p>
+			</div>
+			<div class="mt-12">
+				<RowHead name="Binding" a="Scales by" b="What runs one unit" end="Results" />
+				<div class="rows">
+					{TRUTH.scaling.map((r) => {
+						const s = CLAIM_LABEL[r.status];
+						return (
+							<Row>
+								<Chip slot="status" tone={s.tone} label={s.label} />
+								<span slot="name" class="row-name">{r.binding}</span>
+								<span slot="a" class="row-text text-ink">{r.scalesBy}</span>
+								<span slot="b" class="text-[13.5px] leading-snug text-ink-soft" set:html={inline(r.detail)} />
+								<ResultCount slot="end" evidence={r.evidence} />
+							</Row>
+						);
+					})}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="rule" id="projects">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">{projectCount} real projects.</h2>
+				<p class="lede lg:pt-2">
+					Open-source Cloudflare Workers with Durable Objects, run on OpenOrange as published. {TRUTH.summary.unmodified} needed no change.
+				</p>
+			</div>
+
+			<dl class="mt-12 flex flex-wrap gap-x-12 gap-y-4">
+				{TRUTH.summary.failedSteps.map((f) => (
+					<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{f.steps}</dd><dt class="text-[15px] text-ink-faint">steps failed · {f.label}</dt></div>
+				))}
+			</dl>
+
+			<div class="mt-10 flex flex-wrap gap-2" role="group" aria-label="Filter projects" data-project-filters>
+				{projectFilters.map((f, i) => (
+					<button type="button" data-filter={f.id} aria-pressed={i === 0 ? 'true' : 'false'} class="pill">
+						{f.label} <span class="opacity-60">{f.count}</span>
+					</button>
+				))}
+			</div>
+
+			<div class="mt-6">
+				<RowHead name="Project" a="Size" b="Why a step failed" end="Steps passed" />
+				<div class="rows" data-project-list>
+					{sortedProjects.map((p) => (
+						<ProjectRow project={p} />
+					))}
+				</div>
+			</div>
+
+			<details class="mt-8" id="emulated-hibernation">
+				<summary class="cursor-pointer text-[14px] font-medium text-ink-soft hover:text-ink">
+					{emulated.steps.ran === 0
+						? `No emulated hibernation run is recorded for the ${emulated.steps.total} steps that fail for lack of hibernation`
+						: `With emulated hibernation, ${emulated.steps.pass} of the ${emulated.steps.total} steps that fail for lack of hibernation pass, in ${emulated.projects} projects`}
+				</summary>
+				<div class="mt-4 max-w-3xl space-y-3 text-[14px] leading-[1.6] text-ink-soft">
+					<p set:html={inline(emulated.note)} />
+					<p class="caption">{emulated.steps.ran} of {emulated.steps.total} steps reran this way, at OpenOrange <code class="code-chip">{emulated.orange.join(', ')}</code>, {dateOf(emulated.ranAt)}.</p>
+				</div>
+			</details>
+
+			{TRUTH.excluded.length ? (
+				<details class="mt-4">
+					<summary class="cursor-pointer text-[14px] font-medium text-ink-soft hover:text-ink">{TRUTH.excluded.length} candidates were left out</summary>
+					<ul class="mt-4 divide-y divide-line rounded-xl border border-line bg-surface text-[13.5px]">
+						{TRUTH.excluded.map((x) => (
+							<li class="grid gap-1 px-4 py-2.5 sm:grid-cols-[14rem_1fr]">
+								<span class="text-ink">{x.repo} <span class="text-ink-faint">{fmt(x.stars)} stars</span></span>
+								<span class="text-ink-soft">{x.reason}</span>
+							</li>
+						))}
+					</ul>
+				</details>
+			) : null}
+		</div>
+	</section>
+
+	<section class="rule" id="cloud">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">On Rivet Cloud.</h2>
+				<p class="lede lg:pt-2" set:html={inline(cloud.notes[0] ?? '')} />
+			</div>
+			<div class="mt-12">
+				<RowHead name="Project" a="Deployed with" b="What it is" end="Steps" />
+				<div class="rows">
+					{cloud.projects.map((p) => {
+						const ran = p.counts.pass + p.counts.fail;
+						const tone = p.counts.fail === 0 ? 'pass' : p.counts.pass === 0 ? 'fail' : 'warn';
+						const skipped = [p.counts.notApplicable ? `${p.counts.notApplicable} not applicable` : '', p.counts.needsSecrets ? `${p.counts.needsSecrets} needs secrets` : ''].filter(Boolean);
+						return (
+							<Row id={`cloud-${p.project}`}>
+								<Chip slot="status" tone={tone} label={tone === 'pass' ? 'Works' : tone === 'warn' ? 'Partial' : 'Fails'} />
+								<span slot="name" class="row-name">{p.project}<span class="row-meta font-normal">{p.repo}</span></span>
+								<span slot="a" class="row-text-faint"><code class="font-mono text-[12.5px]">{p.deployedWith}</code> · {p.plan} cluster · {dateOf(p.ranAt)}</span>
+								<span slot="b" class="row-text" set:html={inline(p.what)} />
+								<span slot="end" class="row-num md:text-right">
+									<span class={`block ${TONE_CLASS[tone].text}`}>{p.counts.pass}/{ran} pass</span>
+									{skipped.map((s) => <span class="block whitespace-nowrap text-ink-faint">{s}</span>)}
+								</span>
+								<dl>
+									<dt>What ran</dt>
+									<dd set:html={inline(p.ran)} />
+									{p.shortfalls.length ? (
+										<>
+											<dt>Where it falls short</dt>
+											<dd>
+												<ul class="list-disc space-y-1.5 pl-5">
+													{p.shortfalls.map((s) => <li set:html={inline(s)} />)}
+												</ul>
+											</dd>
+										</>
+									) : null}
+									<dt>Steps</dt>
+									<dd>
+										<ul class="results">
+											{p.steps.map((s) => {
+												const t = s.status === 'pass' ? 'pass' : s.status === 'fail' ? 'fail' : 'none';
+												const label = s.status === 'pass' ? 'Pass' : s.status === 'fail' ? 'Fail' : s.status === 'needs-secrets' ? 'Needs secrets' : 'Not applicable';
+												return (
+													<li>
+														<span class="flex min-w-0 items-start gap-2">
+															<span class={`${TONE_CLASS[t].dot} mt-1.5`} aria-hidden="true"></span>
+															<span class="min-w-0">
+																<span class="block text-ink" set:html={inline(s.name)} />
+																{s.note ? <span class="block text-ink-faint" set:html={inline(s.note)} /> : null}
+																{s.secrets?.length ? <span class="block text-ink-faint">Needs {s.secrets.join(', ')}</span> : null}
+																{s.error ? <span class="err">{s.error}</span> : null}
+															</span>
+														</span>
+														<span class={`whitespace-nowrap font-mono text-[12px] sm:text-right ${TONE_CLASS[t].text}`}>{label}</span>
+													</li>
+												);
+											})}
+										</ul>
+									</dd>
+									<dt>Source</dt>
+									<dd><a href={`https://github.com/${p.repo}/tree/${p.commit}`} class="link" rel="noopener">{p.repo}</a> at <code>{p.commit.slice(0, 7)}</code>{p.directory !== '.' ? <>, in <code>{p.directory}</code></> : null}.</dd>
+								</dl>
+							</Row>
+						);
+					})}
+				</div>
+			</div>
+			{cloud.notes.length > 1 ? (
+				<details class="mt-8">
+					<summary class="cursor-pointer text-[14px] font-medium text-ink-soft hover:text-ink">How these runs were set up</summary>
+					<ul class="mt-4 max-w-3xl list-disc space-y-2 pl-5 text-[14px] leading-[1.6] text-ink-soft">
+						{cloud.notes.slice(1).map((n) => <li set:html={inline(n)} />)}
+					</ul>
+				</details>
+			) : null}
+		</div>
+	</section>
+
+	<section class="rule" id="templates">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">Cloudflare's templates.</h2>
+				<p class="lede lg:pt-2">
+					{TEMPLATES.projects.length} templates from Cloudflare, each run on OpenOrange beside <code class="code-chip">wrangler dev</code> {TEMPLATES.wrangler} in three modes. Recorded by hand at OpenOrange {TEMPLATES.after.orange}, {TEMPLATES.after.date}; "was" is the run at {TEMPLATES.before.orange}, {TEMPLATES.before.date}.
+				</p>
+			</div>
+
+			<dl class="mt-12 grid gap-8 md:grid-cols-3">
+				{TEMPLATE_MODE_TOTALS.map((m) => (
+					<div>
+						<dt class="text-[15px] font-medium text-ink">{m.label}</dt>
+						<dd class="mt-2 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+							<span class="flex items-baseline gap-2"><span class="stat text-[1.75rem]">{m.works}</span><span class="text-[14px] text-ink-faint">work · was {m.worksBefore}</span></span>
+							<span class="flex items-baseline gap-2"><span class="stat text-[1.75rem]">{m.starts}</span><span class="text-[14px] text-ink-faint">start · was {m.startsBefore}</span></span>
+						</dd>
+						<dd class="mt-2 text-[13px] leading-snug text-ink-faint" set:html={inline(m.meaning)} />
+					</div>
+				))}
+			</dl>
+
+			<dl class="mt-8 grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2 lg:grid-cols-4">
+				{Object.values(TEMPLATE_LABEL).map((s) => (
+					<div class="flex items-start gap-2">
+						<span class={`${TONE_CLASS[s.tone].dot} mt-1.5`}></span>
+						<span><dt class="inline font-medium text-ink">{s.label}.</dt> <dd class="inline text-ink-soft" set:html={inline(s.meaning)} /></span>
+					</div>
+				))}
+			</dl>
+
+			<div class="mt-8">
+				<RowHead status={TEMPLATE_MODES[0].label} name="Template" a={TEMPLATE_MODES[1].label} b={TEMPLATE_MODES[2].label} end="Modes that work" />
+				<div class="rows">
+					{TEMPLATES.projects.map((p) => {
+						const [unchanged, build, probe] = TEMPLATE_MODES.map((m) => ({
+							now: TEMPLATE_LABEL[p.after[m.id]],
+							was: p.before[m.id] !== p.after[m.id] ? TEMPLATE_LABEL[p.before[m.id]].label : null,
+						}));
+						const works = TEMPLATE_MODES.filter((m) => p.after[m.id] === 'works').length;
+						const tone = works === TEMPLATE_MODES.length ? 'pass' : works === 0 ? 'fail' : 'warn';
+						return (
+							<Row id={`template-${p.project}`}>
+								<span slot="status" class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="w-32 text-[12.5px] text-ink-faint md:hidden">{TEMPLATE_MODES[0].label}</span><Chip tone={unchanged.now.tone} label={unchanged.now.label} />{unchanged.was ? <span class="text-[12.5px] text-ink-faint">was {unchanged.was}</span> : null}</span>
+								<span slot="name" class="row-name">{p.project}</span>
+								<span slot="a" class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="w-32 text-[12.5px] text-ink-faint md:hidden">{TEMPLATE_MODES[1].label}</span><Chip tone={build.now.tone} label={build.now.label} />{build.was ? <span class="text-[12.5px] text-ink-faint">was {build.was}</span> : null}</span>
+								<span slot="b" class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="w-32 text-[12.5px] text-ink-faint md:hidden">{TEMPLATE_MODES[2].label}</span><Chip tone={probe.now.tone} label={probe.now.label} />{probe.was ? <span class="text-[12.5px] text-ink-faint">was {probe.was}</span> : null}</span>
+								<span slot="end" class={`row-num ${TONE_CLASS[tone].text}`}>{works}/{TEMPLATE_MODES.length}</span>
+								<dl>
+									<dt>Flows tested</dt>
+									<dd set:html={inline(p.flows)} />
+									<dt>What still blocks</dt>
+									<dd set:html={p.blocker ? inline(p.blocker) : 'Nothing. Every mode works.'} />
+									<dt>Source</dt>
+									<dd><a href={p.url} class="link" rel="noopener">cloudflare/templates</a></dd>
+								</dl>
+							</Row>
+						);
+					})}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="rule" id="durable-objects">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">Durable Objects, test by test.</h2>
+				<p class="lede lg:pt-2">
+					{fmt(DO_FAILING.total - doFailingCount)} of {fmt(DO_FAILING.total)} Durable Object tests pass: {upstreamDo.pass} of {upstreamDo.total} from workerd's suite, and {totals.synthetic.pass} of {totals.synthetic.total} that OpenOrange ports from workerd's C++ tests, scored only where workerd passes them.
+				</p>
+			</div>
+
+			<div class="mt-14 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10">
+				<h3 class="h-sub">OpenOrange's own tests</h3>
+				<ul class="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-ink-soft md:pt-1.5">
+					<li class="flex items-center gap-2"><span class="inline-block size-2.5 rounded-[3px] bg-pass"></span>Passes</li>
+					{SYNTHETIC_FILES.some((f) => f.fresh) ? <li class="flex items-center gap-2"><span class="inline-block size-2.5 rounded-[3px] bg-pass/50"></span>Newly passing</li> : null}
+					<li class="flex items-center gap-2"><span class="inline-block size-2.5 rounded-[3px] bg-warn"></span>Fails, a known gap in the matrix</li>
+					<li class="flex items-center gap-2"><span class="inline-block size-2.5 rounded-[3px] bg-fail"></span>Fails</li>
+				</ul>
+			</div>
+			<ul class="mt-6 border-t border-line">
+				{SYNTHETIC_FILES.map((f) => (
+					<li class="grid items-center gap-x-6 gap-y-2 border-b border-line px-2 py-3 md:grid-cols-[15rem_minmax(0,1fr)_6rem]">
+						<span class="font-mono text-[13px] text-ink">{f.file}</span>
+						<span class="flex h-2 overflow-hidden rounded-full bg-ink/5" role="img" aria-label={`${f.pass} of ${f.total} pass`}>
+							<span class="bg-pass" style={`flex:${f.pass - f.fresh}`}></span>
+							<span class="bg-pass/50" style={`flex:${f.fresh}`}></span>
+							<span class="bg-warn" style={`flex:${f.gaps.length}`}></span>
+							<span class="bg-fail" style={`flex:${f.fails.length}`}></span>
+						</span>
+						<span class="row-num md:text-right">{f.pass}/{f.total}{f.fresh ? ` · +${f.fresh}` : ''}</span>
+					</li>
+				))}
+			</ul>
+
+			<div class="mt-16 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10">
+				<h3 class="h-sub">Still failing</h3>
+				<p class="text-[15px] leading-[1.6] text-ink-soft">
+					{doFailingCount} of {DO_FAILING.total}, upstream and OpenOrange's own. A <span class="font-medium text-ink">Known gap</span> is a difference the feature matrix records; its row says why. Open a row for the error.
+				</p>
+			</div>
+			<div class="mt-6">
+				<RowHead name="Test" a="Cause" b="What OpenOrange does" end="Matrix row" />
+				<div class="rows">
+					{DO_FAILING.tests.map(({ test: t, entry }) => (
+						<Row id={`do-${t.file}-${t.test}`}>
+							<Chip slot="status" tone={entry ? 'warn' : 'fail'} label={entry ? 'Known gap' : 'Fails'} />
+							<span slot="name" class="row-name">{t.test}<span class="row-meta font-mono font-normal">{shortFile(t.file)}</span></span>
+							<span slot="a" class="row-text-faint">{t.cause ?? '—'}</span>
+							<span slot="b" class="row-text" set:html={entry ? inline(entry.orange) : ''} />
+							{entry ? (
+								<a slot="end" href={`#${entry.id}`} class="link text-[13px] no-underline hover:underline" set:html={inline(entry.name)} />
+							) : (
+								<span slot="end" class="row-num text-ink-faint">—</span>
+							)}
+							<dl>
+								<dt>Test</dt>
+								<dd><code>{t.file} › {t.test}</code></dd>
+								{t.error ? (
+									<>
+										<dt>Error</dt>
+										<dd><span class="err">{t.error}</span></dd>
+									</>
+								) : null}
+							</dl>
+						</Row>
+					))}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="rule" id="history">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">How the score moved.</h2>
+				<p class="lede lg:pt-2">
+					{HISTORY_RUNS.length} saved runs, one point per commit, from {firstRun.name} (<code class="code-chip">{firstRun.sha}</code>) to this one. Every counted test, upstream and OpenOrange's own. Hover the chart for a run's counts.
+				</p>
+			</div>
+
+			<div class="card mt-12 p-6 md:p-10">
+				<RunChart />
+				<p class="caption mt-4">Counts in the legend are this run's. Runs are evenly spaced in commit order. Times are UTC: the commit time, or the run's start where the commit time was not recorded. The total moves when the suite or what is counted changes; each run's note below says why.</p>
+			</div>
+
+			{CHANGES ? (
+				<div class="mt-16">
+					<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10">
+						<h3 class="h-sub">Since the previous run</h3>
+						<p class="text-[15px] leading-[1.6] text-ink-soft">
+							Compared test by test with {CHANGES.since.name} (<code class="code-chip">{CHANGES.since.sha}</code>, {CHANGES.since.date}): {fmt(CHANGES.score.before.pass)} of {fmt(CHANGES.score.before.total)} then, {fmt(CHANGES.score.now.pass)} of {fmt(CHANGES.score.now.total)} now.
+							{CHANGES.joinedScore ? ` ${CHANGES.joinedScore} tests joined the score.` : ''}
+							{CHANGES.removed ? ` ${CHANGES.removed} scored tests are no longer in the suite.` : ''}
+						</p>
+					</div>
+					<div class="mt-8 grid gap-10 md:grid-cols-3 md:gap-14">
+						{[
+							{ label: 'Newly passing', count: CHANGES.newlyPassing.length, tests: CHANGES.newlyPassing, quotas: 0, detail: (t: TestRow) => t.area },
+							{ label: 'Newly failing', count: CHANGES.newlyFailing.length, tests: CHANGES.newlyFailing, quotas: 0, detail: (t: TestRow) => t.cause ?? t.area },
+							{
+								label: 'No longer counted',
+								count: CHANGES.leftScore.length,
+								tests: CHANGES.leftScore.filter((t) => t.status !== 'quota'),
+								quotas: CHANGES.leftScore.filter((t) => t.status === 'quota').length,
+								detail: (t: TestRow) => t.cause ?? 'Not scored',
+							},
+						].map((g) => (
+							<div>
+								<p class="flex items-baseline justify-between gap-4 border-b border-line pb-3"><span class="label">{g.label}</span><span class="stat text-[1.75rem]">{g.count}</span></p>
+								{g.count ? (
+									<ul class="divide-y divide-line">
+										{g.quotas ? (
+											<li class="py-2.5 text-[13.5px] text-ink-soft">
+												{g.quotas} only check a Cloudflare quota OpenOrange does not enforce, and were cut from the score. <a href="#quotas" class="link">See the list</a>.
+											</li>
+										) : null}
+										{g.tests.map((t) => (
+											<li class="py-2.5 text-[13.5px]">
+												<span class="block font-mono text-[12.5px] text-ink" style="overflow-wrap:anywhere">{testName(t)}</span>
+												<span class="block text-[13px] leading-snug text-ink-faint">{g.detail(t)}</span>
+											</li>
+										))}
+									</ul>
+								) : (
+									<p class="py-2.5 text-[13.5px] text-ink-faint">None.</p>
+								)}
+							</div>
+						))}
+					</div>
+				</div>
+			) : null}
+
+			<div class="mt-16">
+				<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10">
+					<h3 class="h-sub">By area, since the first run</h3>
+					<p class="text-[15px] leading-[1.6] text-ink-soft">
+						workerd's suite only.{GAINED ? ` ${fmt(totals.upstream.pass)} of ${fmt(totals.upstream.total)} pass, ${GAINED.count >= 0 ? '+' : ''}${fmt(GAINED.count)} since ${GAINED.since}, the first run that counted tests the way this one does.` : ''} Each area compares with its own first comparable run.
+					</p>
+				</div>
+				<ul class="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-ink-soft">
+					<li class="flex items-center gap-2"><span class="inline-block size-2.5 rounded-[3px] bg-pass/40"></span>Passed on the first run</li>
+					<li class="flex items-center gap-2"><span class="inline-block size-2.5 rounded-[3px] bg-pass"></span>Passes since</li>
+					<li class="flex items-center gap-2"><span class="inline-block size-2.5 rounded-[3px] bg-fail/70"></span>Fails</li>
+				</ul>
+				<ul class="mt-4 border-t border-line">
+					{AREA_PROGRESS.map((a) => (
+						<li class="grid items-center gap-x-6 gap-y-2 border-b border-line px-2 py-3 md:grid-cols-[15rem_minmax(0,1fr)_9rem]">
+							<span>
+								<span class="block text-[14px] font-medium text-ink">{a.area}</span>
+								<span class="block text-[12.5px] text-ink-faint">
+									{a.first ? `+${fmt(a.since)} since ${a.first.sha ?? a.first.date}` : 'No earlier run'}{a.thisRun ? ` · +${a.thisRun} on this run` : ''}
+								</span>
+							</span>
+							<span class="flex h-2 overflow-hidden rounded-full bg-ink/5" role="img" aria-label={`${a.pass} of ${a.total} pass`}>
+								<span class="bg-pass/40" style={`flex:${a.pass - a.since}`}></span>
+								<span class="bg-pass" style={`flex:${a.since}`}></span>
+								<span class="bg-fail/70" style={`flex:${a.total - a.pass}`}></span>
+							</span>
+							<span class="row-num md:text-right">{fmt(a.pass)}/{fmt(a.total)} · {a.percent}%</span>
+						</li>
+					))}
+				</ul>
+			</div>
+
+			<div class="mt-16">
+				<div class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:gap-10">
+					<h3 class="h-sub">Every run</h3>
+					<p class="text-[15px] leading-[1.6] text-ink-soft">
+						{RUN_LIST.length} runs of workerd's suite, newest first, including {RUN_LIST.filter((r) => r.manual).length} early ones recorded by hand. Open a run for its note.
+					</p>
+				</div>
+				<div class="mt-6">
+					<RowHead status="" name="Run" a="OpenOrange · date" b="RivetKit" end="workerd tests pass" />
+					{[RUN_LIST.slice(0, runsShown), RUN_LIST.slice(runsShown)].map((group, gi) => {
+						const rows = group.map((r) => (
+							<Row>
+								{r.latest ? <Chip slot="status" tone="pass" label="Latest" /> : r.manual ? <Chip slot="status" tone="none" label="By hand" /> : <span slot="status"></span>}
+								<span slot="name" class="row-name">{r.name}</span>
+								<span slot="a" class="row-text-faint">{r.sha ? <code class="font-mono text-[12.5px] text-ink-soft">{r.sha}</code> : 'no commit'} · {r.date}</span>
+								<span slot="b" class="row-text-faint font-mono text-[12px]">{r.rivetkit ?? '—'}</span>
+								<span slot="end" class="flex items-center gap-2.5 md:justify-end">
+									<span class="h-1.5 w-12 overflow-hidden rounded-full bg-ink/10"><span class="block h-full bg-pass" style={`width:${r.percent}%`}></span></span>
+									<span class="row-num whitespace-nowrap">{fmt(r.pass)} · {r.percent}%</span>
+								</span>
+								<dl>
+									{r.note ? (
+										<>
+											<dt>Note</dt>
+											<dd set:html={inline(r.note)} />
+										</>
+									) : null}
+									<dt>Counted</dt>
+									<dd>
+										{fmt(r.pass)} of {fmt(r.total)} workerd tests pass{r.manual ? ', as recorded by hand' : ''}.
+										{r.remapped.total ? ` ${r.remapped.total} of them ran with /tmp remapped and count as neither pass nor fail; ${r.remapped.pass} of those pass.` : ''}
+									</dd>
+								</dl>
+							</Row>
+						));
+						return gi === 0 ? (
+							<div class="rows">{rows}</div>
+						) : group.length ? (
+							<details class="group/runs">
+								<summary class="cursor-pointer border-b border-line px-2 py-3.5 text-[14px] font-medium text-ink-soft hover:text-ink">
+									<span class="group-open/runs:hidden">Show {group.length} earlier runs</span><span class="hidden group-open/runs:inline">Hide earlier runs</span>
+								</summary>
+								<div class="rows border-t-0">{rows}</div>
+							</details>
+						) : null;
+					})}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="rule" id="matrix">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">Feature matrix.</h2>
+				<p class="lede lg:pt-2">
+					{MATRIX.length} items: every binding, handler, API, module, flag, config key and limit. A red dot is a cited test that fails in the latest run.
+				</p>
+			</div>
+
+			<div class="mt-12 flex flex-wrap items-center gap-2" role="group" aria-label="Category" data-matrix-categories>
+				<button type="button" data-category="all" aria-pressed="true" class="pill">All <span class="opacity-60">{MATRIX.length}</span></button>
+				{MATRIX_CATEGORIES.map((c) => (
+					<button type="button" data-category={c.id} aria-pressed="false" class="pill">{c.label} <span class="opacity-60">{c.entries.length}</span></button>
+				))}
+			</div>
+
+			<div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+				<input type="search" autocomplete="off" placeholder="Search features" aria-label="Search features" data-matrix-search class="w-full rounded-full border border-line bg-surface px-4 py-2 text-[14px] text-ink placeholder:text-ink-faint focus:border-ink focus:outline-none sm:max-w-xs" />
+				<div class="flex flex-wrap gap-1.5" role="group" aria-label="Status" data-matrix-statuses>
+					{matrixStatuses.map((s) => (
+						<button type="button" data-status={s.id} aria-pressed="false" class={`chip gap-1.5 ${TONE_CLASS[s.tone].chip} cursor-pointer border border-transparent aria-pressed:border-current`}>
+							<span class={`${TONE_CLASS[s.tone].dot} size-1.5`}></span>{s.label} <span class="opacity-60">{s.count}</span>
+						</button>
+					))}
+				</div>
+				<span class="whitespace-nowrap text-[13px] text-ink-faint sm:ml-auto" data-matrix-count></span>
+			</div>
+
+			<dl class="mt-6 grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2 lg:grid-cols-4">
+				{matrixStatuses.map((s) => (
+					<div class="flex items-start gap-2">
+						<span class={`${TONE_CLASS[s.tone].dot} mt-1.5`}></span>
+						<span><dt class="inline font-medium text-ink">{s.label}.</dt> <dd class="inline text-ink-soft">{s.meaning}</dd></span>
+					</div>
+				))}
+			</dl>
+
+			<div class="mt-8">
+				<RowHead name="Feature" a="On Cloudflare" b="On OpenOrange" end="Evidence" />
+				<div class="rows" data-matrix-list>
+					{MATRIX_CATEGORIES.map((c) => (
+						<>
+							<p class="border-b border-line bg-paper-mid/60 px-2 py-2 text-[12.5px] font-semibold text-ink-soft" data-category-heading={c.id}>{c.label}</p>
+							{c.entries.map((e) => (
+								<MatrixRow entry={e} binding={bindingLink(BINDING_SLUG_BY_MATRIX.get(e.id))} />
+							))}
+						</>
+					))}
+				</div>
+			</div>
+			<p class="caption mt-6 hidden" data-matrix-empty>No feature matches.</p>
+		</div>
+	</section>
+
+	<section class="rule" id="run">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">What was run.</h2>
+				<p class="lede lg:pt-2">Each kind of result comes from its own recorded run. These are the commits and dates behind every number on this page.</p>
+			</div>
+			<ul class="mt-12 border-t border-line">
+				{[
+					{
+						what: "workerd's suite",
+						where: `${SUMMARY.orange.sha}${SUMMARY.orange.dirty ? ' (uncommitted changes)' : ''}`,
+						detail: `${SUMMARY.label}. ${SUMMARY.note} ${fmt(totals.files - totals.syntheticFiles)} workerd test files and ${totals.syntheticFiles} of OpenOrange's own: ${fmt(totals.upstream.total)} + ${totals.synthetic.total} tests. workerd ${SUMMARY.workerd.tag} at ${SUMMARY.workerd.commit.slice(0, 7)}, RivetKit ${SUMMARY.rivetkit}.${minutes ? ` The run took ${minutes} minutes.` : ''}`,
+						when: `${utcTime(SUMMARY.startedAt)} UTC`,
+					},
+					...(CHANGES ? [{ what: 'Compared with', where: CHANGES.since.sha, detail: `${CHANGES.since.name}, the saved run before, for what changed since.`, when: CHANGES.since.date }] : []),
+					{ what: 'Probes', where: sources.probes.orange, detail: `Each step run on workerd and on OpenOrange. RivetKit ${sources.probes.rivetkit}.`, when: dateOf(sources.probes.ranAt) },
+					{ what: 'Real projects', where: sources.realProjects.orange.join(', '), detail: `${projectCount} projects through \`orange dev\`. RivetKit ${sources.realProjects.rivetkit.join(', ')}.`, when: dateOf(sources.realProjects.ranAt) },
+					{ what: 'Emulated hibernation', where: emulated.orange.join(', '), detail: `The ${emulated.steps.total} real-project steps that need hibernation, rerun. RivetKit ${emulated.rivetkit.join(', ')}.`, when: dateOf(emulated.ranAt) },
+					...(sources.examples ? [{ what: 'Examples', where: sources.examples.orange, detail: 'The runnable examples in the repository.', when: dateOf(sources.examples.ranAt) }] : []),
+					{ what: 'Rivet Cloud', where: '—', detail: `${cloud.projects.length} projects, one run each on a Free cluster.`, when: cloudDates.length > 1 ? `${cloudDates[0]} – ${cloudDates.at(-1)}` : (cloudDates[0] ?? '—') },
+					{ what: "Cloudflare's templates", where: `${TEMPLATES.before.orange} → ${TEMPLATES.after.orange}`, detail: `Recorded by hand beside \`wrangler dev\` ${TEMPLATES.wrangler}.`, when: `${TEMPLATES.before.date} → ${TEMPLATES.after.date}` },
+				].map((s) => (
+					<li class="grid gap-x-6 gap-y-1 border-b border-line px-2 py-3.5 md:grid-cols-[11rem_9rem_minmax(0,1fr)_11.5rem]">
+						<span class="text-[14.5px] font-medium text-ink">{s.what}</span>
+						<span class="font-mono text-[12.5px] text-ink-soft md:pt-0.5" style="overflow-wrap:anywhere">{s.where}</span>
+						<span class="text-[13.5px] leading-snug text-ink-soft" style="overflow-wrap:anywhere" set:html={inline(s.detail)} />
+						<span class="row-num text-ink-faint md:text-right">{s.when}</span>
+					</li>
+				))}
+			</ul>
+		</div>
+	</section>
+
+	<section class="rule" id="method">
+		<div class="container-x section-tight">
+			<div class="split-head">
+				<h2 class="h-section">How this is scored.</h2>
+				<div class="space-y-4 text-[15px] leading-[1.65] text-ink-soft lg:pt-2">
+					<p>
+						The suite is workerd's own tests at <a href={CONFORMANCE.workerdUrl} class="link" rel="noopener">{SUMMARY.workerd.tag}</a>, run on OpenOrange unchanged, plus {totals.synthetic.total} Durable Object tests OpenOrange adds. A Node.js test counts only when plain Node.js passes it, so {fmt(totals.workerdOnly)} tests of workerd-specific behaviour are left out of every score. {totals.infraExcluded} tests the runner could not host are also left out.
+					</p>
+					<p>
+						A claim's status is set from its recorded results, never by hand. Probes run the same step on workerd and OpenOrange, so a row can show both. Real projects run at a pinned commit through <code class="code-chip">orange dev</code>, with changes listed on the row.
+					</p>
+					<p>
+						The matrix is maintained by hand and checked by tests: every source path it cites must exist and every test it cites must be in the latest run. Data and runner: <a href={CONFORMANCE.packageUrl} class="link" rel="noopener">cloudflare-conformance</a>.
+					</p>
+					<p>
+						What each Cloudflare product runs on, its status and how to configure it: <a href="/docs/bindings/" class="link">Bindings</a>.
+					</p>
+				</div>
+			</div>
+
+			<div class="mt-14 grid gap-10 md:grid-cols-2 md:gap-14">
+				{notSupported.length ? (
+					<div>
+						<p class="flex items-baseline justify-between gap-4 border-b border-line pb-3"><span class="label">Not supported, counted as failures</span><span class="row-num">{fmt(SUMMARY.perCause['Not supported'] ?? 0)} tests</span></p>
+						<ul class="divide-y divide-line">
+							{notSupported.map(([file, reason]) => (
+								<li class="py-3 text-[14px]">
+									<span class="block font-mono text-[12.5px] text-ink">{shortFile(file)}</span>
+									<span class="block text-[13px] leading-snug text-ink-faint" set:html={inline(reason)} />
+								</li>
+							))}
+						</ul>
+					</div>
+				) : null}
+				{quotaTests.length ? (
+					<div id="quotas" class="scroll-mt-24">
+						<p class="flex items-baseline justify-between gap-4 border-b border-line pb-3"><span class="label">Cloudflare quotas OpenOrange does not enforce, not counted</span><span class="row-num">{quotaTests.length} tests</span></p>
+						<ul class="divide-y divide-line">
+							{quotaTests.map((t) => (
+								<li class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 py-3 text-[14px]">
+									<span class="block font-mono text-[12.5px] text-ink" style="overflow-wrap:anywhere">{testName(t)}</span>
+									<span class={`row-num ${t.outcome === 'pass' ? 'text-pass' : 'text-ink-faint'}`}>{t.outcome === 'pass' ? 'Passes' : 'Fails'}</span>
+									<span class="text-[13px] leading-snug text-ink-faint">{t.quota}</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				) : null}
+			</div>
+		</div>
+	</section>
+
+	<Cta title="Run yours." body="Two commands. Your code does not change." />
+	<TipScript />
+
+	<script>
+		// Project filter.
+		const projectFilters = document.querySelector<HTMLElement>('[data-project-filters]');
+		const projectRows = Array.from(document.querySelectorAll<HTMLElement>('[data-project-list] > details'));
+		projectFilters?.addEventListener('click', (event) => {
+			const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-filter]');
+			if (!button) return;
+			const filter = button.dataset.filter ?? 'all';
+			for (const b of projectFilters.querySelectorAll('button')) b.setAttribute('aria-pressed', b === button ? 'true' : 'false');
+			for (const row of projectRows) row.hidden = filter !== 'all' && row.dataset.status !== filter;
+		});
+
+		// Matrix filter: category, statuses (any of the pressed ones), and a search.
+		const categories = document.querySelector<HTMLElement>('[data-matrix-categories]');
+		const statuses = document.querySelector<HTMLElement>('[data-matrix-statuses]');
+		const search = document.querySelector<HTMLInputElement>('[data-matrix-search]');
+		const count = document.querySelector<HTMLElement>('[data-matrix-count]');
+		const empty = document.querySelector<HTMLElement>('[data-matrix-empty]');
+		const list = document.querySelector<HTMLElement>('[data-matrix-list]');
+		const rows = Array.from(list?.querySelectorAll<HTMLElement>(':scope > details') ?? []);
+		const headings = Array.from(list?.querySelectorAll<HTMLElement>('[data-category-heading]') ?? []);
+		let category = 'all';
+		const pressed = new Set<string>();
+
+		function apply() {
+			const q = (search?.value ?? '').trim().toLowerCase();
+			let shown = 0;
+			const shownPerCategory = new Map<string, number>();
+			for (const row of rows) {
+				const c = row.dataset.category ?? '';
+				const ok =
+					(category === 'all' || c === category) &&
+					(pressed.size === 0 || pressed.has(row.dataset.status ?? '')) &&
+					(q === '' || (row.dataset.search ?? '').includes(q));
+				row.hidden = !ok;
+				if (ok) {
+					shown += 1;
+					shownPerCategory.set(c, (shownPerCategory.get(c) ?? 0) + 1);
+				}
+			}
+			for (const h of headings) h.hidden = (shownPerCategory.get(h.dataset.categoryHeading ?? '') ?? 0) === 0;
+			if (count) count.textContent = shown === rows.length ? '' : `${shown} of ${rows.length}`;
+			if (empty) empty.hidden = shown !== 0;
+		}
+
+		categories?.addEventListener('click', (event) => {
+			const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-category]');
+			if (!button) return;
+			category = button.dataset.category ?? 'all';
+			for (const b of categories.querySelectorAll('button')) b.setAttribute('aria-pressed', b === button ? 'true' : 'false');
+			apply();
+		});
+		statuses?.addEventListener('click', (event) => {
+			const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-status]');
+			if (!button) return;
+			const id = button.dataset.status ?? '';
+			if (pressed.has(id)) pressed.delete(id);
+			else pressed.add(id);
+			button.setAttribute('aria-pressed', pressed.has(id) ? 'true' : 'false');
+			apply();
+		});
+		search?.addEventListener('input', apply);
+
+		// A link to a row opens it, and clears any filter that hides it.
+		function reveal() {
+			const id = decodeURIComponent(location.hash.slice(1));
+			if (!id) return;
+			const target = document.getElementById(id);
+			if (!(target instanceof HTMLDetailsElement)) return;
+			if (target.hidden) {
+				category = 'all';
+				pressed.clear();
+				if (search) search.value = '';
+				for (const b of categories?.querySelectorAll('button') ?? []) b.setAttribute('aria-pressed', b.dataset.category === 'all' ? 'true' : 'false');
+				for (const b of statuses?.querySelectorAll('button') ?? []) b.setAttribute('aria-pressed', 'false');
+				for (const row of projectRows) row.hidden = false;
+				for (const b of projectFilters?.querySelectorAll('button') ?? []) b.setAttribute('aria-pressed', b.dataset.filter === 'all' ? 'true' : 'false');
+				apply();
+			}
+			target.open = true;
+			target.scrollIntoView({ block: 'start' });
+		}
+		window.addEventListener('hashchange', reveal);
+		reveal();
+	</script>
+</Base>

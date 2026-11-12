@@ -1,0 +1,42 @@
+{
+	"id": "computer",
+	"repo": "cloudflare/computer",
+	"commit": "b995d86503eab22793ba1feb07c3c67818e6f6b9",
+	"directory": "examples/worker-shell",
+	"ranAt": "2026-11-05T11:29:47.883Z",
+	"plan": "Free",
+	"deployedWith": "rivet deploy",
+	"steps": [
+		{
+			"name": "the Worker lists its routes, and refuses paths outside the workspace",
+			"kind": "http",
+			"status": "pass"
+		},
+		{
+			"name": "a file written through the Durable Object reads back, and each workspace is separate",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "a shell in a Dynamic Worker reads and writes the Durable Object's filesystem",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "the skill bundled with the Worker is mounted read-only",
+			"kind": "binding",
+			"status": "pass"
+		},
+		{
+			"name": "files survive the Durable Object's sleep, and the shell still runs",
+			"kind": "sleep",
+			"status": "pass",
+			"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+		},
+		{
+			"name": "files survive a restart, and the shell still runs",
+			"kind": "restart",
+			"status": "pass"
+		}
+	]
+}

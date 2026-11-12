@@ -1,0 +1,75 @@
+{
+	"schemaVersion": 1,
+	"id": "workers-chat-demo",
+	"repo": "cloudflare/workers-chat-demo",
+	"commit": "dd32ce87617a9df6c614004d2fc2fb0628698121",
+	"stars": 1123,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:09:33.882Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 0,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "serves the chat page",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "two clients chat in a room, and history is kept",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.6
+		},
+		{
+			"name": "a socket stays open while the room hibernates, and a message wakes it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.2
+		},
+		{
+			"name": "a room sleeps, and the history comes back after it wakes",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the history survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.5
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"ChatRoom",
+			"RateLimiter"
+		],
+		"file": "src/chat.mjs",
+		"uses": [
+			"storage.list",
+			"storage.put",
+			"acceptWebSocket",
+			"serializeAttachment"
+		]
+	}
+}

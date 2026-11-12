@@ -1,0 +1,35 @@
+{
+	"id": "tldraw",
+	"repo": "tldraw/tldraw",
+	"commit": "aae1c5d6d099817a76ddeb6eb5e71e2014d42d7b",
+	"stars": 51216,
+	"origin": "search",
+	"directory": "apps/bemo-worker",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts --filter @tldraw/bemo-worker...",
+	"durableObjects": {
+		"classes": [
+			"BemoDO"
+		],
+		"file": "apps/bemo-worker/src/BemoDO.ts",
+		"uses": [
+			"blockConcurrencyWhile",
+			"storage.get",
+			"storage.put",
+			"storage.getAlarm",
+			"storage.setAlarm",
+			"alarm",
+			"WebSocketPair"
+		]
+	},
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Adds a top-level BEMO_BUCKET r2_buckets entry to apps/bemo-worker/wrangler.toml",
+			"why": "The project declares the bucket only under [env.*], and its dev script selects `--env dev`. `orange dev` runs the top-level config."
+		}
+	]
+}

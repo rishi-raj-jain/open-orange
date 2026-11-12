@@ -1,0 +1,400 @@
+---
+// Migrating data without downtime, as orange migrate does it with the Durable
+// Object Migrator. The animation is ported from the migrator's explainer
+// (durable-object-migrator-animation, anim/v5/build.py): the same scene,
+// timeline and beat durations, played live and synced to the list of beats.
+import Tip from '@/components/Tip.astro';
+import { SITE } from '@/data/site';
+import cloudflare from '@/assets/migrator/cloudflare.svg?raw';
+import rivet from '@/assets/migrator/rivet-white.svg?raw';
+import aws from '@/assets/migrator/aws.svg?raw';
+import gcp from '@/assets/migrator/gcp.svg?raw';
+import azure from '@/assets/migrator/azure.svg?raw';
+import server from '@/assets/migrator/server.svg?raw';
+import refresh from '@/assets/migrator/refresh-cw.svg?raw';
+import globe from '@/assets/migrator/globe.svg?raw';
+import users from '@/assets/migrator/users.svg?raw';
+
+const inner = (svg: string) => svg.match(/<svg[^>]*>([\s\S]*)<\/svg>/)![1];
+const vbox = (svg: string) => svg.match(/viewBox="([^"]+)"/)![1];
+const lucide = (svg: string) => ['0 0 24 24', inner(svg).replace(/\s+/g, ' ').trim(), null];
+const ICONS = {
+	cf: [vbox(cloudflare), inner(cloudflare).replace('<title>Cloudflare</title>', ''), '#F6821F'],
+	aws: [vbox(aws), inner(aws).replaceAll('#252F3E', 'var(--mig-aws)'), null],
+	gcp: [vbox(gcp), inner(gcp), null],
+	azure: [vbox(azure), inner(azure), null],
+	rivet: ['0 0 128 128', inner(rivet).replace('#0F0F0F', '#1B1916'), null],
+	users: lucide(users),
+	globe: lucide(globe),
+	server: lucide(server),
+	refresh: lucide(refresh),
+};
+
+// Voiceover line lengths in seconds; the beat timings come from these.
+const BEATS = [
+	{ id: 'intro', dur: 3.343673, title: 'Before', body: 'Every request goes to Cloudflare.' },
+	{ id: 'cutover', dur: 3.111474, title: 'Cutover', body: 'DNS switches to OpenOrange.' },
+	{ id: 'lazy', dur: 5.804989, title: 'Lazy migration', body: "Each object is copied over the first time it's requested, then served from OpenOrange." },
+	{ id: 'backfill', dur: 2.786395, title: 'Backfill', body: 'A backfill job copies everything else.' },
+	{ id: 'after', dur: 5.665669, title: 'Zero downtime', body: 'Every request now runs on OpenOrange. The app stayed up the whole time.' },
+];
+const data = { icons: ICONS, durations: Object.fromEntries(BEATS.map((b) => [b.id, b.dur])) };
+---
+
+<section id="migrate" class="scroll-mt-20 rule">
+	<div class="container-x section">
+		<div class="split-head">
+			<h2 class="h-section">Migrate your data without downtime.</h2>
+			<div class="lg:max-w-md">
+				<p class="lede">
+					orange migrate copies every Durable Object and
+					<Tip tip="Cloudflare doesn't provide a way to migrate D1 live, so requests to a D1 database are interrupted while its data copies. This takes a few minutes.">D1<sup class="text-orange-deep">*</sup></Tip>
+					database from Cloudflare while your app keeps serving. No maintenance window, no lost writes.
+				</p>
+				<p class="mt-4 text-[15px]"><a href={SITE.docsMigrate} class="link">Migration guide <span aria-hidden="true">→</span></a></p>
+			</div>
+		</div>
+
+		<figure class="card mt-12 grid overflow-hidden md:mt-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" data-migrator>
+			<ol class="flex flex-col border-b border-line lg:border-b-0 lg:border-r" aria-label="Migration steps">
+				{BEATS.map((beat, i) => (
+					<li class="flex-1 border-line [&:not(:first-child)]:border-t">
+						<button
+							type="button"
+							data-beat={beat.id}
+							aria-current={i === 0 ? 'step' : undefined}
+							class="beat relative flex h-full w-full gap-4 px-6 py-4 text-left transition-colors hover:bg-paper-mid/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange motion-reduce:transition-none md:px-8 md:py-5"
+						>
+							<span class="num mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-current text-[12px] font-medium">{i + 1}</span>
+							<span>
+								<span class="title block text-[15px] font-semibold">{beat.title}</span>
+								<span class="body mt-1 block text-[14px] leading-relaxed">{beat.body}</span>
+							</span>
+							<span class="progress absolute bottom-0 left-0 h-[2px] bg-orange" aria-hidden="true"></span>
+						</button>
+					</li>
+				))}
+			</ol>
+			<div class="bg-[var(--mig-bg)] p-3 md:p-6">
+				<svg viewBox="0 184 1080 800" class="block h-auto w-full" role="img" aria-label="Requests move from Cloudflare to OpenOrange as DNS cuts over, each object copies on its first request, and a backfill job copies the rest." data-scene>
+					<defs>
+						<filter id="mig-card" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#1B1916" flood-opacity="0.06" /></filter>
+						<filter id="mig-lift" x="-60%" y="-60%" width="220%" height="240%"><feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#1B1916" flood-opacity="0.22" /></filter>
+					</defs>
+					<g data-root></g>
+				</svg>
+			</div>
+			<script type="application/json" data-migrator-data set:html={JSON.stringify(data)} />
+		</figure>
+	</div>
+</section>
+
+<style>
+	.beat .num,
+	.beat .title,
+	.beat .body {
+		color: var(--color-ink-faint);
+		transition: color 0.2s;
+	}
+	.beat[aria-current='step'] {
+		background: var(--color-paper-mid);
+	}
+	.beat[aria-current='step'] .num,
+	.beat[aria-current='step'] .title {
+		color: var(--color-ink);
+	}
+	.beat[aria-current='step'] .body {
+		color: var(--color-ink-soft);
+	}
+	.beat:not([aria-current='step']) .progress {
+		width: 0 !important;
+	}
+	/* Scene colors. The script draws with these variables so the scene follows the theme. */
+	[data-migrator] {
+		--mig-bg: #f4f4f2;
+		--mig-card: #fff;
+		--mig-ink: #1b1916;
+		--mig-on-ink: #fff;
+		--mig-soft: #6b675e;
+		--mig-line: #d9d6cf;
+		--mig-cf-stroke: #f7c59b;
+		--mig-nw-stroke: #a8d9b8;
+		--mig-aws: #252f3e;
+	}
+	:global(.dark) [data-migrator] {
+		--mig-bg: #171614;
+		--mig-card: var(--color-surface);
+		--mig-ink: var(--color-ink);
+		--mig-on-ink: #1b1916;
+		--mig-soft: var(--color-ink-faint);
+		--mig-line: #3d3935;
+		--mig-cf-stroke: #8a4f22;
+		--mig-nw-stroke: #2f6e47;
+		--mig-aws: #e8e6e3;
+	}
+</style>
+
+<style is:global>
+	[data-scene] text {
+		font-family: var(--font-sans);
+	}
+	[data-scene] .mono {
+		font-family: var(--font-mono);
+	}
+	/* Labels without their own fill. */
+	.dark [data-scene] text:not([fill]) {
+		fill: var(--color-ink);
+	}
+</style>
+
+<script>
+	type Icon = [string, string, string | null];
+	for (const fig of document.querySelectorAll<HTMLElement>('[data-migrator]')) {
+		const { icons: ICONS, durations: DUR } = JSON.parse(fig.querySelector('[data-migrator-data]')!.textContent!) as {
+			icons: Record<string, Icon>;
+			durations: Record<string, number>;
+		};
+		const svg = fig.querySelector<SVGSVGElement>('[data-scene]')!;
+		const scene = svg.querySelector<SVGGElement>('[data-root]')!;
+		const buttons = Array.from(fig.querySelectorAll<HTMLButtonElement>('[data-beat]'));
+
+		const ORDER = ['intro', 'cutover', 'lazy', 'backfill', 'after'], GAP = 0.5;
+		const START = 0.8; // The source opens on a title card until 0.8 s; the page starts after it.
+		const B: Record<string, number> = {};
+		let acc = 0.3;
+		for (const k of ORDER) { B[k] = acc; acc += DUR[k] + GAP; }
+		const END = acc + 1.2;
+
+		// One motion system: entrances ease out, moves ease in-out; three durations.
+		const MOVE = 0.8, FAST = 0.3, MED = 0.6;
+		const inOut = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+		const out = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.pow(1 - x, 3));
+		const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
+
+		const INK = 'var(--mig-ink)', SOFT = 'var(--mig-soft)', LINE = 'var(--mig-line)', CARD = 'var(--mig-card)', ON_INK = 'var(--mig-on-ink)';
+		const ORANGE = '#F6821F', GREEN = '#1F9D55';
+		const NS = 'http://www.w3.org/2000/svg';
+		const el = (tag: string, a: Record<string, string | number>, p?: Element) => {
+			const e = document.createElementNS(NS, tag) as SVGGraphicsElement & SVGGeometryElement;
+			for (const k in a) e.setAttribute(k, String(a[k]));
+			if (p) p.appendChild(e);
+			return e;
+		};
+		const icon = (name: string, x: number, y: number, size: number, p: Element, stroke?: string) => {
+			const [vb, body, fill] = ICONS[name];
+			const s = el('svg', { x, y, width: size, height: size, viewBox: vb }, p);
+			if (stroke) {
+				s.setAttribute('fill', 'none'); s.setAttribute('stroke', stroke); s.setAttribute('stroke-width', '2');
+				s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
+			} else if (fill) s.setAttribute('fill', fill);
+			s.innerHTML = body;
+			return s;
+		};
+
+		// Layout on an 8px grid. Users -> DNS -> Cloudflare (left) / OpenOrange (right).
+		type Box = { x: number; y: number; w: number; h: number };
+		const CX = 540;
+		const USERS = { x: 440, y: 200, w: 200, h: 64 };
+		const DNS = { x: 376, y: 304, w: 328, h: 128 };
+		const JY = 472;
+		const BW = 432, BH = 432, BY = 528;
+		const CF = { x: 32, y: BY, w: BW, h: BH }, NW = { x: 616, y: BY, w: BW, h: BH };
+		const T = 104, G = 20, ROOMS = 6;
+		const slot = (b: Box, i: number) => ({ x: b.x + 40 + (i % 3) * (T + G), y: b.y + 104 + Math.floor(i / 3) * (T + G) });
+		const sc = (b: Box, i: number) => { const s = slot(b, i); return { x: s.x + T / 2, y: s.y + T / 2 }; };
+		const bcx = (b: Box) => b.x + b.w / 2;
+
+		const card = (b: Box, stroke = LINE, rx = 16) => el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx, fill: CARD, stroke, 'stroke-width': 1.5, filter: 'url(#mig-card)' }, scene);
+		const linesG = el('g', {}, scene);
+		const R = 16;
+		const elbow = (b: Box, endY = b.y) => {
+			const x = bcx(b), dir = x < CX ? -1 : 1;
+			return `M${CX} ${DNS.y + DNS.h} V${JY - R} Q${CX} ${JY} ${CX + dir * R} ${JY} H${x - dir * R} Q${x} ${JY} ${x} ${JY + R} V${endY}`;
+		};
+		el('path', { d: `M${CX} ${USERS.y + USERS.h} V${DNS.y}`, stroke: LINE, 'stroke-width': 4 }, linesG);
+		for (const b of [CF, NW]) el('path', { d: elbow(b), fill: 'none', stroke: LINE, 'stroke-width': 4, 'stroke-linejoin': 'round' }, linesG);
+		const aCF = el('path', { d: elbow(CF), fill: 'none', stroke: ORANGE, 'stroke-width': 4, 'stroke-linejoin': 'round' }, linesG);
+		const aNW = el('path', { d: elbow(NW), fill: 'none', stroke: GREEN, 'stroke-width': 4, 'stroke-linejoin': 'round' }, linesG);
+		const lCF = aCF.getTotalLength(), lNW = aNW.getTotalLength();
+		aCF.setAttribute('stroke-dasharray', `${lCF} ${lCF}`);
+		aNW.setAttribute('stroke-dasharray', `${lNW} ${lNW}`);
+
+		// Users and DNS.
+		card(USERS, LINE, 32);
+		icon('users', USERS.x + 32, USERS.y + 16, 32, scene, INK);
+		el('text', { x: USERS.x + 80, y: USERS.y + 42, 'font-size': 24, 'font-weight': 700 }, scene).textContent = 'Users';
+		card(DNS);
+		icon('globe', DNS.x + 24, DNS.y + 20, 32, scene, INK);
+		el('text', { x: DNS.x + 68, y: DNS.y + 46, 'font-size': 24, 'font-weight': 700 }, scene).textContent = 'DNS';
+		el('text', { x: DNS.x + 24, y: DNS.y + 96, 'font-size': 18, fill: SOFT, class: 'mono' }, scene).textContent = 'app.example.com →';
+		const recClip = el('clipPath', { id: 'mig-rc' }, scene);
+		el('rect', { x: DNS.x + 212, y: DNS.y + 72, width: 112, height: 40 }, recClip);
+		const recG = el('g', { 'clip-path': 'url(#mig-rc)' }, scene);
+		const rec = (label: string, color: string) => {
+			const g = el('g', {}, recG);
+			el('rect', { x: DNS.x + 216, y: DNS.y + 76, width: 96, height: 32, rx: 8, fill: color }, g);
+			el('text', { x: DNS.x + 264, y: DNS.y + 98, 'font-size': 14, 'font-weight': 700, 'text-anchor': 'middle', fill: '#fff' }, g).textContent = label;
+			return g;
+		};
+		const recOld = rec('Cloudflare', ORANGE), recNew = rec('OpenOrange', GREEN);
+
+		// Boxes.
+		const box = (b: Box, stroke: string, title: string, ic: string) => {
+			const g = el('g', {}, scene);
+			el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: 24, fill: CARD, stroke, 'stroke-width': 2, filter: 'url(#mig-card)' }, g);
+			if (ic === 'cf') icon('cf', b.x + 32, b.y + 24, 40, g); else icon('server', b.x + 36, b.y + 28, 32, g, INK);
+			el('text', { x: b.x + 84, y: b.y + 56, 'font-size': 26, 'font-weight': 700 }, g).textContent = title;
+			for (let i = 0; i < ROOMS; i++) {
+				const s = slot(b, i);
+				el('rect', { x: s.x, y: s.y, width: T, height: T, rx: 16, fill: 'none', stroke: LINE, 'stroke-width': 1.5, 'stroke-dasharray': '6 6' }, g);
+			}
+			return g;
+		};
+		const cfG = box(CF, 'var(--mig-cf-stroke)', 'Cloudflare', 'cf');
+		const nwG = box(NW, 'var(--mig-nw-stroke)', 'OpenOrange', 'server');
+		// Where the OpenOrange cluster can run.
+		(['aws', 'gcp', 'azure', 'rivet'] as const).forEach((n, i) => icon(n, NW.x + 40 + i * 52, NW.y + NW.h - 68, 36, nwG));
+
+		// Backfill job sits between the boxes, wired to both.
+		const BFY = BY + 104 + T + G / 2, BFR = 40;
+		const bf = el('g', { opacity: 0 }, scene);
+		el('path', { d: `M${CF.x + CF.w} ${BFY} H${CX - BFR}`, stroke: GREEN, 'stroke-width': 4 }, bf);
+		el('path', { d: `M${CX + BFR} ${BFY} H${NW.x}`, stroke: GREEN, 'stroke-width': 4 }, bf);
+		el('circle', { cx: CX, cy: BFY, r: BFR, fill: INK }, bf);
+		const bfIcon = el('g', {}, bf);
+		icon('refresh', CX - 16, BFY - 16, 32, bfIcon, ON_INK);
+		el('text', { x: CX, y: BFY + BFR + 28, 'font-size': 18, 'font-weight': 700, 'text-anchor': 'middle' }, bf).textContent = 'Backfill';
+
+		const fxG = el('g', {}, scene), tilesG = el('g', {}, scene), dotsG = el('g', {}, scene);
+		const tiles = Array.from({ length: ROOMS }, (_, i) => {
+			const g = el('g', {}, tilesG);
+			const r = el('rect', { width: T, height: T, rx: 16 }, g);
+			el('text', { x: T / 2, y: T / 2 + 16, 'font-size': 44, 'font-weight': 700, 'text-anchor': 'middle', fill: '#fff' }, g).textContent = 'ABCDEF'[i];
+			return { g, r };
+		});
+
+		// Schedule.
+		const C = B.cutover, L = B.lazy, BF = B.backfill;
+		const FLIP = C + 0.3;
+		const moves = [
+			{ i: 0, t: L + 0.6 }, { i: 2, t: L + 2.4 }, { i: 4, t: L + 3.9 },
+			{ i: 1, t: BF + 0.2, bf: true }, { i: 3, t: BF + 0.9, bf: true }, { i: 5, t: BF + 1.6, bf: true },
+		];
+		const mv = (i: number) => moves.find((m) => m.i === i)!;
+		type Req = { t: number; i: number; to: 'cf' | 'nw'; hold?: number };
+		const reqs: Req[] = [];
+		const rnd = (() => { let s = 3; return () => (s = (s * 9301 + 49297) % 233280) / 233280; })();
+		const add = (t: number, i: number, to: Req['to'], hold?: number) => reqs.push({ t, i, to, hold });
+		for (let t = -1.0; t < FLIP - 0.2; t += 0.4) add(t, Math.floor(rnd() * 6), 'cf');
+		for (const m of moves.slice(0, 3)) add(m.t - 0.55, m.i, 'nw', m.t + MOVE);
+		for (let t = L + 1.5; t < END - 0.4; t += 0.4) {
+			const done = [0, 1, 2, 3, 4, 5].filter((i) => mv(i).t + MOVE < t);
+			if (done.length) add(t, done[Math.floor(rnd() * done.length)], 'nw');
+		}
+		const routes: Record<string, { p: SVGGeometryElement; len: number; hold: number }> = {};
+		const route = (q: Req) => {
+			const k = q.to + q.i;
+			if (routes[k]) return routes[k];
+			const b = q.to === 'cf' ? CF : NW, c = sc(b, q.i), hy = (JY + BY) / 2;
+			const pre = `M${CX} ${USERS.y + USERS.h} V${DNS.y} ${elbow(b, hy)}`;
+			const p = el('path', { d: `${pre} V${b.y} L${c.x} ${c.y}`, fill: 'none', stroke: 'none' }, scene);
+			const hp = el('path', { d: pre, fill: 'none', stroke: 'none' }, scene);
+			return (routes[k] = { p, len: p.getTotalLength(), hold: hp.getTotalLength() });
+		};
+		const SPEED = 1000;
+
+		const render = (t: number) => {
+			// DNS cutover: record flips, the old line retracts, the new line draws in.
+			const f = inOut((t - FLIP) / MED);
+			aCF.setAttribute('stroke-dashoffset', String(-lCF * f));
+			aNW.setAttribute('stroke-dashoffset', String(lNW * (1 - f)));
+			const rk = inOut((t - FLIP) / FAST);
+			recOld.setAttribute('transform', `translate(0 ${-40 * rk})`);
+			recNew.setAttribute('transform', `translate(0 ${40 * (1 - rk)})`);
+
+			cfG.setAttribute('opacity', String(1 - 0.6 * out((t - (B.after + 0.3)) / MED)));
+			bf.setAttribute('opacity', String(out((t - BF) / FAST) * (1 - out((t - B.after) / FAST))));
+			bfIcon.setAttribute('transform', `rotate(${t * 240} ${CX} ${BFY})`);
+
+			// Tiles move left to right; backfilled ones pass through the backfill job.
+			fxG.innerHTML = '';
+			for (let i = 0; i < ROOMS; i++) {
+				const m = mv(i), a = slot(CF, i), b = slot(NW, i), tl = tiles[i];
+				const raw = (t - m.t) / MOVE, k = inOut(raw), flying = raw > 0 && raw < 1;
+				let x = lerp(a.x, b.x, k), y = lerp(a.y, b.y, k) - Math.sin(k * Math.PI) * 24;
+				let s = 1 + Math.sin(k * Math.PI) * 0.08;
+				if (m.bf) {
+					const mid = { x: CX - T / 2, y: BFY - T / 2 };
+					if (k < 0.5) { const kk = inOut(k * 2); x = lerp(a.x, mid.x, kk); y = lerp(a.y, mid.y, kk); s = lerp(1, 0.5, kk); }
+					else { const kk = inOut((k - 0.5) * 2); x = lerp(mid.x, b.x, kk); y = lerp(mid.y, b.y, kk); s = lerp(0.5, 1, kk); }
+				}
+				tl.g.setAttribute('transform', `translate(${x + T / 2} ${y + T / 2}) scale(${s}) translate(${-T / 2} ${-T / 2})`);
+				tl.r.setAttribute('fill', k < 0.5 ? ORANGE : GREEN);
+				if (flying) { tl.g.setAttribute('filter', 'url(#mig-lift)'); tilesG.appendChild(tl.g); } else tl.g.removeAttribute('filter');
+				const land = (t - (m.t + MOVE)) / MED;
+				if (land > 0 && land < 1) {
+					const c = sc(NW, i), r = T / 2 + land * 16;
+					el('rect', { x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r, rx: 20, fill: 'none', stroke: GREEN, 'stroke-width': 2.5, opacity: 1 - land }, fxG);
+				}
+			}
+
+			// Requests.
+			dotsG.innerHTML = '';
+			for (const q of reqs) {
+				const r = route(q);
+				let s = (t - q.t) * SPEED, waiting = false;
+				if (s < 0) continue;
+				if (q.hold) {
+					const arrive = q.t + r.hold / SPEED;
+					if (t >= arrive) { if (t < q.hold) { s = r.hold; waiting = true; } else s = r.hold + (t - q.hold) * SPEED; }
+				}
+				if (s >= r.len) {
+					const k = (s - r.len) / 300;
+					if (k > 1) continue;
+					const c = sc(q.to === 'cf' ? CF : NW, q.i), rr = T / 2 + k * 12;
+					el('rect', { x: c.x - rr, y: c.y - rr, width: 2 * rr, height: 2 * rr, rx: 20, fill: 'none', stroke: INK, 'stroke-width': 2, opacity: 0.45 * (1 - k) }, dotsG);
+					continue;
+				}
+				const p = r.p.getPointAtLength(s);
+				el('circle', { cx: p.x, cy: p.y, r: 16, fill: INK }, dotsG);
+				el('text', { x: p.x, y: p.y + 6, 'font-size': 16, 'font-weight': 700, 'text-anchor': 'middle', fill: ON_INK }, dotsG).textContent = 'ABCDEF'[q.i];
+				if (waiting) el('circle', { cx: p.x, cy: p.y, r: 24, fill: 'none', stroke: INK, 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-dasharray': '36 200', transform: `rotate(${t * 420} ${p.x} ${p.y})` }, dotsG);
+			}
+
+			// The list of beats follows the timeline.
+			let beat = 'intro';
+			for (const k of ORDER) if (t >= B[k]) beat = k;
+			const next = ORDER.indexOf(beat) + 1 < ORDER.length ? B[ORDER[ORDER.indexOf(beat) + 1]] : END;
+			for (const btn of buttons) {
+				const on = btn.dataset.beat === beat;
+				if (on) btn.setAttribute('aria-current', 'step'); else btn.removeAttribute('aria-current');
+				if (on) btn.querySelector<HTMLElement>('.progress')!.style.width = `${Math.min(1, (t - B[beat]) / (next - B[beat])) * 100}%`;
+			}
+		};
+
+		// Play in a loop while on screen. Picking a beat jumps to it.
+		const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		let t = START, last = 0, visible = false, raf = 0;
+		const frame = (now: number) => {
+			if (last) t += Math.min(0.1, (now - last) / 1000);
+			last = now;
+			if (t >= END) t = START;
+			render(t);
+			raf = visible ? requestAnimationFrame(frame) : 0;
+		};
+		const play = () => { if (!raf && !reduced) { last = 0; raf = requestAnimationFrame(frame); } };
+		for (const btn of buttons)
+			btn.addEventListener('click', () => {
+				const k = btn.dataset.beat!;
+				t = Math.max(START, B[k]);
+				// Without motion, show a settled frame from late in the beat.
+				render(reduced ? B[k] + DUR[k] * 0.9 : t);
+			});
+		render(reduced ? B.lazy + DUR.lazy * 0.9 : t);
+		if (reduced) buttons.forEach((b) => (b.dataset.beat === 'lazy' ? b.setAttribute('aria-current', 'step') : null));
+		new IntersectionObserver(([e]) => {
+			visible = e.isIntersecting;
+			if (visible) play();
+		}).observe(svg);
+	}
+</script>

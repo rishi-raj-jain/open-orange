@@ -1,0 +1,95 @@
+{
+	"schemaVersion": 1,
+	"id": "ethercalc",
+	"repo": "audreyt/ethercalc",
+	"commit": "e989429d011a8e79706272103a63ed94ac8526bc",
+	"stars": 3062,
+	"origin": "search",
+	"directory": "packages/worker",
+	"ranAt": "2026-11-05T02:22:52.458Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "bun install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 3,
+		"command": "bun run --cwd ../.. build:assets"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "the app page is served, and /_new sends a user to a new sheet",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "commands write cells, a formula recalculates, and CSV export sees them",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "two clients get the sheet log, and edits and chat reach the other client",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a client that joins later gets the edits and the chat from the log",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "two sockets stay open while the room hibernates, and an edit wakes it",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 60.1,
+			"error": "Some actor was still awake 60 s after the last client activity"
+		},
+		{
+			"name": "cells and formulas survive the room's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the sheet and chat survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 8.1
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"RoomDO",
+			"AuthDO"
+		],
+		"file": "packages/worker/src/room.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"storage.get",
+			"storage.put",
+			"storage.setAlarm",
+			"alarm"
+		]
+	}
+}

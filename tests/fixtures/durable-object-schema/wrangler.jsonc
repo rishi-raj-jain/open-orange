@@ -1,0 +1,7 @@
+{
+	"name": "orange-test-durable-object-schema",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": { "bindings": [{ "name": "DB", "class_name": "Database" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Database"] }]
+}

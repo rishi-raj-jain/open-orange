@@ -1,0 +1,6 @@
+{
+	"name": "workers-sites-unsupported",
+	"main": "worker.js",
+	"compatibility_date": "2024-10-07",
+	"site": { "bucket": "./public" }
+}

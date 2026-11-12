@@ -1,0 +1,106 @@
+{
+	"schemaVersion": 1,
+	"id": "radish",
+	"repo": "Dhravya/radish",
+	"commit": "98768e8124ca24ec3f76211daa45290392f6eefa",
+	"stars": 535,
+	"origin": "named",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:36:25.264Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "bun install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 4
+	},
+	"steps": [
+		{
+			"name": "the health route answers, and a wrong token cannot connect",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Redis commands of each type keep their data across connections",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "MULTI runs queued commands together, and another db name is another instance",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a subscriber receives what another connection publishes",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a connection keeps its name while the object hibernates",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 60.1,
+			"error": "Some actor was still awake 60 s after the last client activity"
+		},
+		{
+			"name": "the expiry alarm wakes the sleeping object and removes the key",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 20.2
+		},
+		{
+			"name": "the data survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the data survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.5
+		}
+	],
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Adds wrangler.jsonc with the REDIS Durable Object and the ColdTier R2 bucket",
+			"why": "The project configures its Worker only in Alchemy's alchemy.run.ts."
+		},
+		{
+			"kind": "code",
+			"what": "Adds src/orange-entry.ts: src/do.ts and src/worker.ts rewritten as a plain Durable Object class and Worker, using the project's Store and SessionExecutor unchanged",
+			"why": "src/do.ts and src/worker.ts export Alchemy Effect layers. Only Alchemy's bundler turns them into a Worker, and `alchemy dev` needs a Cloudflare account."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"RedisDO"
+		],
+		"file": "src/do.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"storage.setAlarm",
+			"alarm",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment"
+		]
+	}
+}

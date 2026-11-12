@@ -1,0 +1,6 @@
+{
+	"name": "additional-modules-off",
+	"main": "src/index.js",
+	"compatibility_date": "2026-05-26",
+	"compatibility_flags": ["nodejs_compat"]
+}

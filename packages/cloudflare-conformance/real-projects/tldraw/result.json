@@ -1,0 +1,88 @@
+{
+	"schemaVersion": 1,
+	"id": "tldraw",
+	"repo": "tldraw/tldraw",
+	"commit": "aae1c5d6d099817a76ddeb6eb5e71e2014d42d7b",
+	"stars": 51216,
+	"origin": "search",
+	"directory": "apps/bemo-worker",
+	"ranAt": "2026-11-05T02:38:19.246Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 20,
+		"command": "pnpm install --ignore-scripts --filter @tldraw/bemo-worker..."
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "an uploaded asset is stored once in R2 and comes back",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 1.2
+		},
+		{
+			"name": "a page pushed by one client reaches the other client in the room",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.5
+		},
+		{
+			"name": "a client that joins while the room is live gets the page in its hydration",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a connected client keeps the room alive through an idle period, and its next push commits",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 15
+		},
+		{
+			"name": "when everyone leaves the room saves to R2 and sleeps, and the page comes back from R2",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.2
+		},
+		{
+			"name": "a page pushed before an orange dev and engine restart is there after it",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 13.5
+		}
+	],
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Adds a top-level BEMO_BUCKET r2_buckets entry to apps/bemo-worker/wrangler.toml",
+			"why": "The project declares the bucket only under [env.*], and its dev script selects `--env dev`. `orange dev` runs the top-level config."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"BemoDO"
+		],
+		"file": "apps/bemo-worker/src/BemoDO.ts",
+		"uses": [
+			"blockConcurrencyWhile",
+			"storage.get",
+			"storage.put",
+			"storage.getAlarm",
+			"storage.setAlarm",
+			"alarm",
+			"WebSocketPair"
+		]
+	}
+}

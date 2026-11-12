@@ -1,0 +1,15 @@
+diff --git a/worker/api/controllers/artifacts/controller.ts b/worker/api/controllers/artifacts/controller.ts
+index 763be09..095e7b4 100644
+--- a/worker/api/controllers/artifacts/controller.ts
++++ b/worker/api/controllers/artifacts/controller.ts
+@@ -20,8 +20,8 @@
+  * the app whose id equals the repo name in the path? That runs in
+  * `beforeRequest`, before any cache or upstream access.
+  */
+-import { routeArtifactRequest } from 'artifacts-viewer';
+-import { createCacheApiAdapter } from 'artifacts-viewer/server/cache';
++import { routeArtifactRequest } from '../../../../packages/artifacts-viewer/packages/artifacts-viewer/src/index.ts';
++import { createCacheApiAdapter } from '../../../../packages/artifacts-viewer/packages/artifacts-viewer/src/server/cache-adapters.ts';
+ import { BaseController } from '../baseController';
+ import { createLogger } from '../../../logger';
+ import { RouteContext } from '../../types/route-context';

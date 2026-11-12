@@ -1,0 +1,10 @@
+{
+	"name": "orange-config-services",
+	"main": "./worker.ts",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"services": [
+		{ "binding": "SELF", "service": "orange-config-services" },
+		{ "binding": "OTHER", "service": "another-worker" }
+	]
+}

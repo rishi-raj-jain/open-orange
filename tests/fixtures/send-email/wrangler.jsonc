@@ -1,0 +1,11 @@
+{
+	"name": "send-email",
+	"main": "worker.js",
+	"compatibility_date": "2026-09-03",
+	"send_email": [
+		{
+			"name": "MAIL",
+			"allowed_destination_addresses": ["inbox@example.com", "copy@example.com", "hidden@example.com"]
+		}
+	]
+}

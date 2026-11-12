@@ -1,0 +1,78 @@
+{
+	"schemaVersion": 1,
+	"id": "email",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-06T22:23:04.154Z",
+	"orange": {
+		"sha": "09b4d1d",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "not-run",
+	"install": null,
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 3
+	},
+	"steps": [
+		{
+			"name": "Send Email: an EmailMessage with its own MIME arrives over SMTP",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Send Email: a message object arrives with its Cc, Bcc, and attachment",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Send Email: a recipient outside allowed_destination_addresses is refused, and nothing is sent",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2
+		},
+		{
+			"name": "Inbound email: a POSTed message runs email(), and forward() sends it on over SMTP",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Inbound email: reply() sends the Worker's reply, with In-Reply-To",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Inbound email: setReject() answers 400",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Inbound email: a wrong secret gets 401, and email() does not run",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"none"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"none: this probe checks Send Email and inbound email"
+		]
+	}
+}

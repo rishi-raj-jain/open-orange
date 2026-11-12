@@ -1,0 +1,125 @@
+---
+import Base from '@/layouts/Base.astro';
+import ArchitectureDiagram from '@/components/ArchitectureDiagram.astro';
+import ServiceTable from '@/components/ServiceTable.astro';
+import Cta from '@/components/Cta.astro';
+import { SITE } from '@/data/site';
+
+const sections = [
+	{
+		id: 'runtime',
+		title: 'The runtime: Workers APIs on Node.js',
+		body: [
+			'A Cloudflare Worker is a module with a fetch handler, some optional scheduled, queue and email handlers, and an env object full of bindings. OpenOrange starts a Node.js process for each Worker, loads your module, and hands it an env whose bindings are backed by OpenOrange instead of Cloudflare.',
+			'Request, Response, fetch, WebSocketPair, Cache, waitUntil and the rest of the Workers globals are installed by the runtime. Most node: imports are stock Node.js; the few modules whose behaviour differs on Cloudflare, such as node:process and node:buffer, are swapped for workerd-shaped versions so your code behaves the same.',
+			'Configuration comes from the wrangler.toml or wrangler.jsonc you already have. Bindings, Durable Object classes and migrations, cron triggers, queues and vars are read from it. Environment-specific overrides map to OpenOrange environments.',
+		],
+	},
+	{
+		id: 'durable-objects',
+		title: 'Durable Objects become Rivet Actors',
+		body: [
+			'A Durable Object is a class with a globally unique ID, single-threaded execution, transactional storage, alarms and WebSocket hibernation. A Rivet Actor has the same shape, so each Durable Object runs as one Rivet Actor.',
+			'Rivet is an open-source control plane. When your Worker calls env.ROOM.get(id).fetch(), Rivet locates the Actor for that ID, wakes it on one of your instances if it is asleep, and routes the request. The storage API, SQLite storage and alarms are backed by Rivet durable state. WebSocket hibernation is emulated: after 10 idle seconds the object leaves memory and its sockets stay open, and the next message builds a new instance. The Actor keeps running while a socket is open.',
+			'Actors share the memory of the machine they run on, and you can inspect their state and connections from the Rivet dashboard.',
+		],
+	},
+	{
+		id: 'stateless',
+		title: 'KV, Queues, Workflows, D1 and cron',
+		body: [
+			'Each of these is a thin binding over Actors. Each KV namespace is one Actor, which makes it strongly consistent rather than eventually. Each queue is one Actor; retries and dead-letter queues follow Cloudflare, and a queue delivers one batch at a time. Workflows run on Cloudflare\'s own Workflows engine, with one Actor per instance: durable steps, sleeps and retries without a per-step CPU budget. Cron triggers become Actor schedules. Each D1 database is one Actor\'s SQLite database.',
+		],
+	},
+	{
+		id: 'pluggable',
+		title: 'R2, Workers AI, Sandboxes, Browser Run and Email plug into your providers',
+		body: [
+			'Some Cloudflare services are front doors to things you can already buy elsewhere. An R2 bucket is an Actor by default, and one environment variable points it at any S3-compatible store, such as Amazon S3, Google Cloud Storage or MinIO. The AI binding calls any OpenAI-compatible endpoint, OpenRouter by default. The sandbox binding targets E2B, Daytona, Freestyle, an agentOS VM or a local directory. Browser Run drives your Chrome or a hosted browser over the DevTools Protocol, and Send Email goes through your SMTP server.',
+		],
+	},
+	{
+		id: 'persistence',
+		title: 'Where state lives',
+		body: [
+			'On Rivet Cloud and BYOC, Rivet operates the durable store for you. Self-hosted, Rivet persists Actor state to Postgres or FoundationDB that you run. In every case the data is in the cloud account and region you chose, reachable only inside your network unless you expose it.',
+		],
+	},
+	{
+		id: 'operations',
+		title: 'Deploys, upgrades and observability',
+		body: [
+			'openorange deploy builds a container image of your project and the runtime, pushes it, and rolls it out through Rivet. When a runtime stops, it closes each accepted WebSocket with 1012 Service Restart so that clients reconnect, and its Actors wake on the new version. You choose when a deploy happens.',
+			'RivetKit serves metrics on RIVETKIT_METRICS_PORT. The Rivet dashboard adds an Actor list, a state inspector, a connection inspector and an RPC debugger.',
+		],
+	},
+	{
+		id: 'rivet',
+		title: 'What you need to know about Rivet',
+		body: [
+			'Not much. Rivet is the engine underneath; OpenOrange is the Cloudflare-shaped interface on top of it. You interact with the openorange CLI and your wrangler config. Rivet shows up when you choose where to deploy (Rivet Cloud, your VPC, or self-hosted) and when you open the dashboard.',
+			'If you want to go further, every Durable Object you migrate is now a Rivet Actor, and the rest of the Rivet ecosystem (the Actors SDK, Workflows, agent runtimes) is available alongside your Workers code.',
+		],
+	},
+] as const;
+---
+
+<Base
+	title={`Architecture — ${SITE.name}`}
+	description="How OpenOrange runs Cloudflare Workers, Durable Objects, KV, Queues and Workflows on your own cloud: a Node.js runtime for the Workers API, Rivet as the open-source control plane, and pluggable providers for R2, Workers AI, Sandboxes, Browser Run and Email."
+>
+	<section>
+		<div class="container-x pt-20 pb-14 md:pt-32 md:pb-16">
+			<h1 class="h-hero max-w-4xl">
+				What runs when you type <span class="whitespace-nowrap font-mono text-[0.82em] tracking-[-0.04em]"><span class="text-ink-faint select-none">$ </span>openorange deploy</span>
+			</h1>
+			<p class="lede mt-7 max-w-xl">
+				Three layers: your code, a runtime that speaks the Workers API, and Rivet for everything stateful. All of it runs in your cloud account.
+			</p>
+		</div>
+	</section>
+
+	<section>
+		<div class="container-x pb-20 md:pb-28">
+			<figure class="card p-5 md:p-10">
+				<ArchitectureDiagram class="h-auto w-full" />
+			</figure>
+		</div>
+	</section>
+
+	<section id="services" class="scroll-mt-20 rule">
+		<div class="container-x section">
+			<h2 class="h-section">Service map</h2>
+			<div class="mt-10"><ServiceTable /></div>
+		</div>
+	</section>
+
+	<section class="rule">
+		<div class="container-x section grid gap-12 lg:grid-cols-[240px_1fr] lg:gap-20">
+			<nav aria-label="On this page" class="hidden lg:block">
+				<ol class="sticky top-24 space-y-1 border-l border-line">
+					{sections.map((section) => (
+						<li><a href={`#${section.id}`} class="-ml-px block border-l border-transparent py-1.5 pl-4 text-[13px] leading-snug text-ink-soft hover:border-ink hover:text-ink">{section.title}</a></li>
+					))}
+				</ol>
+			</nav>
+			<div class="divide-y divide-line">
+				{sections.map((section, i) => (
+					<article id={section.id} class={`scroll-mt-20 ${i === 0 ? 'pb-12 md:pb-16' : 'py-12 md:py-16'}`}>
+						<h2 class="h-sub">{section.title}</h2>
+						<div class="max-w-2xl">
+							{section.body.map((paragraph) => (
+								<p class="body-copy mt-5 text-ink-soft">{paragraph}</p>
+							))}
+						</div>
+					</article>
+				))}
+				<p class="pt-8 text-[14px] text-ink-soft">
+					Deeper reading: <a href={`${SITE.rivet}/actors/docs/`} class="link">Rivet Actors</a>, <a href={`${SITE.rivet}/docs/deploy/`} class="link">Rivet deployment</a>, <a href={`${SITE.rivet}/actors/compare/rivet-actors-vs-cloudflare-durable-objects/`} class="link">Rivet Actors vs Durable Objects</a>, <a href="/vs-workerd/" class="link">workerd vs OpenOrange</a>, <a href="/compatibility/" class="link">compatibility scores</a>, <a href="/docs/bindings/" class="link">bindings</a>.
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<Cta />
+</Base>

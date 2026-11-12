@@ -1,0 +1,54 @@
+{
+	"orange": "pool builds on a Rivet cluster, 2026-11-05",
+	"ranAt": "2026-11-05T06:18:57.000Z",
+	"steps": [
+		{
+			"name": "an idle socket on a pool URL, with no pings, closes at 125 s with 1006",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "wrangler dev keeps idle sockets open for 360 s with no pings",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "with pings, idle sockets stay open until a rollout closes them at 695 s",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a rollout closes sockets with 1012, and each client reconnects on the first try",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a socket can also close with 1011 when its object's generation ends",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "after a rollout the object is a new instance, and an accepted socket's storage is kept",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a cut client gives the object webSocketClose 1006 within about 1 s, and the object sleeps",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a client that stops answering pings is closed with 1006 at about 90 s, and the object sleeps",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		}
+	]
+}

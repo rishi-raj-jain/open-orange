@@ -1,0 +1,80 @@
+{
+	"schemaVersion": 1,
+	"id": "figma-console-mcp",
+	"repo": "southleft/figma-console-mcp",
+	"commit": "5ef4df3791606b8e1f877557ec0dde4796250b44",
+	"stars": 2660,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:23:28.239Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 14,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "serves the landing page and the health route",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "an MCP client without a token gets 401 with the resource metadata",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "an MCP client registers in KV, and /authorize checks its redirect URI against the record",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the plugin relay refuses a pairing code that was never issued",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "an MCP session runs in FigmaConsoleMCPv3 and pairs a plugin through PluginRelayDO",
+			"kind": "do-state",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"FIGMA_OAUTH_CLIENT_ID",
+				"FIGMA_OAUTH_CLIENT_SECRET"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"FigmaConsoleMCPv3",
+			"PluginRelayDO"
+		],
+		"file": "src/index.ts",
+		"uses": [
+			"McpAgent",
+			"acceptWebSocket",
+			"getWebSockets",
+			"storage.get",
+			"storage.put",
+			"storage.delete"
+		]
+	}
+}

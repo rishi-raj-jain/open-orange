@@ -1,0 +1,105 @@
+{
+	"schemaVersion": 1,
+	"id": "vmail",
+	"repo": "oiov/vmail",
+	"commit": "0213e65cc555f7ef8ea38b34712afd6e20aa3eaa",
+	"stars": 1498,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-06T22:23:15.359Z",
+	"orange": {
+		"sha": "09b4d1d",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 51,
+		"command": "pnpm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 10
+	},
+	"steps": [
+		{
+			"name": "serves the app and its config",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a created mailbox is active in its ledger, and another token is refused",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.3
+		},
+		{
+			"name": "a mailbox's token can be renewed, and the new token works",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "an inbound email goes through email() into the mailbox, and the mailbox lists it",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "an email to a mailbox that was never created is rejected",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a signed-in mailbox sends an email through the send_email binding",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"GITHUB_CLIENT_ID",
+				"GITHUB_CLIENT_SECRET",
+				"GOOGLE_CLIENT_ID",
+				"GOOGLE_CLIENT_SECRET"
+			]
+		},
+		{
+			"name": "the ledger counts a mailbox's requests atomically, and refuses them past its limit",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 1.6
+		},
+		{
+			"name": "a mailbox is still active after its ledger sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.5
+		},
+		{
+			"name": "a mailbox is still active after a restart, and its D1 mailbox still reads",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 13.5
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"AccessLedger"
+		],
+		"file": "worker/src/access-ledger.ts",
+		"uses": [
+			"getByName",
+			"rpc",
+			"storage.sql",
+			"storage.kv",
+			"transactionSync",
+			"setAlarm"
+		]
+	}
+}

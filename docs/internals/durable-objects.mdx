@@ -1,0 +1,969 @@
+---
+title: Durable Objects implementation notes
+description: How OpenOrange builds Durable Objects on RivetKit, for contributors.
+---
+
+# Durable Objects implementation notes
+
+This page is for contributors. It explains how Orange maps each part of the
+Durable Objects API onto RivetKit. For how to use Durable Objects, see the
+[user guide](../modules/durable-objects).
+
+## Configuration manifest
+
+Like Wrangler's local runtime, Orange reduces the ordered migration history to
+one storage-backend choice per class during startup. The resolved manifest
+carries `storageBackend: "sqlite"` across the runtime process boundary, and the
+registry checks that every discovered class has exactly one matching migration
+before it creates that class's single Rivet actor definition with the native
+SQLite provider. Migration tags identify the configuration history; they are
+not replayed for every object and do not execute application SQL. Applications
+still create their own tables from the object constructor, normally with
+`CREATE TABLE IF NOT EXISTS`.
+
+This follows [Wrangler's class-to-SQLite reduction](https://github.com/cloudflare/workers-sdk/blob/be87ff0382c53a294e948e49419d25d653c50e86/packages/wrangler/src/dev/class-names-sqlite.ts#L10-L72).
+
+After the controlled Worker import, Orange resolves only the named class exports
+listed in that manifest. Like Cloudflare, Orange accepts a plain class as well
+as a subclass of `DurableObject`. Missing exports, values that are not classes,
+and duplicate class entries fail before request dispatch; other exported
+Durable Object classes are preserved as Worker exports but are not registered.
+
+## Actor definitions and registry
+
+Each discovered class produces one RivetKit actor definition. Its registry
+name is a SHA-256-derived value of the deployment identity and class name, so
+unrelated projects and classes cannot collide. Each actor definition gives
+RivetKit its class name as a display name, which the v3 Engine doesn't store.
+Actor names and keys stay the same. The definition exposes one private alarm action
+plus private route slots for Durable Object `fetch()`, RPC over HTTP or an
+internal WebSocket, and user WebSockets. The fetch, RPC, and alarm slots are
+implemented. Standard user WebSockets keep the actor awake for their lifetime.
+Accepted sockets, tags, attachments, event methods, and automatic responses are
+implemented. WebSocket hibernation is emulated. See
+[WebSocket hibernation](../modules/durable-objects#websocket-hibernation).
+
+When a Durable Object manifest is present, the runtime child starts one local
+RivetKit registry containing every generated actor definition and waits for
+`startAndWait()` before opening the Worker HTTP listener. Registry startup
+errors therefore fail `orange dev` before it reports readiness. The child also
+owns registry shutdown and disables RivetKit's welcome output and signal
+handlers so Orange remains the only process-lifecycle owner. Graceful registry
+drain is bounded to five seconds because the published local lifecycle can
+otherwise remain pending after its Engine stops.
+
+The registry sets `maxIncomingMessageSize` to 32 MiB instead of RivetKit's
+64 KiB default, the most the Rivet Engine takes in one message from a runner,
+so that a Queues `sendBatch()` fits in one action request. RivetKit checks the
+limit on action requests, queue sends over HTTP, and actor-connect WebSocket
+messages. Orange uses actions only for its own control calls, such as facet
+`abort()` and `delete()`. Durable Object and facet `fetch()`, RPC, and
+WebSocket traffic use raw requests and do not have this limit. See
+[Queues](../modules/queues#registry-message-size).
+
+## RivetKit pin
+
+OpenOrange runs on Rivet 3. It pins the RivetKit `feat/sqlite-sync-3.0.6` branch,
+which adds synchronous SQLite to RivetKit 3.0.6, at commit
+`cf8679c670bc1e0e22252a6daf0523b9a1771ed6`. The npm dependency, NAPI wrapper,
+host-specific native binary, Engine wrapper, and host-specific Engine binary
+must all resolve to preview version `0.0.0-sqlite-sync-3-0-6-final.cf8679c`. Startup checks
+the complete set before loading RivetKit. It rejects mixed versions, a local
+NAPI binary, and an Engine override that does not resolve to the pinned platform
+artifact. The package installation test starts a Durable Object registry from
+the packed `open-orange` tarball, so the same artifact boundary is exercised in
+development and after publication.
+
+That preview publishes native artifacts for Linux x64/arm64 (glibc and musl)
+and macOS x64/arm64. It does not publish the Windows NAPI or Engine packages, so
+Orange rejects other hosts before loading RivetKit. Windows support resumes
+when the pinned build is replaced by a release or preview containing both
+artifacts.
+
+## Host globals
+
+RivetKit's schema initialization probes the host `navigator` even when Orange
+has already installed Cloudflare globals for user code. Orange temporarily
+restores the captured Node descriptor only while loading RivetKit, then restores
+the Worker's throwing placeholder. This keeps host infrastructure functional
+without claiming that Cloudflare's `Navigator` API is implemented.
+
+## Engine storage and ports
+
+Each project uses the local Engine's built-in `default` Rivet namespace. The
+Engine storage path and every generated actor type include a stable hash of the
+resolved project, Worker name, and Wrangler environment. Its Engine guard, API
+peer, and metrics ports are allocated as an isolated stable set and reused on
+restart. Local Engine state is stored below the ignored
+`.open-orange/rivetkit/` directory instead of RivetKit's shared home directory,
+preventing concurrent projects from contending for one database or sharing
+actor identities.
+
+## Generations
+
+RivetKit's generation-scoped `createVars` hook constructs the Cloudflare-facing
+object lifecycle before events are admitted. Each actor generation receives a
+fresh environment object containing the resolved Worker binding values, a fresh
+Durable Object state object, and exactly one instance of the configured user
+class. All callbacks in that generation reuse those identities; a later wake
+creates a new generation and new JavaScript instance. User instance fields are
+therefore ephemeral and are never placed in Rivet's persisted actor state.
+
+## SQLite storage
+
+`ctx.storage.sql` uses the actor's native RivetKit SQLite database.
+`exec()` validates positional binding count and value types, executes
+synchronously, and returns Cloudflare-shaped cursors with shared object/raw
+iteration, `next()`, `toArray()`, `one()`, duplicate column names, and row
+counters. SQLite blob values become `ArrayBuffer` objects. `databaseSize`
+matches workerd's used-page formula: allocated pages minus freelist pages,
+multiplied by the database page size. SQL errors carry SQLite's message and
+result code name, as in workerd, for example `no such table: x: SQLITE_ERROR`.
+
+Like workerd, Orange runs Durable Object writes in an implicit transaction. The
+first statement that can write opens it, and it commits after the current
+JavaScript turn and its microtasks finish. Writes made in one turn, including
+writes after awaiting a storage promise, therefore commit atomically. Reads
+before the first write run outside the transaction. A critical SQLite error
+(`SQLITE_FULL`, `SQLITE_IOERR`, `SQLITE_NOMEM`, or `SQLITE_INTERRUPT`) or a
+failed commit breaks the object. The failing event and every later storage call
+in that generation fail, and the next event gets a fresh instance that loads
+only durable state.
+
+`ctx.storage.transactionSync()` runs its closure in a SQLite savepoint inside
+the turn's implicit transaction, as workerd does, so its writes become durable
+with the rest of the turn. It returns the closure's value on success, or rolls
+back the savepoint and rethrows the original error on failure. Nested calls use
+further savepoints, so a caught nested failure rolls back only the nested writes
+while the outer transaction can continue. Every SQL call made through the same
+`ctx.storage.sql` object is routed to the active transaction. Direct `BEGIN`,
+`COMMIT`, `END`, `ROLLBACK`, `SAVEPOINT`, and `RELEASE` statements through
+`sql.exec()` fail with Cloudflare's transaction guidance instead of escaping the
+storage-owned transaction lifetime.
+
+`ctx.storage.kv` implements Cloudflare's synchronous `get()`, `put()`,
+`delete()`, and `list()` surface on the same SQLite connection and active
+transaction as `ctx.storage.sql`. Values are serialized at `put()` time with
+Node's V8 serializer and deserialized afresh for every read, preserving cycles,
+aliases, maps, sets, typed arrays, and mutation isolation for supported
+structured-clone values. Keys retain SQLite's UTF-8 byte ordering. Lists support
+inclusive `start`, exclusive `startAfter` and `end`, `prefix`, `reverse`, and a
+positive `limit`; as in workerd, opening a second live list invalidates the
+first. Orange does not copy Cloudflare's 2 MiB limit on a key and value. One
+write must fit in one Rivet commit of 128 MiB of changed SQLite pages.
+
+The KV rows use workerd's private `_cf_KV` table. Orange also stores the alarm
+in `_cf_ALARM` and the bookmark counter in `_cf_METADATA`. Each of these tables
+is created only when the object first uses KV, alarms, or bookmarks. As with
+workerd's `_cf_` tables, they appear in `sqlite_master`, and user `sql.exec()`
+calls that read or change them fail with `not authorized`. RivetKit's own
+`_rivet_` tables hold schedules, connections, and queue messages. Orange keeps
+the object's name, facet class, and WebSocket hibernation settings in a private
+`_rivet_openorange_metadata` table, created only when the object has one of
+them. These tables appear in `sqlite_master`, user SQL that reads or changes
+them fails with `not authorized`, and `deleteAll()` keeps them. KV operations made inside `transactionSync()` use its
+savepoint, so rolled back writes are not observable afterward.
+
+The same table backs asynchronous `get()`, `put()`, `delete()`, `list()`, and
+`deleteAll()`. Multi-key calls have no key-count limit, as in workerd's SQLite
+backend. Multi-get omits
+missing keys and returns a `Map` in increasing UTF-8 key order; multi-delete
+returns the number of distinct stored keys removed. Multi-put ignores record
+fields whose value is `undefined`, while the single-key overload rejects an
+undefined value. Multi-put and multi-delete execute atomically.
+
+`deleteAll()` atomically removes the `_cf_` tables and every user SQL table,
+view, virtual table, and trigger while preserving RivetKit's private schema. As
+in workerd, it also deletes the object's stored alarm. It cancels open SQL
+cursors and throws when called inside a transaction.
+List ranges work on the asynchronous API. Orange has no storage cache, so
+`noCache: true` is accepted and has no additional effect. `allowConcurrency`
+has no effect because every SQLite operation completes synchronously.
+`allowUnconfirmed: true` on `put()`, `delete()`, `setAlarm()`, or
+`deleteAlarm()` keeps that write from holding the output gate.
+
+## Output gate
+
+Orange implements Cloudflare's output gate. Outgoing messages from a Durable
+Object wait until the confirmed writes made before them are durable: the event
+result or error, global `fetch()`, service binding `fetch()` and RPC calls,
+Durable Object stub `fetch()` and RPC calls, and each WebSocket `send()` and
+`close()`, and the frames of RPC sessions on returned stubs. Writes in the same
+turn commit together, so a message sent during a turn waits for that turn's
+commit. Writes in later turns do not hold it. WebSocket frames leave in send
+order. If a commit cannot become durable, the held messages are never sent and
+the object resets. Code outside a Durable Object has no output gate. Some
+output does not wait yet; see [Deviations](../modules/durable-objects#deviations).
+
+## Async transactions
+
+`ctx.storage.transaction()` commits the open implicit transaction, opens one
+native SQLite transaction, and keeps it active across awaited work. The closure
+runs in a critical section of the input gate, so new events wait until the
+transaction ends. The transaction object exposes Cloudflare's async KV and alarm
+operations; ordinary `ctx.storage` SQL, synchronous KV, and async KV calls made
+from the same async context join it. A thrown error rolls the transaction back,
+`rollback()` provides an idempotent explicit rollback, and a caught nested
+failure rolls back only its savepoint. Transaction handles reject operations
+after commit or rollback. A synchronous transaction may nest inside an async
+one; starting an async transaction from `transactionSync()` is rejected because
+its lifetime cannot fit inside a synchronous closure.
+
+## Alarms
+
+Alarm values and a unique replacement token are stored transactionally in the
+private `_cf_ALARM` table. After the write or outer transaction commits, Orange
+reconciles that authoritative record to one Rivet durable one-shot event.
+Repeating an unchanged record reuses its event; every new `setAlarm()` gets a
+new token, so same-timestamp replacement is distinguishable from a stale fire.
+Deletion and `deleteAll()` cancel every Orange alarm event. Actor startup lists
+the durable schedules and repairs a missing, stale, or duplicate event while
+preserving an already-scheduled retry across process restarts.
+
+When the event fires, Orange invokes `alarm()` with `scheduledTime`,
+`retryCount`, and `isRetry`. `getAlarm()` returns `null` while that alarm is
+running unless the handler has called `setAlarm()` again. A successful handler
+clears the fired alarm. An uncaught error is reported through Rivet's scheduled
+action diagnostics and schedules up to six retries with 2, 4, 8, 16, 32, and
+64-second base delays plus up to 25% additive jitter. A `setAlarm()` or
+`deleteAlarm()` completed while the handler is running supersedes that retry.
+Orange serializes alarm handlers so only one runs for an object at a time.
+
+As in workerd, `setAlarm()` may be called during construction before the
+runtime can inspect the completed class. After construction it rejects a class
+that does not define an `alarm()` handler. A constructor-scheduled alarm on a
+class with no handler is cleared when it fires and emits a diagnostic.
+
+Rivet's schedule API cannot join the user SQLite transaction, so Orange commits
+the alarm row with the open turn before it reconciles the schedule. A crash in
+that window can temporarily leave a missing or stale event, which startup
+repairs. The internal alarm action carries the intended time, replacement token,
+retry count, and Rivet fire metadata so dispatch can reject a stale claimed
+event. Because Rivet one-shot actions are claimed before dispatch and are not
+retried after failure, Orange retains the alarm row through the handler and
+explicitly schedules each retry before returning the failure diagnostic. This
+atomicity gap and the list and cancel overhead are known costs.
+
+## Sync and bookmarks
+
+`ctx.storage.sync()` waits for an earlier active async transaction, commits the
+open turn, and resolves once Rivet confirms that every earlier write is
+durable, including writes made with `allowUnconfirmed`.
+
+`ctx.storage.getCurrentBookmark()` returns a bookmark in the format that
+workerd uses in local development. Each call advances a counter stored in
+`_cf_METADATA`, so a later bookmark sorts after an earlier one, including
+across restarts. These bookmarks are not interchangeable with Cloudflare's.
+`waitForBookmark()` resolves at once because the single local database is
+always up to date. Orange keeps no storage history, so `getBookmarkForTime()`
+and `onNextSessionRestoreBookmark()` throw
+`DurableObjectStorage.<name> is not implemented`.
+
+## Input gate
+
+Orange implements the input gate for event admission. While
+`blockConcurrencyWhile()` or `storage.transaction()` runs, new fetch, RPC,
+alarm, and WebSocket events wait. Nested critical sections run one after
+another inside their parent. Storage calls complete synchronously, so they
+never open a gap for other events. The gate does not pause an event that was
+already running when the critical section began. If such an event calls
+synchronous SQL, KV, or `transactionSync()` while another event's
+`storage.transaction()` is open, the call fails with
+`Synchronous storage cannot run while another event's storage.transaction() is open`.
+Its async storage calls wait until the transaction ends.
+
+## SQL cursors and the runtime thread
+
+The current Rivet bridge materializes a complete query result before returning
+to JavaScript, so Orange's cursor is eager rather than workerd's live native
+cursor. `rowsWritten` uses SQLite's change count for a single `INSERT`,
+`UPDATE`, `DELETE`, or `REPLACE` statement and is 0 otherwise, while `rowsRead`
+reports returned rows instead of the engine's rows scanned. Unbound
+multi-statement scripts run every statement, and the cursor returns the rows of
+every statement that produces rows with `rowsWritten` 0. Workerd returns only
+the last statement's rows. Rivet's raw script primitive does not accept
+bindings, so Orange rejects bindings on a multi-statement script explicitly.
+
+All synchronous SQL runs on the one Node runtime thread and can delay unrelated
+Workers or actors. Worker threads would remove this limitation.
+
+## State
+
+`ctx.id` is reconstructed from the canonical ID segment in Rivet's actor key
+and retains its class namespace and jurisdiction validation. It is stable when
+the actor sleeps and a fresh JavaScript generation starts. For a named ID,
+Orange keeps the name in the actor's SQLite, so `ctx.id.name` survives sleep,
+alarm wake-ups, and `deleteAll()`. `ctx.storage` is the same synchronous SQLite-backed storage
+object described above.
+
+`ctx.waitUntil(promise)` delegates to Rivet's native generation task tracker,
+so background work can keep the actor alive after the current request or RPC
+returns. Constructor calls to `ctx.blockConcurrencyWhile()` begin immediately,
+and Rivet's `createVars` startup does not admit an event until all of them
+settle. Later calls run as critical sections of the input gate, so new events
+wait until the callback settles. Every call has workerd's 30-second timeout.
+Workerd stops nesting at 64 levels. Orange nests in JavaScript, so it has no
+nesting limit. A rejection or timeout resets the
+object.
+
+`ctx.abort(reason, { retryAlarm })` poisons the current Orange generation even
+if user code catches the synchronous exception, fails the enclosing fetch, RPC,
+alarm, or hibernatable WebSocket event, and requests Rivet's persisted sleep
+lifecycle. The next event constructs a fresh class instance with the same
+durable SQLite state and ID. Alarm retries default to enabled; passing
+`retryAlarm: false` clears an interrupted alarm instead. As in workerd, the
+abort discards the open implicit transaction and breaks the output gate, so
+held output is never sent. Rivet does not expose a dedicated reset primitive,
+so Orange restarts the complete Rivet actor from durable storage. This is
+heavier than workerd's in-isolate reset.
+
+`ctx.exports` returns the Worker's `ctx.exports`, the same object as the
+`exports` import from `cloudflare:workers`. The remaining state surface is
+intentionally incomplete. `ctx.facets` is described in [Facets](../modules/durable-objects#facets).
+`ctx.container` works for classes listed under wrangler `containers`. It runs
+one sandbox per object on `ORANGE_SANDBOX_PROVIDER`, so only Cloudflare Sandbox
+images run. See [Sandbox](../modules/sandbox). For other classes it throws a
+`NotSupportedError`. Reading `ctx.props`, `ctx.restore`,
+`ctx.configureReadReplication`, `ctx.primaryStub`, or `ctx.version` throws a
+`NotSupportedError`. Other names that workerd does not
+define on `DurableObjectState`, such as `ctx.tracing`, read as `undefined`, as
+on workerd.
+
+## IDs and namespaces
+
+Durable Object ID primitives are implemented independently of actor startup.
+Named IDs are deterministic within one deployment-and-class namespace, unique
+IDs use cryptographic randomness, and both use a canonical 64-digit lowercase
+hex representation. `idFromString()` validates the namespace proof and restores
+jurisdiction metadata; as on Cloudflare, a string round trip does not restore a
+named ID's `name`. A namespace restricted to a jurisdiction rejects an ID from
+another jurisdiction, while an unrestricted namespace can parse IDs for any
+supported jurisdiction. Constructing or parsing an ID never creates or wakes an
+actor.
+
+Orange's encoded ID bytes are runtime-local and are not expected to equal IDs
+issued by Cloudflare. The compatibility guarantee is behavioral: stable named
+resolution, unique ID separation, canonical round trips, metadata, equality,
+and deterministic rejection of malformed or cross-class IDs.
+
+Every resolved same-script binding is injected as a Durable Object
+namespace before the Worker entrypoint loads. `idFromName()`, `newUniqueId()`,
+`idFromString()`, `get()`, `getByName()`, and `jurisdiction()` are synchronous,
+matching the Cloudflare binding contract. Multiple binding names for one class
+share the same deployment-and-class ID namespace.
+
+`get()` and `getByName()` produce a lazy stub containing the exact synchronous
+`id` and optional `name` fields. Its internal descriptor carries the canonical
+ID, class, deployment, jurisdiction, location hint, and `primary-only` routing
+mode. Creating or inspecting the stub does not contact RivetKit or create,
+wake, or run an actor.
+
+On the first actual stub operation, Orange maps the descriptor to a RivetKit
+handle and memoizes that handle for the stub's lifetime. The actor name is the
+class in kebab case plus a short hash of the deployment and class, for example
+`greeter-5c8cd02c`. The actor key is the canonical ID, after the jurisdiction
+when the ID has one. Repeated operations on one stub reuse the same handle. RivetKit
+itself defers
+Engine resolution until that handle performs transport work, so the RPC and
+fetch revisions can remain lazy. Location hints are retained as best-effort
+placement preferences; they do not imply that the local single-node Engine can
+satisfy a Cloudflare region.
+
+## Method RPC
+
+Durable Object method RPC is isolated under the runtime's `rpc/` directory and
+uses the exactly pinned `capnweb` 0.12.0 release. Its public boundary is a small
+facade: an HTTP adapter accepts an already-routed private request and returns a
+batch response, while a WebSocket adapter attaches Cap'n Web to an already-open
+Rivet socket and returns a disposable session. The surrounding runtime remains
+responsible for resolving actors, routing requests, owning sockets, and deciding
+when sessions end.
+
+The adapter loads Cap'n Web behind a checked runtime boundary because its 0.12.0
+declarations assume browser types and require upstream library checking to be
+disabled. Orange keeps strict dependency type checking enabled and exposes only
+its validated facade.
+
+The RPC value codec mirrors workerd's two-part envelope: Node's V8
+serializer carries the ordinary value graph, and an ordered table carries live
+Cap'n Web values such as functions, RPC targets and stubs, streams, Fetch API
+request/response objects, headers, and Blobs. Encoding deduplicates repeated externals;
+decoding requires every indexed table entry to exist and be consumed. Orange
+does not copy workerd's 32 MiB cap on a serialized value. An HTTP RPC call is
+one Rivet message, so it fails with a `RangeError` over 32 MiB on the wire,
+where binary data counts 4/3 of its size.
+
+Cycles, aliases, `Map`, `Set`, `ArrayBuffer`, typed arrays, dates, regular
+expressions, boxed primitives, errors, and `DOMException` remain pass-by-value.
+`Response.error()` arrives as a network error response. Node's V8 API does not
+preserve an `ArrayBuffer`'s identity with its typed views, so Orange records a
+small internal view descriptor and reconstructs the view over the decoded
+buffer. Symbol-keyed properties are dropped, as V8 drops them. Symbols,
+`SharedArrayBuffer`, `File`, `FormData`, URL, AbortSignal, native Promise, and
+other class instances fail with workerd's `DataCloneError` message. This matches
+what workerd's RPC serializer accepts.
+
+Value-only method exchanges use one short-lived Cap'n Web HTTP batch. The
+caller encodes the input before opening the batch, propagates an optional abort
+signal through the Fetch request, awaits the async result in that same batch,
+decodes it, and disposes the session in a `finally` block. Success, remote
+failure, and cancellation therefore leave no persistent WebSocket or live HTTP
+session.
+
+An input containing a live external is rejected before network dispatch. An
+output containing one is detected after the handler has run exactly once and is
+returned as a single-execution WebSocket promotion. A standalone HTTP target
+without generation-scoped continuation storage still rejects that output.
+Arbitrary Durable Object method selection is separate from this transport
+exchange and lands with method routing.
+
+Calls select the transport on demand. A value-only input starts with HTTP
+and never opens a WebSocket when the output is also value-only. A live input
+opens a private Cap'n Web WebSocket immediately. If a value-only HTTP call
+produces a live output, the actor retains that already-produced envelope under
+a random, single-use continuation token for up to 30 seconds; the client opens
+the private session and claims it without re-executing the handler.
+
+Continuation storage belongs to one Rivet actor generation. Claiming removes a
+token atomically. Duplicate or expired claims fail, and unclaimed externals are
+disposed on expiry, disconnect, attachment failure, actor sleep, or actor
+destruction. The RPC layer attaches Cap'n Web to sockets supplied by the
+surrounding runtime and returns a disposable protocol session; the connector
+that opened the socket remains responsible for closing and releasing the
+transport itself.
+
+If the client cannot establish a promoted session, it makes a best-effort
+short-lived HTTP release call without retrying the user handler. A server-side
+attachment failure releases the token directly, and expiry remains the final
+cleanup path when the actor cannot be reached.
+
+Arbitrary public methods and prototype getters on a typed Durable Object stub
+route through this RPC layer. Reading a method property does not resolve or
+wake its actor. Calling or awaiting a property resolves the stub's memoized
+Rivet handle and sends the operation through the private RPC route. The actor
+applies methods to the generation's original class instance, so instance state
+and `this` identity persist across calls. Async results and error names,
+messages, and custom properties propagate through Cap'n Web.
+
+The returned callable thenable supports property and method access before its
+parent result is awaited. Object results receive a non-enumerable
+`Symbol.dispose`; disposing the result releases its capability group and closes
+the private session after explicit `dup()` references are also disposed. Nested
+and repeated capability references retain identity. Orange filters Cap'n
+Web-only `map()` and `onRpcBroken()` members from the exposed promise and stub
+surface.
+
+Orange does not expose Durable Object lifecycle callbacks (`alarm`, `fetch`,
+`connect`, and WebSocket callbacks), promise-like `then`, or names inherited
+from `Object.prototype` as arbitrary RPC methods. It also rejects own instance
+properties and missing or non-callable paths at dispatch time. The exported
+generic stub type maps the user class's non-reserved methods and properties and
+is checked against Wrangler's generated provider and object-result disposal
+signatures. The `cloudflare:workers` module also exports `RpcTarget` for explicit
+pass-by-reference results and `RpcStub` for local capability construction. Both
+are backed by the pinned Cap'n Web implementation while exposing only the
+Workers-facing surface.
+
+RPC transfers `ReadableStream<Uint8Array>`,
+`WritableStream<Uint8Array>`, and the streaming bodies of `Request` and
+`Response`. Cap'n Web multiplexes the byte path over the existing private
+session and applies its adaptive bounded flow-control window, so a paused
+consumer does not drain an entire source and writable `write()` waits for the
+remote sink. Stream close, readable cancel, writable abort, and transport
+failure propagate across the session.
+
+Cap'n Web 0.12 acknowledges a remote readable cancellation without reliably
+canceling the original source. Orange wraps each outgoing readable in a small
+transport record with a private `RpcTarget` cancellation side channel. The
+wrapper is also used for Request and Response bodies. This keeps byte movement
+and backpressure in Cap'n Web while making cancellation deterministic. Internal
+RPC WebSockets are explicitly configured as non-hibernatable Rivet sockets;
+the open session therefore holds its actor generation awake until the stream
+and result capability group are released.
+
+## Raw fetch
+
+`stub.fetch()` uses the separate raw HTTP route and never enters the Cap'n Web
+RPC codec. Orange constructs the caller's `Request` before actor resolution,
+matching the Fetcher call boundary, and transports its method, headers, abort
+signal, and body stream through RivetKit. A private route parameter carries the
+original absolute URL; the actor reconstructs that URL before invoking the
+user class, so private routing details are never visible to application code.
+
+The user's `Response` passes back without body buffering. Status, status text,
+headers, response streaming, request cancellation, response-body cancellation,
+and thrown user exceptions therefore remain part of the underlying HTTP
+exchange. Missing handlers and non-Response results fail explicitly. As in
+workerd, a response whose `Content-Encoding` is `gzip` or `br` is compressed on
+the way out unless it sets `encodeBody: "manual"`, and callers receive the
+decoded body. Standard Cloudflare request streams do not require Node's
+nonstandard public `duplex` initializer; Orange supplies that implementation
+detail only at its Undici boundary.
+
+Rivet's HTTP gateway adds its own request and response headers, overwrites
+CORS headers, normalizes the reason phrase, and answers `OPTIONS` preflights
+before the actor sees them. Orange therefore carries the caller's method,
+headers, and `request.cf` in one private request header, and the object's
+headers and `statusText` in one private response header, and rebuilds each on
+the other side. The object sees the request that the Worker sent, including
+`OPTIONS` requests, and the Worker sees only the headers that the object
+returned. `orange dev` drops every `x-open-orange-internal-*` header that a
+client sends, so a client cannot forge `request.cf`. The optional Rivet Services
+sidecar is disabled because Orange runs the actor registry in its own runtime
+process; this also prevents its fixed local ports from colliding with another
+project.
+
+## Known transport gaps
+
+One Rivet transport lifetime gap remains: a Durable Object response that
+directly reuses an unread request body can be truncated when the native actor
+bridge releases upload ownership after the handler returns. Reading the input
+before constructing that response works, and independent response streams do
+not have this coupling.
+
+One performance deviation remains: Orange's current promise facade accepts
+follow-up calls before the parent is awaited, but replays them after decoding
+the parent envelope rather than using workerd's native single-round-trip
+pipeline. Results and ordering are preserved, with extra transport latency.
+
+## Facet actors
+
+Each facet is a child Rivet Actor:
+
+- One generic actor definition hosts every facet. The facet's SQLite holds the
+  class name, so any exported class works. The class needs no binding and no
+  migration.
+- The actor key holds the parent's Rivet actor id, the facet name, and an
+  incarnation number. The parent keeps the incarnation in its private
+  `_rivet_openorange_facets` table, which survives `deleteAll()`.
+- `get()` starts nothing. The first call through the stub runs the callback,
+  creates or wakes the facet actor, and sends the call. A repeat `get()` while
+  the facet runs skips the callback, so a different class has no effect.
+- After `abort()` or `delete()`, the next `get()` runs its callback again. A
+  different class or `id` takes effect: Orange stores it in the facet actor and
+  constructs the new class in place, in the running actor. After `abort()`, the
+  new class sees the old storage.
+- A facet without an `id` gets its parent's `ctx.id`. A facet with an `id` gets
+  that ID, and its storage still follows the facet name.
+- `abort()` fails in-flight and later calls on old stubs with the reason. Orange
+  then discards the facet's open implicit transaction and constructs a new
+  instance in the running actor, without restarting it. Calls that arrive
+  while the new instance is constructed wait for it. The next `get()` waits for
+  the replacement, so it gets a new instance with the same storage.
+- `delete()` fails calls with `Facet was deleted.` and bumps the incarnation in
+  the current turn. The next `get()` gets a new actor with empty storage. Orange
+  destroys the old actor in the background.
+- Facets nest to a depth of 4, including the root. Orange does not copy
+  workerd's 256-character cap on a name. A long name is hashed to fit Rivet's
+  1,024-byte actor key. `setAlarm()` in a facet fails with
+  `Facets currently cannot set alarms.`
+
+The block comes from the one synchronous read that makes the copy a snapshot of
+one moment. Orange's SQLite gives each actor one connection, so it cannot read
+a snapshot while `src` keeps running.
+
+## WebSockets
+
+The standard WebSocket support is available to Worker and Durable Object
+code. `WebSocketPair` creates entangled endpoints, one side may be accepted for
+local event handling, and the other may be placed in a status-101 `Response`.
+Text and binary frames, acceptance queues, close validation, default close
+auto-reply, and `allowHalfOpen` are behavior-checked against the pinned workerd
+runtime.
+
+An upgraded `stub.fetch()` preserves the original application URL, method,
+and headers in a private HTTP preparation request. The actor invokes the user
+class's `fetch()` exactly once, retains its status-101 response under a random
+single-use token, and claims that response when the same Rivet actor opens its
+private WebSocket route. The runtime couples text, binary, close, and error
+events in both directions. The Rivet actor definition marks these standard
+sockets non-hibernatable, so the class generation remains awake for the
+connection lifetime. Orange's outer HTTP server also couples the Worker's
+status-101 response to the accepted client connection and preserves response
+headers and a valid selected subprotocol.
+
+The extra preparation request is required because RivetKit's raw actor
+WebSocket client cannot carry arbitrary application headers and currently
+ignores its protocol argument. Its handshake and frame-copy cost is unmeasured.
+
+An attempted upgrade may still return an ordinary HTTP response. Orange carries
+that response's body, headers, status, and status text back through the private
+preparation route without opening a Rivet WebSocket. If a connected client
+disappears without a close frame, Orange sends a private actor-local disconnect
+notification before closing Rivet's transport. The user endpoint therefore
+receives the same code-1006, `wasClean: false` close event as workerd instead of
+Rivet's transport-level `ws.downstream_closed` status.
+
+`ctx.acceptWebSocket()` accepts an otherwise-unaccepted pair endpoint for
+the hibernation API. It rejects endpoints already accepted through `accept()`
+and endpoints whose peer has already been accepted or coupled. Duplicate tags
+are stored once. OpenOrange does not copy Cloudflare's limits of 10 tags of at
+most 256 bytes per socket, or 32,768 accepted sockets per object. `ctx.getWebSockets()` returns all live registered sockets or those
+matching one tag, while `ctx.getTags()` returns a defensive copy and rejects
+unregistered sockets. Closed sockets leave the active registry.
+
+`ctx.setHibernatableWebSocketEventTimeout()` stores an optional per-object event
+timeout up to 2,147,483,647 milliseconds (about 24.8 days), the longest delay of
+a Node.js timer. Cloudflare's limit is 7 days. Passing zero or no argument clears it,
+and `ctx.getHibernatableWebSocketEventTimeout()` reports the current value. The
+setting persists in the actor's SQLite across JavaScript generations. Orange
+enforces it for asynchronous message, close, and error handlers and drops the
+instance after a timeout. Until Worker code runs in a separate
+thread, a synchronous handler that blocks Node's event loop cannot be
+preempted; this is a known deviation.
+
+`WebSocketRequestResponsePair` and
+`ctx.setWebSocketAutoResponse()` configure one object-wide text request and
+response. Cloudflare's 2,048-byte limit on each is not copied. A matching text frame records a
+timestamp, sends the response when the socket's outgoing half is open, and is
+not delivered to `webSocketMessage()`. Binary frames never match. The
+timestamp survives socket-wrapper restoration and remains available after the
+configuration is cleared. `ctx.getWebSocketAutoResponse()` returns a fresh
+pair, while `ctx.getWebSocketAutoResponseTimestamp(socket)` returns a fresh
+`Date` or `null`.
+
+Cloudflare performs this comparison in its native hibernation manager without
+waking the object. Orange performs it in the actor's socket host, on the Rivet
+transport, before any object event. An automatic response does not wake a
+hibernated object and does not restart an awake object's idle timer.
+
+`webSocket.serializeAttachment(value)` applies V8 structured serialization,
+and rejects non-cloneable graphs. Cloudflare's 16 KiB limit is not copied. Calls to `deserializeAttachment()` return `null` before the first write
+and a fresh graph after each write, preserving cycles, aliases, collections, and
+typed data. Closing the socket removes its tag indexes and its stored state.
+
+Incoming frames on accepted sockets bypass ordinary `message`, `close`, and
+`error` event listeners. They call the optional `webSocketMessage()`,
+`webSocketClose()`, and `webSocketError()` methods of the running instance with
+the user-side socket. Binary messages are always `ArrayBuffer` values. Missing
+methods consume the event without an error. An error or close releases the
+socket once, so a transport that reports both does not call two terminal
+handlers.
+
+## Hibernation emulation
+
+- Each Rivet actor has a socket host. The host owns the Rivet transport of each
+  socket that the object accepted with `ctx.acceptWebSocket()`, and it outlives
+  the object instance.
+- After 10 seconds without an event, Orange drops the object instance and its
+  in-memory state. Workerd uses the same delay. The accepted sockets stay open.
+  A standard WebSocket, an open RPC session, a `waitUntil()` or
+  `ctx.keepAwake()` task, a pending `setTimeout()` or `setInterval()` callback,
+  an unclaimed upgrade, or an RPC result that a caller still holds keeps the
+  instance running.
+- A WebSocket that the object opened keeps the instance running while it is
+  open, and a `fetch()` keeps it running until the response arrives, also when
+  nothing awaits the request. This matches `wrangler dev` 4.129, measured with
+  3 objects for each case: an object with an open `new WebSocket()` did not
+  hibernate in 45 seconds, and an object with a 25-second request hibernated
+  only after the response. Orange releases a `fetch()` when its response
+  headers arrive, not when its body ends. Only a WebSocket that Worker code
+  opens counts. The sockets that Orange and its packages open, such as RivetKit's
+  gateway socket for each Durable Object WebSocket, do not. RivetKit opens
+  those sockets with the `ws` package. If it cannot, it uses the built-in
+  WebSocket, which holds about 10 times more memory for each socket, and
+  Orange prints one warning.
+- A pending timer keeps the instance running until its callback runs or the
+  timer is cleared, and `unref()` does not change that. The timers of
+  `node:timers` and `node:timers/promises` are the global timers, as in
+  workerd, so they count too. This matches
+  `wrangler dev` 4.129 with workerd 1.20260903.1, measured with 6 objects for
+  each case:
+
+  | Timer set, then no more events | Hibernated after 15, 30, and 45 seconds | After 80 seconds |
+  | --- | --- | --- |
+  | None | Yes | Yes |
+  | `setTimeout()`, 60 seconds | No | Yes. The callback ran at 60.0 seconds in the first instance. |
+  | `setTimeout()`, 60 seconds, then `unref()` | No | Yes. The callback ran at 60.0 seconds in the first instance. |
+  | `setInterval()`, 3 seconds | No | No |
+  | `setInterval()`, 3 seconds, then `unref()` | No | No |
+  | `setTimeout()` or `setInterval()`, then cleared | Yes | Yes |
+
+  In [workerd's source](https://github.com/cloudflare/workerd/blob/v1.20260903.1/src/workerd/io/io-context.c%2B%2B#L949-L956),
+  each timer of an actor is a `waitUntil()` task, and the idle timeout starts
+  only after those tasks end. Cloudflare's documentation says the same of a
+  pending timer. Real Cloudflare was not tested. Orange's own timers, and
+  those of the packages it runs on, do not keep an instance running.
+- A pending timer or outbound work also keeps an object that has no WebSocket.
+  Rivet sleeps an actor with no connection after 10 seconds, and the sleep
+  would drop the object's timers, so Orange keeps the actor awake while a timer,
+  an outbound WebSocket, or a `fetch()` is pending. On `wrangler dev` 4.129, an
+  object with no WebSocket ran a 25-second `setTimeout()` in the same
+  instance, and so does Orange. 3 objects for each case.
+- A `setInterval()` that is never cleared is always pending. It keeps the
+  instance and its Rivet actor awake forever, with or without a socket. The
+  actor keeps its memory and counts toward the runner's limit of awake
+  objects. See
+  [Find what keeps an object awake](../modules/durable-objects#find-what-keeps-an-object-awake).
+- When `ctx.abort()` resets an object, or its actor stops, Orange cancels the
+  timers of the old instance, as workerd does. Their callbacks never run
+  against an instance that is gone.
+- The next message, close, or error on an accepted socket constructs a new
+  instance. Before its constructor runs, Orange restores each socket with its
+  tags, attachment, and automatic-response timestamp, so `ctx.getWebSockets()`
+  in the constructor lists them. Events that arrive during construction wait
+  and keep their order. One new instance serves all of them.
+- An HTTP request, an RPC call, or an alarm also constructs a new instance, as
+  on Cloudflare.
+- A frame that matches `ctx.setWebSocketAutoResponse()` gets its response from
+  the socket host. It does not construct an instance or restart the idle timer.
+- When the object has no open accepted socket, the idle timer asks Rivet to
+  sleep the actor.
+- When the runtime stops, it closes each accepted socket with
+  `1012 Service Restart` at a random time in a window of 10 ms per socket, up
+  to 10 seconds, so clients do not all reconnect at once. A Rivet actor
+  WebSocket cannot send `1012`, so the actor sends a private `1011` close and
+  the Worker side of the socket gives its client `1012`. Standard WebSockets
+  close at once.
+
+Orange deleted the code that restored sockets from Rivet WebSocket
+hibernation: the restore branch of the WebSocket route, which rebuilt a socket
+from a hibernatable Rivet connection, and the `onDisconnect` hook, which gave a
+restored socket its close event. When Rivet WebSocket hibernation returns, they
+must be rebuilt. The socket store's `restoreConnection()` still restores a
+socket from its stored state.
+
+### Memory of a connected object
+
+A hibernated object with an open socket keeps its Rivet actor. For the measured
+cost of each connected object, see
+[A connected object is always a live actor](../modules/durable-objects#a-connected-object-is-always-a-live-actor).
+Most of the runtime's process memory is RivetKit's native memory. A trace of
+300 objects found 366 KB of live native memory for each object: 233 KB for the
+object's SQLite database and 132 KB for the actor. Node.js held 1 KB.
+
+## Upstream example corpus
+
+Orange keeps seven immutable upstream programs under `tests/examples` covering
+method RPC, RPC streams, fetch streams, standard WebSockets, hibernatable
+WebSockets, SQLite, and alarms. Six source blocks come from Cloudflare's Durable
+Objects documentation. The RPC stream is the minimal reproduction linked from
+Cloudflare Workers SDK issue 11071. Each source file is copied byte-for-byte and
+its manifest links to the exact upstream commit and lines; the local Wrangler
+file isolates the relevant binding and SQLite migration while normalizing the
+project identity and Orange's required compatibility profile.
+
+Run `pnpm validate:examples` to validate the corpus layout and manifests without
+network access or Worker execution. The validator rejects duplicate or malformed
+IDs, extra fields, path traversal, missing files, moving GitHub references, and a
+known-broken entry without a reason. The end-to-end suite copies each fixture to
+an isolated project, verifies that the source bytes are unchanged, starts the
+actual `orange dev` CLI, and exercises its network interface. All seven
+examples are expected to pass: alarms, ordinary RPC, streamed RPC and
+cancellation, the Durable Object fetch stream, SQLite, standard WebSockets, and
+a hibernation wake. A known-broken example must fail with its declared
+diagnostic, and an unexpected pass also fails the suite.
+
+## Worker threads
+
+Worker-thread isolation is not built. Until it is, the synchronous SQLite
+bridge runs on the runtime's main thread.
+
+## Conformance
+
+The conformance package has an explicit matrix for every Durable Object
+declaration and direct member in the pinned Wrangler-generated runtime types.
+It fails when Cloudflare adds, removes, or changes a classified member. The
+`DurableObject` export is checked on both its constructor and public instance
+sides, with workerd's inaccessible nominal brand excluded from structural
+comparison. Generated checks cover `AlarmInvocationInfo`, the complete
+implemented `DurableObjectState` slice, the typed `ctx.props` placeholder, and
+the complete `DurableObjectStorage` interface, including the bookmark methods.
+Runtime tests separately verify state and environment identity.
+Included and deliberately excluded Worker fixtures compile against the pinned
+Cloudflare contract; the included fixture advances as each runtime layer lands.
+Configuration tests run Wrangler's pinned resolver and verify the exact manifest
+and rejection behavior. Entrypoint tests cover direct and inherited subclasses,
+ignored unconfigured exports, and deterministic missing/invalid export errors.
+Build-conformance tests discover every selected RivetKit package and native
+artifact and prove that a deliberate version mismatch aborts registry startup
+before `setup()` runs. The packed CLI repeats registry startup from a clean npm
+installation, then exercises RPC, SQLite, alarms, standard WebSockets, a
+hibernation wake, persisted state after a CLI restart, both binary
+aliases, and graceful shutdown using only the published artifact.
+RivetKit adapter tests verify definition cardinality and naming and exercise all
+private HTTP and WebSocket route selections. Generation tests verify constructor
+cardinality, fresh state and environment identities, binding identity, callback
+reuse, and recreation across generations. A runner-level bundled Worker test
+proves that only the configured named export reaches the generated registry,
+that its class can construct a generation without invoking a handler, and that
+a missing export fails before registry startup. ID tests cover deterministic
+names, random unique IDs, uppercase-to-canonical round trips, equality, name
+loss after parsing, jurisdiction preservation, forged headers, malformed IDs,
+and cross-namespace rejection. The generated conformance type check compares
+Orange's exported `DurableObjectId` shape directly with Wrangler's pinned
+declaration. It also compares every ID-producing namespace method and the exact
+parameters for `get()`, `getByName()`, and `jurisdiction()`. Namespace runtime
+tests cover aliases, location metadata, jurisdiction subnamespaces, invalid
+options, and cross-class rejection. A bundled runner test makes a real request
+through the injected binding and proves `getByName()` returns an ID and name
+without invoking the user Durable Object. Stub tests prove that field reads do
+not resolve a handle, the first internal operation creates exactly one handle,
+and an `orange dev` test reads the actor names and keys back from the Engine
+API. The generated type check
+compares the stub's `id` and `name` fields with Wrangler, while a pinned-client
+test constructs and disposes a real RivetKit stateless handle without network
+resolution.
+
+RPC adapter tests run a real Cap'n Web HTTP batch through the private Rivet
+request dispatcher and attach a real Cap'n Web session through the private
+WebSocket dispatcher. They also prove that the adapter does not create an
+actor, open a socket, or close a runtime-owned socket during attachment.
+Codec tests cover cyclic objects and collections, repeated aliases, shared
+typed-array backing buffers, nested and repeated externals, all currently
+classified external kinds, Cap'n Web stubs, corrupt envelopes, missing and extra
+external entries, and unsupported value rejection.
+HTTP transport tests cover one-batch async completion, cyclic return values,
+remote exceptions, request-signal cancellation, deterministic disposal on all
+outcomes, live-external rejection in both directions, and the Rivet message
+limit before handler dispatch.
+Session tests use linked runtime-owned sockets with real Cap'n Web peers. They
+prove value-only calls never invoke the connector, live inputs take WebSocket,
+HTTP live outputs execute once and are claimed once, claimed capabilities work
+until disposal, and protocol disposal releases them. Store tests cover expiry,
+duplicate claims, disconnect, attachment failure, explicit disposal, and both
+Rivet sleep and destroy lifecycle cleanup. A separate failure test proves a
+client-side upgrade failure releases the retained result over HTTP without
+executing the handler again.
+Method-routing tests pass a lazy typed stub through a Rivet actor handle and a
+real Cap'n Web HTTP batch. They verify asynchronous calls, memoized resolution,
+`this`-bound generation state, async results, remote exceptions, and rejection
+of reserved, inherited, missing, non-callable, and own-property paths. Generated
+type checks compare representative method parameters and results with
+Wrangler's `DurableObjectStub<T>`, including property providers and disposable
+object results, while proving lifecycle methods stay reserved. Lifetime tests
+send callbacks into the actor, pipeline a call through a returned target,
+duplicate and dispose that capability, and verify that the final release closes
+the socket and invokes the target disposer. Codec rejection tests prevent
+Cap'n Web-only value types from leaking into the Workers RPC contract.
+Streaming tests pause a multi-megabyte readable and prove bounded prefetch,
+exercise writable backpressure, transfer readable and writable streams in both
+directions, preserve Request and Response metadata and bodies, propagate every
+readable cancel and writable abort direction, and keep the private actor session
+open until a transfer finishes. The generated stub check includes exact
+readable, writable, Request, and Response method signatures. Raw fetch tests send
+a streaming request through a lazy stub and private actor route, verify the
+original absolute URL, method, headers, status, and status text, and prove that
+response streams are not buffered. They also cover request abort, response-body
+cancellation, user exceptions, missing handlers, invalid responses, and
+memoized actor resolution. Generated type checks compare the exact
+`stub.fetch()` parameters and result with Wrangler's pinned
+`DurableObjectStub` contract.
+
+Calls from one process to one object, through any of its stubs, enter one
+ordering lane before either the raw fetch or method-RPC handler runs, as workerd
+delivers them. The lane preserves issue order across Rivet request reordering
+and actor-generation replacement, but it advances as soon as the next user
+handler has been entered rather than waiting for the previous result. This
+matches Cloudflare's E-order without adding an input gate. Each call also names
+the lowest of its lane's calls that has not settled for the caller, so a call
+that failed before it arrived never holds up later ones.
+An error that the object's own method or `fetch()` throws rejects only that
+call, and the stub stays usable, as in workerd. A thrown `fetch()` error rejects
+the caller's `fetch()` instead of returning a response. When the object resets,
+for example through `ctx.abort()`, or the call fails in transport, the stub is
+poisoned: all still-pending and future calls reject with the same reason, and
+late results are ignored. A reset error carries `durableObjectReset: true`.
+Calling `get()` or `getByName()` again creates a fresh stub, and later calls
+use a fresh ordering lane.
+Errors while constructing the local `Request` happen before admission and do
+not poison the stub. Orange does not replay a rejected logical call; Rivet may
+still perform transport recovery internally before it reports a rejection.
+
+Ordering tests reverse private-route arrival, mix fetch and method sequence
+metadata, cross an actor-generation boundary, reject active and future calls,
+ignore a late old-generation result, and prove that recovery invokes the actor
+exactly once through a new stub.
+
+A bundled end-to-end fixture boots a real isolated local Engine and exercises
+an unchanged Worker through its injected namespace binding. It verifies
+ordinary and streaming RPC, legacy `stub.fetch()`, custom status metadata,
+remote user errors, repeated object state, and isolation between object IDs and
+classes. The same fixture executes committed, nested-rolled-back, and
+outer-rolled-back synchronous transactions and verifies the persisted rows plus
+the direct transaction-control diagnostic. It also verifies synchronous KV
+clone isolation, ordered list options, iterator invalidation, delete results,
+and KV commit and rollback through the shared transaction. Focused storage
+tests separately verify the returned closure value, exact error identity,
+native commit and rollback calls, nested savepoint order, and routing through
+the active transaction. Focused synchronous KV tests mirror the pinned workerd
+cases and cover V8 graphs, fresh reads, every list option, size and clone
+failures, and the one-live-iterator rule. The generated conformance program
+checks `transactionSync()`, the complete synchronous KV interface, each async
+KV method, and all three async option dictionaries in both assignability
+directions against Wrangler's pinned declarations. Async storage tests add
+single and multi-key behavior, sorted maps, atomic rollback, limits, deferred
+option diagnostics, full SQL/KV reset, and continued use after reset. The real
+Engine fixture exercises the same async methods and shared-state reset through
+the Worker binding and Rivet actor. It also writes one combined SQL, sync-KV,
+async-KV, transaction, and alarm state set, proves other object IDs and classes
+remain empty, forces a fresh actor generation, restarts the runtime process, and
+verifies the original ID and complete state after both lifecycle boundaries. A
+bounded synchronous SQL probe demonstrates that a long native call delays a
+request to another actor on the current shared Node thread. Test teardown
+terminates only the Engine process recorded in that fixture's temporary storage
+stamp.
+
+Alarm scheduler tests cover tokenized same-time replacement, duplicate and
+stale-event repair, retry preservation across startup, constructor-time handler
+validation, one-handler-at-a-time dispatch, active-handler alarm visibility,
+replacement and deletion during failure, six bounded exponential delays with
+jitter, final abandonment, and missing-handler diagnostics. The real Engine
+fixture schedules an alarm through the Worker binding, fails its first handler,
+then verifies the retry receives the original `scheduledTime`,
+`retryCount: 1`, and `isRetry: true` before the alarm is cleared.
+
+State tests verify constructor startup admission and failure, stable canonical
+IDs, native `waitUntil` delegation, excluded state diagnostics,
+uncatchable event-boundary abort poisoning, alarm retry suppression, and
+generation capability revocation. Generated checks compare every implemented
+state method, storage, the typed `props` placeholder, alarm metadata, and abort
+options in both directions with pinned Wrangler declarations. The real Engine
+fixture proves constructor work completes before the first RPC, a `waitUntil`
+task finishes after its initiating RPC returns, and a caught `abort()` still
+sleeps and recreates the class with the same ID.
+
+The standard WebSocket end-to-end fixture runs the same unchanged Worker and
+Durable Object class in pinned workerd and through `orange dev` with a real
+Rivet actor. It compares accepted and rejected handshakes, response headers,
+subprotocol selection, ordered text and binary traffic, a 1 MiB bounded burst,
+server close, and an abrupt client disconnect. The actor-side event log must be
+identical, including workerd's code-1006 abnormal close reason and the absence
+of a separate error event for that disconnect.
+
+The differential registration fixture runs unchanged in pinned workerd and
+Orange. It compares filtered connection counts, socket identity, tag
+deduplication and defensive copying, timeout set and clear behavior, exact
+errors for incompatible sockets, attachment graphs, automatic-response
+configuration, text matching, timestamp shape, and binary bypass. It leaves out
+Cloudflare's size and count limits, which OpenOrange does not copy.
+
+`tests/accepted-websockets.test.ts` runs `orange dev` with a real Rivet Engine.
+It checks these outcomes:
+
+- An idle object hibernates under an open socket. The next message reaches a
+  new instance that keeps the socket's tags, attachment, and storage.
+- Four sockets that wake one object at once get one new instance, and each one
+  sees only its own attachment and tags.
+- Automatic responses do not keep an object awake or wake a hibernated one,
+  and the new instance sees the last response's timestamp.
+- The object sleeps after its last socket closes, from either side.
+- A pending timer keeps an idle object running until the timer runs, also when
+  the timer is `unref()`'d, and also when the object has no WebSocket.
+- An open outbound WebSocket or a `fetch()` in flight keeps an idle object
+  running.
+- With info logs, an object that stays awake past its idle timeout names what
+  holds it.
+- Each connected, hibernated object holds less than 65 KB of runtime heap.
+- After the object closes a socket, a ping on it gets no automatic response.
+- A runtime stop closes 300 accepted sockets with `1012` over a spread of more
+  than 1.5 seconds, and closes 300 standard sockets at once.
+- A runner restart closes the socket, and a reconnect finds the object's
+  storage.
+
+The conformance package also runs the upstream workerd test suite against
+`orange dev` and scores only tests that pass on the pinned workerd. Its
+`synthetic/` directory ports workerd's C++ Durable Object unit tests for
+alarms, IDs, the input gate, SQL, storage, and WebSockets. The compatibility
+matrix in `packages/cloudflare-conformance/compat/matrix.json` records the
+status and evidence of each Durable Object, storage, SQL, and limit entry.

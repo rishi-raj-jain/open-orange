@@ -1,0 +1,35 @@
+{
+	"id": "talorys",
+	"repo": "rociiu/talorys",
+	"commit": "420005a3ce1b432eb1c46112289fa84d2a2271e4",
+	"stars": 1435,
+	"origin": "search",
+	"directory": "apps/agent",
+	"configs": [
+		"wrangler.standalone.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm --prefix ../.. run build -w @talorys/web"
+	],
+	"devVars": {
+		"TALORYS_ENV": "development",
+		"TALORYS_MOCK_AI": "1",
+		"OWNER_PASSWORD": "corpus-Local-owner-1234",
+		"SESSION_SECRET": "corpus-local-session-secret-0123456789abcdef"
+	},
+	"durableObjects": {
+		"classes": [
+			"TalorysAgent"
+		],
+		"file": "apps/agent/src/agent/talorys-agent.ts",
+		"uses": [
+			"agents Agent",
+			"storage.sql",
+			"this.schedule (alarms)",
+			"onRequest"
+		]
+	},
+	"changes": []
+}

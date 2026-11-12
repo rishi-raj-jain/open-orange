@@ -1,0 +1,7 @@
+{
+	"name": "request-clone-signal",
+	"main": "worker.js",
+	"compatibility_date": "2026-05-26",
+	"compatibility_flags": ["request_signal_passthrough"],
+	"services": [{ "binding": "SERVER", "service": "request-clone-signal", "entrypoint": "Server" }]
+}

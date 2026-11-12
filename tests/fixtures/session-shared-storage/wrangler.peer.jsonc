@@ -1,0 +1,6 @@
+{
+	"name": "orange-test-shared-peer", "main": "peer.js", "compatibility_date": "2026-09-03",
+	"d1_databases": [{ "binding": "DB", "database_name": "shared" }],
+	"kv_namespaces": [{ "binding": "KV" }],
+	"r2_buckets": [{ "binding": "BUCKET", "bucket_name": "shared" }]
+}

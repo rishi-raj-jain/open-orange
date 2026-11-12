@@ -1,0 +1,87 @@
+{
+	"schemaVersion": 1,
+	"id": "epicenter",
+	"repo": "EpicenterHQ/epicenter",
+	"commit": "7cc869b4a1295e2566b61e1a4d5967a89f413b9b",
+	"stars": 4840,
+	"origin": "search",
+	"directory": "apps/sync-lab",
+	"ranAt": "2026-11-05T02:22:52.458Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 1,
+		"command": "bun install --ignore-scripts --filter @epicenter/sync-lab"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 1,
+		"command": "bun run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 7
+	},
+	"steps": [
+		{
+			"name": "the page is served, and a new authority reports an empty log over RPC",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.5
+		},
+		{
+			"name": "one device's push is acknowledged and relayed to the other device",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a late device catches up from the log, from the cursor it declares",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "two sockets stay open while the authority hibernates, and a push wakes it",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 60.1,
+			"error": "Some actor was still awake 60 s after the last client activity"
+		},
+		{
+			"name": "after the authority sleeps, it is a new instance with the same log",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the log survives an orange dev and engine restart, and accepts new pushes",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.7
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"SyncLabAuthority"
+		],
+		"file": "apps/sync-lab/worker/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"rpc"
+		]
+	}
+}

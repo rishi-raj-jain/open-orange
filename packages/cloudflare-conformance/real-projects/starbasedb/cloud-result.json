@@ -1,0 +1,53 @@
+{
+	"id": "starbasedb",
+	"repo": "outerbase/starbasedb",
+	"commit": "bb227352135051a0dd50190d67c3e82b03f8e485",
+	"directory": ".",
+	"ranAt": "2026-11-05T10:55:48.139Z",
+	"plan": "Free",
+	"deployedWith": "orange deploy",
+	"steps": [
+		{
+			"name": "a request without a token gets 401",
+			"kind": "http",
+			"status": "pass"
+		},
+		{
+			"name": "a client creates a table, inserts rows, and reads them back",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "the README's $1 query and transaction return their rows",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "the REST API writes a row, and the JSON export sees it",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "a WebSocket client queries the same database",
+			"kind": "websocket",
+			"status": "pass"
+		},
+		{
+			"name": "a cron task's alarm calls the task's callback host",
+			"kind": "alarm",
+			"status": "not-applicable",
+			"note": "The callback host is a local HTTP server, which a pool cannot reach"
+		},
+		{
+			"name": "the table survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+		},
+		{
+			"name": "the table survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass"
+		}
+	]
+}

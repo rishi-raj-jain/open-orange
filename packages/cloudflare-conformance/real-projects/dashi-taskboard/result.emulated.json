@@ -1,0 +1,85 @@
+{
+	"schemaVersion": 1,
+	"id": "dashi-taskboard",
+	"repo": "chuspeeism/dashi-taskboard",
+	"commit": "9aa1f4e7936d841748ed4e0fc7781b57ae6ae6cc",
+	"stars": 3441,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:03:08.627Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 6,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 1,
+		"command": "npm run build:web"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 4
+	},
+	"steps": [
+		{
+			"name": "the board page and API need the shared secret",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "an open board gets a revision through the hub when a task is created",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "board display settings are kept in the hub across requests, and null deletes them",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a board socket stays open while the hub hibernates, and a later write reaches it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the hub sleeps, and the settings come back when it wakes",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10
+		},
+		{
+			"name": "settings and tasks survive a restart, and a new socket gets revisions",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.7
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"RealtimeHub"
+		],
+		"file": "cloud/src/index.mjs",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"storage.list",
+			"storage.put",
+			"storage.delete"
+		]
+	}
+}

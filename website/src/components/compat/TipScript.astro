@@ -1,0 +1,50 @@
+---
+// Opens one `.tip` at a time on hover or keyboard focus and closes it when the
+// pointer leaves, focus moves, or the page scrolls. A body opens left-aligned
+// when that fits in the viewport, otherwise right-aligned, and downward when
+// it would sit under the header.
+---
+
+<script>
+	const HEADER = 80;
+	let open: HTMLElement | null = null;
+
+	function place(tip: HTMLElement) {
+		const body = tip.querySelector<HTMLElement>(':scope > .tip-body');
+		if (!body) return;
+		const at = tip.getBoundingClientRect();
+		body.style.display = 'block';
+		tip.classList.toggle('tip-left', at.left + body.offsetWidth <= window.innerWidth - 8);
+		tip.classList.toggle('tip-down', at.top - body.offsetHeight - 8 < HEADER);
+		body.style.display = '';
+	}
+	function show(tip: HTMLElement) {
+		if (open === tip) return;
+		hide();
+		place(tip);
+		tip.classList.add('is-open');
+		open = tip;
+	}
+	function hide() {
+		open?.classList.remove('is-open');
+		open = null;
+	}
+	const tipOf = (event: Event) => (event.target as HTMLElement | null)?.closest?.<HTMLElement>('.tip') ?? null;
+
+	document.addEventListener('mouseover', (event) => {
+		const tip = tipOf(event);
+		if (tip) show(tip);
+		else hide();
+	});
+	document.addEventListener('focusin', (event) => {
+		const tip = tipOf(event);
+		if (tip) show(tip);
+	});
+	document.addEventListener('focusout', (event) => {
+		if (open && !open.contains(event.relatedTarget as Node | null)) hide();
+	});
+	window.addEventListener('scroll', hide, { passive: true });
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') hide();
+	});
+</script>

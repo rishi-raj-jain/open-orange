@@ -1,0 +1,8 @@
+{
+	"name": "additional-modules-base-dir",
+	"main": "src/index.js",
+	"base_dir": ".",
+	"compatibility_date": "2026-05-26",
+	"compatibility_flags": ["nodejs_compat"],
+	"find_additional_modules": true
+}

@@ -1,0 +1,44 @@
+{
+	"id": "partykit",
+	"repo": "cloudflare/partykit",
+	"commit": "f0a2e97d233f24545b2648aec2ed6a191e11074e",
+	"directory": "fixtures/tiptap-yjs",
+	"ranAt": "2026-11-05T12:10:50.602Z",
+	"plan": "Free",
+	"deployedWith": "rivet deploy",
+	"steps": [
+		{
+			"name": "editors stay connected across the room's hibernation, and an edit wakes it",
+			"kind": "sleep",
+			"status": "fail",
+			"error": "A client socket stayed open or a request ran within the idle window for 90000ms, so the object could not sleep"
+		},
+		{
+			"name": "two editors sync edits in both directions",
+			"kind": "websocket",
+			"status": "pass",
+			"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+		},
+		{
+			"name": "a custom ping answers the sender and notifies the others",
+			"kind": "websocket",
+			"status": "pass"
+		},
+		{
+			"name": "the document is saved when the room empties, and comes back after a sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+		},
+		{
+			"name": "a room's document is separate from another room's",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "the document survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass"
+		}
+	]
+}

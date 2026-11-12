@@ -1,0 +1,11 @@
+diff --git a/packages/control-plane/wrangler.jsonc b/packages/control-plane/wrangler.jsonc
+--- a/packages/control-plane/wrangler.jsonc
++++ b/packages/control-plane/wrangler.jsonc
+@@ -13,6 +13,7 @@
+       "binding": "DB",
+       "database_id": "00000000-0000-0000-0000-000000000000",
+       "database_name": "open-inspect-test",
++      "migrations_dir": "../../terraform/d1/migrations",
+     },
+   ],
+   "kv_namespaces": [{ "binding": "REPOS_CACHE", "id": "00000000000000000000000000000000" }],

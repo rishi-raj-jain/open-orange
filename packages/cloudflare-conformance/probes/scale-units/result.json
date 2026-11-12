@@ -1,0 +1,90 @@
+{
+	"schemaVersion": 1,
+	"id": "scale-units",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:51:02.635Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": null,
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 7
+	},
+	"steps": [
+		{
+			"name": "Durable Objects: one actor per object id",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 2.3
+		},
+		{
+			"name": "KV: one actor per namespace",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2.4
+		},
+		{
+			"name": "D1: one actor per database",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2.3
+		},
+		{
+			"name": "R2: one actor per bucket without S3",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2.4
+		},
+		{
+			"name": "Queues: one actor per queue",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2.3
+		},
+		{
+			"name": "Rate Limiting: one actor per namespace",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 3.2
+		},
+		{
+			"name": "Cache: caches.default is one actor",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2.4
+		},
+		{
+			"name": "Cache: one actor per cache name",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 2.4
+		},
+		{
+			"name": "Workflows: one actor per instance",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 1.6
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Unit"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"one actor per object id"
+		]
+	}
+}

@@ -1,0 +1,7 @@
+{
+	"name": "orange-durable-storage",
+	"main": "./worker.js",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": { "bindings": [{ "name": "STORE", "class_name": "Store" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Store"] }]
+}

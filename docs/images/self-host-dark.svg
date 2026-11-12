@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="198" viewBox="0 0 600 198" role="img" aria-label="On your own server, orange serve runs your Worker and connects out to your Rivet Engine">
+<style>
+.s{font-family:system-ui,-apple-system,&quot;Segoe UI&quot;,Helvetica,Arial,sans-serif;fill:#E6EDF3}
+.m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#E6EDF3}
+.mu{fill:#9DA7B3}
+.o{fill:#FFA45C}
+.g{fill:#6FD597}
+.b{font-weight:600}
+.cap{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:600;letter-spacing:.12em}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#E6EDF3"/></marker>
+<marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6E7681"/></marker>
+</defs>
+<rect x="20" y="66" width="92" height="44" rx="8" fill="#161B22" stroke="#E6EDF3" stroke-width="1.5"/><text class="s" x="36" y="93" font-size="15" text-anchor="start">Requests</text>
+<rect x="140" y="20" width="186" height="126" rx="10" fill="none" stroke="#6E7681" stroke-width="1.5" stroke-dasharray="7 6"/>
+<text class="cap mu" x="156" y="45">YOUR SERVER</text>
+<rect x="154" y="58" width="158" height="64" rx="8" fill="#3B2412" stroke="#F38020" stroke-width="1.5"/>
+<text class="s b" x="170" y="85" font-size="15" text-anchor="start">Your Worker</text>
+<text class="m mu" x="170" y="106" font-size="13" text-anchor="start">orange serve</text>
+<path d="M112 88 H148" fill="none" stroke="#E6EDF3" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="436" y="52" width="144" height="72" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/>
+<text class="s b" x="452" y="81" font-size="15" text-anchor="start">Rivet Engine</text>
+<text class="m mu" x="452" y="103" font-size="13" text-anchor="start">RIVET_ENDPOINT</text>
+<path d="M312 88 H430" fill="none" stroke="#E6EDF3" stroke-width="1.5" marker-end="url(#a)"/>
+<text class="s mu" x="381" y="77" font-size="13" text-anchor="middle">connects out</text>
+<rect x="20" y="168" width="14" height="14" rx="3" fill="#3B2412" stroke="#F38020" stroke-width="1.5"/>
+<text class="s mu" x="42" y="180" font-size="14" text-anchor="start">Your Worker, not changed</text>
+<rect x="243.2" y="168" width="14" height="14" rx="3" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/>
+<text class="s mu" x="265.2" y="180" font-size="14" text-anchor="start">Rivet</text>
+</svg>

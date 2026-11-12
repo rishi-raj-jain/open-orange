@@ -1,0 +1,72 @@
+{
+  "name": "open-orange",
+  "version": "0.0.1",
+  "description": "Cloudflare Workers compatibility layer for Rivet",
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "bin": {
+    "open-orange": "./dist/bin.js",
+    "openorange": "./dist/bin.js",
+    "orange": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsx src/build/build-package.ts",
+    "prepare": "pnpm build",
+    "orange": "tsx src/bin.ts",
+    "prepack": "pnpm build",
+    "release": "tsx scripts/release/main.ts",
+    "test": "tsx --import ./tests/isolated-env.ts --test 'src/**/*.test.ts' 'tests/**/*.test.ts' && pnpm -r --filter './packages/*' test",
+    "validate:examples": "tsx tests/validate-example-manifests.ts",
+    "typecheck": "tsc --noEmit && pnpm --filter ./packages/runtime-node typecheck"
+  },
+  "exports": "./dist/bin.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rivet-dev/open-orange.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@cloudflare/puppeteer": "1.4.0",
+    "@daytonaio/sdk": "0.216.1",
+    "@types/node": "24.3.0",
+    "@types/nodemailer": "^8.0.2",
+    "e2b": "2.63.0",
+    "express": "5.3.0",
+    "freestyle": "0.2.23",
+    "tsx": "4.20.5",
+    "typescript": "5.9.3"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1153.0",
+    "@rivet-dev/agentos-core": "0.4.1",
+    "@rivet-dev/durable-object-migrator": "1.0.0",
+    "@rivet-dev/sandbox-adapter": "0.5.3",
+    "capnweb": "0.12.0",
+    "devalue": "5.9.4",
+    "es-module-lexer": "1.7.0",
+    "esbuild": "0.28.1",
+    "heap-js": "2.5.0",
+    "html-rewriter-wasm": "0.4.1",
+    "http-cache-semantics": "4.3.0",
+    "ignore": "5.3.2",
+    "itty-time": "2.0.2",
+    "mime": "4.1.1",
+    "nodemailer": "^10.3.1",
+    "rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+    "undici": "8.10.2",
+    "urlpattern-polyfill": "10.1.0",
+    "wrangler": "4.129.0",
+    "ws": "8.21.0",
+    "zod": "4.5.4"
+  }
+}

@@ -1,0 +1,9 @@
+packages:
+  - packages/*
+  - examples/*
+  - tests/fixtures/examples/*
+
+# pnpm 10 does not verify dependencies before running a command. pnpm 11 does, and
+# it reads the install state from this repository's pinned pnpm 10 as stale, so
+# every pnpm command would reinstall first.
+verifyDepsBeforeRun: false

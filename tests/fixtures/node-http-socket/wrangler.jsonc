@@ -1,0 +1,7 @@
+{
+  "name": "orange-test-node-http-socket",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "services": [{ "binding": "SERVICE", "service": "orange-test-node-http-socket" }]
+}

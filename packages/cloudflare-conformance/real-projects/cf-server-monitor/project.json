@@ -1,0 +1,43 @@
+{
+	"id": "cf-server-monitor",
+	"repo": "huilang-me/CF-Server-Monitor",
+	"commit": "609cc0b0998793510453be8eadced2064b28ad7d",
+	"stars": 2907,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm run build"
+	],
+	"devVars": {
+		"API_SECRET": "local-only-api-secret-for-the-monitor-01"
+	},
+	"durableObjects": {
+		"classes": [
+			"MetricsBroadcaster"
+		],
+		"file": "src/durable/MetricsBroadcaster.js",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"setWebSocketAutoResponse",
+			"storage.get",
+			"storage.put",
+			"storage.setAlarm",
+			"alarm"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a browser stays subscribed while the broadcaster hibernates",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

@@ -1,0 +1,98 @@
+{
+	"schemaVersion": 1,
+	"id": "nodewarden",
+	"repo": "shuaiplus/nodewarden",
+	"commit": "fbc0e65df8f405c3120887569e939d615ab68229",
+	"stars": 4093,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:32:10.790Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 9,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 2,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 9
+	},
+	"steps": [
+		{
+			"name": "serves the web vault and its bootstrap",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 3.7
+		},
+		{
+			"name": "the first account registers in D1 and logs in",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.6
+		},
+		{
+			"name": "a negotiated connection ticket opens the hub only once",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a folder created over HTTP reaches the client's hub socket",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.6
+		},
+		{
+			"name": "a ticket stored in the hub survives the hub's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.3
+		},
+		{
+			"name": "a client stays connected while the hub hibernates, and the next notification reaches it",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 55.2,
+			"error": "Some actor was still awake 45 s after the last client activity"
+		},
+		{
+			"name": "the vault and login survive an orange dev and engine restart, and the hub still works",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 9.4
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"NotificationsHub",
+			"BackupTransferRunner"
+		],
+		"file": "src/durable/notifications-hub.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"setWebSocketAutoResponse",
+			"storage.put",
+			"storage.get",
+			"storage.delete",
+			"storage.list",
+			"storage.transaction",
+			"storage.setAlarm"
+		]
+	}
+}

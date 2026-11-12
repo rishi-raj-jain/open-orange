@@ -1,0 +1,52 @@
+{
+	"id": "kody",
+	"repo": "kody-hq/kody",
+	"commit": "762a7397cf31f7a0dad7262342fd93f0b6a7894c",
+	"directory": "packages/status",
+	"ranAt": "2026-11-05T11:46:05.334Z",
+	"plan": "Free",
+	"deployedWith": "rivet deploy",
+	"steps": [
+		{
+			"name": "the status page and its JSON read from the store",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "the one-minute cron runs a probe pass into the object",
+			"kind": "alarm",
+			"status": "not-applicable",
+			"note": "It asserts a healthy origin. The local scenario serves one on 127.0.0.1, which a pool can't reach, so the origin here is a host that never answers"
+		},
+		{
+			"name": "three failing passes open an incident, and the page shows it",
+			"kind": "alarm",
+			"status": "pass"
+		},
+		{
+			"name": "the open incident survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"note": "Waited 30 s idle with no socket open, and the cron wakes this object each minute. Sleep itself is not proven on a pool."
+		},
+		{
+			"name": "the open incident survives a restart",
+			"kind": "restart",
+			"status": "pass"
+		},
+		{
+			"name": "after the restart, the cron runs again, and two good passes resolve the incident",
+			"kind": "alarm",
+			"status": "not-applicable",
+			"note": "It needs an origin that recovers, which a pool can't reach"
+		},
+		{
+			"name": "an operator alert email goes out through the Cloudflare Email API",
+			"kind": "http",
+			"status": "needs-secrets",
+			"secrets": [
+				"CLOUDFLARE_API_TOKEN"
+			]
+		}
+	]
+}

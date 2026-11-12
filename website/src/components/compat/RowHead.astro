@@ -1,0 +1,16 @@
+---
+// Column header for a stack of `Row`s, on the same grid.
+interface Props {
+	status?: string;
+	name: string;
+	a: string;
+	b: string;
+	end: string;
+}
+
+const { status = 'Status', name, a, b, end } = Astro.props;
+---
+
+<div class="row-cols row-head" aria-hidden="true">
+	<span></span><span>{status}</span><span>{name}</span><span>{a}</span><span>{b}</span><span>{end}</span>
+</div>

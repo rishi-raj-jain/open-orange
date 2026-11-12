@@ -1,0 +1,38 @@
+// esbuild's code splitting drops a star re-export of an external module when the re-exporting
+// module is shared by several entries, so this entry re-exports `node:fs/promises` itself and
+// names the `/bundle`- and `/tmp`-aware functions explicitly so they take precedence over the star.
+export * from "node:fs/promises";
+export {
+	access,
+	appendFile,
+	chmod,
+	chown,
+	copyFile,
+	cp,
+	glob,
+	lchown,
+	link,
+	lstat,
+	lutimes,
+	mkdir,
+	mkdtemp,
+	mkdtempDisposable,
+	open,
+	opendir,
+	readdir,
+	readFile,
+	readlink,
+	realpath,
+	rename,
+	rm,
+	rmdir,
+	stat,
+	statfs,
+	symlink,
+	truncate,
+	unlink,
+	utimes,
+	writeFile,
+	watch,
+	default,
+} from "./promises-impl.js";

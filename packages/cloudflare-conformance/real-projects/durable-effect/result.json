@@ -1,0 +1,95 @@
+{
+	"schemaVersion": 1,
+	"id": "durable-effect",
+	"repo": "backpine/durable-effect",
+	"commit": "e93ed103efce4205d469b890be93a6fed7bf881e",
+	"stars": 97,
+	"origin": "named",
+	"directory": "examples/effect-worker-api",
+	"ranAt": "2026-11-05T02:21:32.114Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 5,
+		"command": "pnpm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 2,
+		"command": "pnpm --filter @durable-effect/task build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "health, OpenAPI, validation, and missing routes answer as documented",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "a counter keeps its state per instance, and its alarm increments it",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 2.4
+		},
+		{
+			"name": "an invoice dispatches a receipt to its sibling task, and a manual finalize reads it back",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "onboarding queues a welcome email on its sibling task, and can be completed",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.5
+		},
+		{
+			"name": "billing and onboarding alarms complete on their own, and a repeating counter purges itself",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 19.2
+		},
+		{
+			"name": "every task sleeps, and its state comes back when it wakes",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "state and the purge persist across a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 8.5
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"CounterDO",
+			"OnboardingDO",
+			"BillingDO"
+		],
+		"file": "packages/task-group/src/cloudflare/runtime.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"setAlarm",
+			"getAlarm",
+			"deleteAlarm",
+			"alarm",
+			"rpc"
+		]
+	}
+}

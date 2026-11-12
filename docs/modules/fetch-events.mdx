@@ -1,0 +1,73 @@
+---
+title: Fetch events
+description: How OpenOrange supplies the Worker fetch execution context.
+---
+
+# Fetch events
+
+**Status:** Partial
+
+## Configuration
+
+No Orange-specific configuration is required. A module Worker exports a
+Wrangler-compatible `fetch(request, env, context)` handler.
+
+## How it works
+
+OpenOrange creates one execution context per request. `context.props` contains
+the runtime-supplied properties, `context.exports` contains the supplied
+loopback export object, and `context.waitUntil(promise)` registers background
+work. The runtime controller drains all registered promises, including work
+registered while an earlier promise is settling, and retains fulfilled and
+rejected outcomes for later diagnostics.
+
+- The controlled loader constructs an extensible environment from configured bindings, installs the
+  Cloudflare global manifest, imports the Worker, preserves its named exports, and rejects
+  unsupported event handlers.
+- The `env`, `exports`, `withEnv()`, `withExports()`, and `withEnvAndExports()` exports of
+  `cloudflare:workers` follow workerd: `env` is readable while the Worker module evaluates, both
+  proxies follow the current async-context override, and mutations through `env` change the
+  environment object passed to handlers.
+- Orange does not read the `disallow_importable_env` flag.
+- Durable Object classes appear in `context.exports` and `exports` as their namespaces.
+- `WorkerEntrypoint` is exported as a base class that stores `ctx` and `env`. A default export
+  that extends `WorkerEntrypoint` handles each request with a new instance.
+- Dispatch invokes the default module Worker's `fetch` handler and requires it to return an
+  OpenOrange `Response`.
+- The dispatch result includes that response and a promise for all `waitUntil()` outcomes.
+
+For development, a dedicated Node.js child owns the HTTP listener and runtime
+lifecycle. It streams request and response bodies, dispatches requests inside
+the child, and reports readiness, startup failures, request failures,
+background failures, signals, and clean shutdown to the parent CLI over IPC.
+
+`request.url` uses the request's `Host` header. Under `orange serve`, its scheme
+is `https:` when the cluster's gateway sends `X-Forwarded-Proto: https`, so a
+Worker sees the URL its client used, as on Cloudflare. `orange dev` takes
+requests directly and ignores that header.
+
+Unsupported context APIs fail when called instead of being silently ignored.
+`ctx.cache` is `undefined`, as in local workerd.
+
+## Conformance
+
+The conformance check compiles a module Worker against the pinned
+`ExportedHandler<Env>` fetch signature and proves an invalid response type is
+rejected. The generated event registry check verifies the context has exactly
+the Cloudflare `ExecutionContext` keys and is assignable to its generic contract.
+Runtime tests cover entrypoint ordering, named exports, environment injection,
+response validation, `waitUntil()` draining, each unsupported API, and the
+dedicated process lifecycle over a real HTTP socket.
+
+## Deviations
+
+- `passThroughOnException()` is a no-op, because Orange has no origin to fall
+  back to. An exception after the call still fails the request with a 500
+  response.
+- `abort()` releases the context's I/O objects and throws the reason, because
+  Node.js cannot stop running JavaScript.
+- `context.cache` and `context.access` are `undefined`, as in local workerd.
+- `context.tracing` runs every span callback with a no-op span whose `isTraced`
+  is `false`, because Orange has no trace collector.
+- Background promise outcomes are returned to the runtime process, which
+  reports rejected work to the parent CLI for local diagnostics.

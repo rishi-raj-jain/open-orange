@@ -1,0 +1,9 @@
+{
+	"name": "service-scheduled",
+	"main": "worker.js",
+	"compatibility_date": "2026-05-26",
+	"services": [
+		{ "binding": "SERVICE", "service": "service-scheduled" },
+		{ "binding": "NO_HANDLER", "service": "service-scheduled", "entrypoint": "noHandler" }
+	]
+}

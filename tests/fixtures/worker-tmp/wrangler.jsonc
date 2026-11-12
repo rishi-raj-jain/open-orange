@@ -1,0 +1,11 @@
+{
+  "name": "orange-test-worker-tmp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "services": [{ "binding": "OTHER", "service": "orange-test-worker-tmp-other" }],
+  "durable_objects": {
+    "bindings": [{ "name": "OBJECT", "class_name": "TmpObject" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TmpObject"] }]
+}

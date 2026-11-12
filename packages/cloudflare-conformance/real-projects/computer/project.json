@@ -1,0 +1,29 @@
+{
+	"id": "computer",
+	"repo": "cloudflare/computer",
+	"commit": "b995d86503eab22793ba1feb07c3c67818e6f6b9",
+	"stars": 9786,
+	"origin": "official",
+	"directory": "examples/worker-shell",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm run build --workspace @cloudflare/computer"
+	],
+	"durableObjects": {
+		"classes": [
+			"ContainerExample"
+		],
+		"file": "examples/worker-shell/src/index.ts",
+		"uses": [
+			"storage.sql",
+			"rpc",
+			"ctx.exports",
+			"worker_loaders"
+		]
+	},
+	"changes": []
+}

@@ -1,0 +1,420 @@
+{
+	"schemaVersion": 1,
+	"before": {
+		"date": "2026-10-20",
+		"orange": "6af8602"
+	},
+	"after": {
+		"date": "2026-10-21",
+		"orange": "c921bf3"
+	},
+	"wrangler": "4.129.0",
+	"projects": [
+		{
+			"project": "hello-world-do-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/hello-world-do-template",
+			"flows": "/, /any/path",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "d1-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/d1-template",
+			"flows": "GET / comments",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "chanfana-openapi-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/chanfana-openapi-template",
+			"flows": "/openapi.json, task POST, GET, DELETE",
+			"before": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"blocker": "DELETE … LIMIT fails: Orange's SQLite is built without SQLITE_ENABLE_UPDATE_DELETE_LIMIT."
+		},
+		{
+			"project": "openauth-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/openauth-template",
+			"flows": "/ redirect, /authorize",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "nodejs-http-server-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/nodejs-http-server-template",
+			"flows": "/, /api/status",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "durable-chat-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/durable-chat-template",
+			"flows": "assets, WebSocket chat, history, idle then broadcast",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "works",
+				"probe": "works"
+			},
+			"blocker": "Config unchanged: the esbuild build command needs node_modules/.bin on PATH. Wrangler is the same."
+		},
+		{
+			"project": "multiplayer-globe-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/multiplayer-globe-template",
+			"flows": "2 WebSocket clients, markers",
+			"before": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "llm-chat-app-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/llm-chat-app-template",
+			"flows": "POST /api/chat",
+			"before": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"blocker": "Needs an AI key, and @cf/meta/llama-3.1-8b-instruct-fp8 needs an ORANGE_AI_MODELS mapping."
+		},
+		{
+			"project": "workflows-starter-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/workflows-starter-template",
+			"flows": "start, waiting, event, complete, DO WebSocket",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "works",
+				"probe": "works"
+			},
+			"blocker": "Config unchanged: the build creates assets.directory. Wrangler is the same."
+		},
+		{
+			"project": "to-do-list-kv-template",
+			"url": "https://github.com/cloudflare/templates/tree/dfdf14099a81a08cfe1ffc78f8463605670ae513/to-do-list-kv-template",
+			"flows": "SSR redirect, create and list todos (KV)",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "works",
+				"probe": "works"
+			},
+			"blocker": "Config unchanged: needs npm run build first. Wrangler is the same."
+		},
+		{
+			"project": "agents tictactoe",
+			"url": "https://github.com/cloudflare/agents/tree/7dd51c518c517b0f9f92ec7e2c3ad1004222955e/examples/tictactoe",
+			"flows": "Agent WebSocket, makeMove updates state",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "works"
+			},
+			"blocker": "The Vite-plugin config has no assets.directory until the probe adds it. Wrangler is the same."
+		},
+		{
+			"project": "agents mcp",
+			"url": "https://github.com/cloudflare/agents/tree/7dd51c518c517b0f9f92ec7e2c3ad1004222955e/examples/mcp",
+			"flows": "start",
+			"before": {
+				"unchanged": "fails",
+				"build": "fails",
+				"probe": "fails"
+			},
+			"after": {
+				"unchanged": "fails",
+				"build": "fails",
+				"probe": "fails"
+			},
+			"blocker": "The .svg import is Vite-only, and the Vite build output uses no_bundle, which Orange rejects."
+		},
+		{
+			"project": "agents mcp-worker",
+			"url": "https://github.com/cloudflare/agents/tree/7dd51c518c517b0f9f92ec7e2c3ad1004222955e/examples/mcp-worker",
+			"flows": "MCP initialize, tools/list, tools/call",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "works"
+			},
+			"blocker": "The Vite-plugin config needs the assets.directory probe."
+		},
+		{
+			"project": "agents ai-chat",
+			"url": "https://github.com/cloudflare/agents/tree/7dd51c518c517b0f9f92ec7e2c3ad1004222955e/examples/ai-chat",
+			"flows": "Agent WebSocket, chat turn",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "partial"
+			},
+			"blocker": "Chat turns need ORANGE_AI_API_KEY or OPENROUTER_API_KEY. The Vite-plugin config needs the probe."
+		},
+		{
+			"project": "agents resumable-stream-chat",
+			"url": "https://github.com/cloudflare/agents/tree/7dd51c518c517b0f9f92ec7e2c3ad1004222955e/examples/resumable-stream-chat",
+			"flows": "Agent WebSocket, chat turn",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "needs-step",
+				"probe": "partial"
+			},
+			"blocker": "The chat stream needs an AI key. The Vite-plugin config needs the probe."
+		},
+		{
+			"project": "agents playground",
+			"url": "https://github.com/cloudflare/agents/tree/7dd51c518c517b0f9f92ec7e2c3ad1004222955e/examples/playground",
+			"flows": "state, callable, and schedule agents, restart",
+			"before": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"blocker": "/ is 404: the Vite SPA does not build outside the agents monorepo."
+		},
+		{
+			"project": "nodejs-als-app",
+			"url": "https://github.com/cloudflare/workers-sdk/tree/89cc3c75033090a0159843bc317381f589cde8aa/fixtures/nodejs-als-app",
+			"flows": "/",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "nodejs-hybrid-app",
+			"url": "https://github.com/cloudflare/workers-sdk/tree/89cc3c75033090a0159843bc317381f589cde8aa/fixtures/nodejs-hybrid-app",
+			"flows": "crypto, sqlite, http, process-env, require-alias",
+			"before": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"blocker": "No such module \"cross-fetch\": Wrangler's unenv npm aliases are not ported."
+		},
+		{
+			"project": "unbound-durable-object",
+			"url": "https://github.com/cloudflare/workers-sdk/tree/89cc3c75033090a0159843bc317381f589cde8aa/fixtures/unbound-durable-object",
+			"flows": "ctx.exports DO, persistence across restart",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "cloudflare/workers-chat-demo",
+			"url": "https://github.com/cloudflare/workers-chat-demo/tree/dd32ce87617a9df6c614004d2fc2fb0628698121",
+			"flows": "join, post, leave, idle, rejoin",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "outerbase/starbasedb",
+			"url": "https://github.com/outerbase/starbasedb/tree/bb227352135051a0dd50190d67c3e82b03f8e485",
+			"flows": "bin/sbtest.sh",
+			"before": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "partial",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"blocker": "/export/dump is not authorized: Rivet's _rivet_ tables show in sqlite_master, and reading them is denied."
+		},
+		{
+			"project": "tldraw/tldraw-sync-cloudflare",
+			"url": "https://github.com/tldraw/tldraw-sync-cloudflare/tree/18ccd8717a1e98a80692e9317a1f9be428e7cc4c",
+			"flows": "/, unfurl, sync, R2 upload and download",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "works",
+				"probe": "works"
+			},
+			"blocker": "Config unchanged: needs vite build first. Wrangler is the same."
+		},
+		{
+			"project": "threepointone/durable-chat",
+			"url": "https://github.com/threepointone/durable-chat/tree/40de8e937bf4dbf7286b2cac9f9a9f4c8c4a90bb",
+			"flows": "WebSocket chat, history, hibernation",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"blocker": "AI replies need an AI key, and @cf/meta/llama-2-7b-chat-int8 has no default model mapping."
+		},
+		{
+			"project": "Spl0itable/nosflare",
+			"url": "https://github.com/Spl0itable/nosflare/tree/1f92b1a7ec55f36db4d74a3e03f5fc77bd1169cd",
+			"flows": "NIP-42 AUTH, REQ/EOSE, EVENT, cron",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		},
+		{
+			"project": "kiyo-e/pairlane",
+			"url": "https://github.com/kiyo-e/pairlane/tree/2f19cc5103fa6fdc04f7728e8f92535f00e3862f",
+			"flows": "create rooms (Rate Limiting), WebSocket signaling",
+			"before": {
+				"unchanged": "needs-step",
+				"build": "partial",
+				"probe": "partial"
+			},
+			"after": {
+				"unchanged": "needs-step",
+				"build": "works",
+				"probe": "works"
+			},
+			"blocker": "Config unchanged: needs npm run build first. Wrangler is the same."
+		},
+		{
+			"project": "napolab/y-durableobjects",
+			"url": "https://github.com/napolab/y-durableobjects/tree/e6d6d0615c7051ddc43222c16d8078070ee64d32",
+			"flows": "Yjs RPC and WebSocket sync",
+			"before": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			},
+			"after": {
+				"unchanged": "works",
+				"build": "works",
+				"probe": "works"
+			}
+		}
+	]
+}

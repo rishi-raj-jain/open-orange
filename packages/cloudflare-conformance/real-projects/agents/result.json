@@ -1,0 +1,104 @@
+{
+	"schemaVersion": 1,
+	"id": "agents",
+	"repo": "cloudflare/agents",
+	"commit": "455b47ec93f99f306f644ac06bc8b72b0627c1fc",
+	"stars": 5942,
+	"origin": "official",
+	"directory": "examples/playground",
+	"ranAt": "2026-11-05T02:14:52.200Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 22,
+		"command": "pnpm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 17,
+		"command": "pnpm --filter @cloudflare/agents-playground^... build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "two clients share an agent's state, through both callable methods and client updates",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.3
+		},
+		{
+			"name": "an agent's SQL records are read back through another connection",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a one-time task and a recurring task fire on schedule, and a cancelled task stops",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 2.2
+		},
+		{
+			"name": "a supervisor agent creates child agents and drives them over RPC",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a client socket stays open while the agent hibernates, and a call wakes it",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 55.2,
+			"error": "Some actor was still awake 45000ms after the last client activity"
+		},
+		{
+			"name": "an agent sleeps, and its state, SQL, and children come back when it wakes",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.3
+		},
+		{
+			"name": "state, SQL, and children survive a restart, and new schedules still fire",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 9.3
+		},
+		{
+			"name": "the chat agent streams an answer from Workers AI",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"Workers AI (remote AI binding)"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"StateAgent",
+			"ScheduleAgent",
+			"SqlAgent",
+			"SupervisorAgent",
+			"ChildAgent"
+		],
+		"file": "examples/playground/src/server.ts",
+		"uses": [
+			"storage.sql",
+			"setAlarm",
+			"acceptWebSocket",
+			"serializeAttachment",
+			"rpc"
+		]
+	}
+}

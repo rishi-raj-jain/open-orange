@@ -1,0 +1,92 @@
+{
+	"schemaVersion": 1,
+	"id": "hyper-durable",
+	"repo": "ticket-bridge/hyper-durable",
+	"commit": "ad65a62464f914b88e5b5d93b380ab389f578e45",
+	"stars": 64,
+	"origin": "named",
+	"directory": "consumer",
+	"ranAt": "2026-11-05T02:26:47.535Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 30,
+		"command": "npm install --omit=dev --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 4
+	},
+	"steps": [
+		{
+			"name": "a new duck reads the defaults set in its constructor, through a method and a property",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the README's `await stub.name` reads the object's name property",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a setter and concurrent method calls persist, and another request reads them",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "another duck has its own state, and a missing property throws a HyperError",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the persisted properties load back after the object sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the persisted properties load back after an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.5
+		},
+		{
+			"name": "destroy removes the data, and after a sleep the duck has its defaults again",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.2
+		}
+	],
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Adds consumer/: the README's RubberDuck class, its proxyHyperDurables Worker with routes, and a Wrangler config.",
+			"why": "library: no deployable Worker in the repository. The test fixture exports only the Counter class, and has no fetch handler."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"RubberDuck"
+		],
+		"file": "src/HyperDurable.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.deleteAll",
+			"stub.fetch",
+			"Proxy returned from the constructor"
+		]
+	}
+}

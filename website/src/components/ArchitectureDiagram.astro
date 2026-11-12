@@ -1,0 +1,307 @@
+---
+// Hand-drawn SVG: a terminal above two frames. The loop plays the migration
+// as the two commands: `wrangler dev` is retyped as `openorange dev`, then
+// `openorange deploy` runs. The four services condense into one
+// "Your Cloudflare project" bundle, a new "Your datacenter" box appears, the
+// bundle moves into it and unfolds into the top layer while the Cloudflare
+// box fades away, the OpenOrange runtime and Rivet slide in underneath, and
+// the stack settles in the middle. Under reduced motion it shows the end.
+interface Props {
+	class?: string;
+}
+const { class: className = '' } = Astro.props;
+
+const services = ['Workers', 'Durable Objects', 'KV · Queues · Workflows', 'D1 · R2 · Cron'];
+
+// Colors are CSS variables (set in the style below) so the diagram follows the theme.
+const line = 'var(--arch-line)';
+const ink = 'var(--arch-ink)';
+const faint = 'var(--arch-faint)';
+const orange = '#F26B1D';
+// The terminal and the Rivet layer stay dark in both themes.
+const plate = 'var(--arch-plate)';
+
+// Terminal text is mono at 13px; textLength pins every string to 7.8px per
+// character so the typing steps and the cursor line up exactly.
+const cw = 7.8;
+const cmdX = 54;
+const before = 'wrangler dev';
+const dev = 'openorange dev';
+const deploy = 'openorange deploy';
+const width = (s: string) => s.length * cw;
+
+// Cloudflare box: x 20–420, rows at y = 144 + 44i.
+// Datacenter box: x 460–940, layers at y = 144, 204, 264; settles 220 left.
+const serviceY = (i: number) => 144 + i * 44;
+const packY = (i: number) => 144 + i * 4 - serviceY(i);
+const unfoldY = (i: number) => 144 - serviceY(i);
+const travelX = 480 - 40;
+const settleX = -220;
+---
+
+<svg
+	class={className}
+	viewBox="0 0 960 340"
+	role="img"
+	aria-labelledby="arch-title arch-desc"
+	font-family="var(--font-sans)"
+	fill="none"
+	style={`--w-before:${width(before)}px;--w-dev:${width(dev)}px;--w-deploy:${width(deploy)}px;--travel-x:${travelX}px;--settle-x:${settleX}px`}
+>
+	<title id="arch-title">How OpenOrange moves a Cloudflare project into your datacenter</title>
+	<desc id="arch-desc">
+		wrangler dev becomes openorange dev, then openorange deploy. Your Cloudflare project leaves Cloudflare and lands in your datacenter as a stack: the project, unchanged, on the OpenOrange runtime, on Rivet, on AWS, GCP, Azure or on-prem.
+	</desc>
+
+	<g class="stage">
+		<!-- Terminal -->
+		<g font-family="var(--font-mono)" font-size="13">
+			<rect x="20" y="16" width="920" height="68" rx="6" fill={plate} />
+			<text x="40" y="44" fill="#FFFFFF" fill-opacity="0.55">$</text>
+			<text class="cmd-before" x={cmdX} y="44" fill="#FFFFFF" textLength={width(before)} lengthAdjust="spacing">{before}</text>
+			<text class="cmd-dev" x={cmdX} y="44" fill="#FFFFFF" textLength={width(dev)} lengthAdjust="spacing">{dev}</text>
+			<rect class="cover cover-1" x={cmdX} y="30" width="240" height="20" fill={plate} />
+			<text class="prompt-2" x="40" y="66" fill="#FFFFFF" fill-opacity="0.55">$</text>
+			<text x={cmdX} y="66" fill="#FFFFFF" textLength={width(deploy)} lengthAdjust="spacing">{deploy}</text>
+			<rect class="cover cover-2" x={cmdX} y="52" width="240" height="20" fill={plate} />
+			<g class="cursor">
+				<rect class="cursor-blink" x={cmdX} y="33" width="7" height="14" fill="#FFFFFF" fill-opacity="0.85" />
+			</g>
+		</g>
+
+		<!-- Cloudflare box -->
+		<g class="cf">
+			<rect x="20" y="100" width="400" height="224" rx="6" stroke={line} />
+			<text x="40" y="128" font-size="12" font-weight="600" fill={faint}>Cloudflare</text>
+		</g>
+
+		<!-- Datacenter box: appears when deploy runs, settles to the middle at the end -->
+		<g class="dc">
+			<g class="dc-box">
+				<rect x="460" y="100" width="480" height="224" rx="6" stroke={line} />
+				<text x="480" y="128" font-size="12" font-weight="600" fill={faint}>Your datacenter · AWS · GCP · Azure · on-prem</text>
+			</g>
+			<g class="layer layer-runtime">
+				<rect x="480" y="204" width="440" height="50" rx="4" fill="var(--arch-runtime)" stroke={orange} stroke-width="1.5" />
+				<text x="496" y="234" font-size="13" font-weight="600" fill={ink}>OpenOrange runtime</text>
+			</g>
+			<g class="layer layer-rivet">
+				<rect x="480" y="264" width="440" height="50" rx="4" fill={plate} />
+				<text x="496" y="294" font-size="13" font-weight="600" fill="#FFFFFF">Rivet</text>
+				<text x="904" y="294" font-size="12" fill="#FFFFFF" fill-opacity="0.65" text-anchor="end">open-source control plane</text>
+			</g>
+			<text class="caption" x="904" y="174" font-size="12" fill={faint} text-anchor="end">unchanged</text>
+		</g>
+
+		<!-- The project: four services that condense, move, and unfold into the top layer -->
+		<g class="mover">
+			{services.map((label, i) => (
+				<g class="svc" style={`--pack-y:${packY(i)}px;--unfold-y:${unfoldY(i)}px`}>
+					<rect class="svc-card" x="40" y={serviceY(i)} width="360" height="36" rx="4" fill="var(--arch-card)" stroke={line} />
+					<text class="svc-label" x="56" y={serviceY(i) + 23} font-size="13" font-weight="600" fill={ink}>{label}</text>
+				</g>
+			))}
+			<text class="bundle-label" x="56" y="179" font-size="13" font-weight="600" fill={ink}>Your Cloudflare project</text>
+		</g>
+	</g>
+</svg>
+
+<style>
+	/* One 16s loop (times in seconds):
+	   0–1.5     rest: `wrangler dev`, cursor blinking
+	   1.5–2.3   delete it, one character per step
+	   2.6–3.6   type `openorange dev`
+	   4.2–5.4   type `openorange deploy` on the next line
+	   5.9–6.7   enter: the services condense into one bundle; the datacenter box appears
+	   7.0–8.0   the bundle moves into the new box; the Cloudflare box fades away
+	   8.0–8.8   it unfolds into the top layer
+	   9.2–10.8  the OpenOrange runtime and Rivet slide in underneath
+	   11.4–12.2 the stack settles in the middle
+	   12.2–14.8 hold, then fade out and start over */
+	svg {
+		--cycle: 16s;
+		--arch-line: #d6d3d1;
+		--arch-ink: #111111;
+		--arch-faint: #78716c;
+		--arch-plate: #111111;
+		--arch-card: #f7f6f4;
+		--arch-runtime: #fff1e8;
+	}
+	:global(.dark) svg {
+		--arch-line: #3d3935;
+		--arch-ink: var(--color-ink);
+		--arch-faint: var(--color-ink-faint);
+		--arch-plate: var(--color-plate);
+		--arch-card: var(--color-paper-mid);
+		--arch-runtime: var(--color-orange-soft);
+	}
+	.stage,
+	.cmd-before,
+	.cmd-dev,
+	.cover,
+	.prompt-2,
+	.cursor,
+	.cf,
+	.dc,
+	.dc-box,
+	.caption,
+	.mover,
+	.svc,
+	.svc-card,
+	.svc-label,
+	.bundle-label,
+	.layer {
+		animation-duration: var(--cycle);
+		animation-timing-function: ease-in-out;
+		animation-iteration-count: infinite;
+	}
+
+	/* Terminal */
+	.cmd-before { animation-name: cmd-before; }
+	@keyframes cmd-before {
+		0%, 14.7% { opacity: 1; }
+		14.71%, 95.62% { opacity: 0; }
+		95.63%, 100% { opacity: 1; }
+	}
+	.cmd-dev { animation-name: cmd-dev; }
+	@keyframes cmd-dev {
+		0%, 14.7% { opacity: 0; }
+		14.71%, 95.62% { opacity: 1; }
+		95.63%, 100% { opacity: 0; }
+	}
+	.cover-1 { animation-name: cover-1; }
+	@keyframes cover-1 {
+		0% { transform: translateX(var(--w-before)); }
+		9.37% { transform: translateX(var(--w-before)); animation-timing-function: steps(12, jump-end); }
+		14.37%, 16.25% { transform: translateX(0); animation-timing-function: steps(14, jump-end); }
+		22.5%, 95.62% { transform: translateX(var(--w-dev)); }
+		95.63%, 100% { transform: translateX(var(--w-before)); }
+	}
+	.prompt-2 { animation-name: prompt-2; }
+	@keyframes prompt-2 {
+		0%, 26.25% { opacity: 0; }
+		26.26%, 95.62% { opacity: 1; }
+		95.63%, 100% { opacity: 0; }
+	}
+	.cover-2 { animation-name: cover-2; }
+	@keyframes cover-2 {
+		0% { transform: translateX(0); }
+		26.25% { transform: translateX(0); animation-timing-function: steps(17, jump-end); }
+		33.75%, 95.62% { transform: translateX(var(--w-deploy)); }
+		95.63%, 100% { transform: translateX(0); }
+	}
+	.cursor { animation-name: cursor; }
+	@keyframes cursor {
+		0% { transform: translate(var(--w-before), 0); opacity: 1; }
+		9.37% { transform: translate(var(--w-before), 0); animation-timing-function: steps(12, jump-end); }
+		14.37%, 16.25% { transform: translate(0, 0); animation-timing-function: steps(14, jump-end); }
+		22.5%, 26.25% { transform: translate(var(--w-dev), 0); }
+		26.26% { transform: translate(0, 22px); animation-timing-function: steps(17, jump-end); }
+		33.75%, 36.87% { transform: translate(var(--w-deploy), 22px); opacity: 1; }
+		36.88%, 95.62% { transform: translate(var(--w-deploy), 22px); opacity: 0; }
+		95.63%, 100% { transform: translate(var(--w-before), 0); opacity: 1; }
+	}
+	.cursor-blink {
+		animation: blink 1s steps(2, jump-none) infinite;
+	}
+	@keyframes blink {
+		from { opacity: 1; }
+		to { opacity: 0; }
+	}
+
+	/* Boxes */
+	.cf { animation-name: cf; }
+	@keyframes cf {
+		0%, 45% { opacity: 1; }
+		50%, 95.62% { opacity: 0; }
+		95.63%, 100% { opacity: 1; }
+	}
+	.dc-box { animation-name: dc-box; }
+	@keyframes dc-box {
+		0%, 38.75% { opacity: 0; }
+		43.75%, 95.62% { opacity: 1; }
+		95.63%, 100% { opacity: 0; }
+	}
+	.dc { animation-name: settle; }
+	.mover { animation-name: settle; }
+	@keyframes settle {
+		0%, 71.25% { transform: translateX(0); }
+		76.25%, 95.62% { transform: translateX(var(--settle-x)); }
+		95.63%, 100% { transform: translateX(0); }
+	}
+
+	/* The project */
+	.svc { animation-name: svc; }
+	@keyframes svc {
+		0%, 36.87% { transform: translate(0, 0); }
+		41.87%, 43.75% { transform: translate(0, var(--pack-y)); }
+		50% { transform: translate(var(--travel-x), var(--pack-y)); }
+		55%, 95.62% { transform: translate(var(--travel-x), var(--unfold-y)); }
+		95.63%, 100% { transform: translate(0, 0); }
+	}
+	.svc-card { animation-name: svc-card; }
+	@keyframes svc-card {
+		0%, 50% { width: 360px; height: 36px; }
+		55%, 95.62% { width: 440px; height: 50px; }
+		95.63%, 100% { width: 360px; height: 36px; }
+	}
+	.svc-label { animation-name: svc-label; }
+	@keyframes svc-label {
+		0%, 36.87% { opacity: 1; }
+		39.37%, 95.62% { opacity: 0; }
+		95.63%, 100% { opacity: 1; }
+	}
+	/* The bundle label rides on the front card, then becomes the top layer's label. */
+	.bundle-label { animation-name: bundle-label; }
+	@keyframes bundle-label {
+		0%, 39.37% { opacity: 0; transform: translate(0, 0); }
+		41.87%, 43.75% { opacity: 1; transform: translate(0, 0); }
+		50% { opacity: 1; transform: translate(var(--travel-x), 0); }
+		55%, 95.62% { opacity: 1; transform: translate(var(--travel-x), -5px); }
+		95.63%, 100% { opacity: 0; transform: translate(0, 0); }
+	}
+	.caption { animation-name: caption; }
+	@keyframes caption {
+		0%, 55% { opacity: 0; }
+		57.5%, 95.62% { opacity: 1; }
+		95.63%, 100% { opacity: 0; }
+	}
+	.layer-runtime { animation-name: layer-runtime; }
+	@keyframes layer-runtime {
+		0%, 57.5% { opacity: 0; transform: translateY(14px); }
+		62.5%, 95.62% { opacity: 1; transform: translateY(0); }
+		95.63%, 100% { opacity: 0; transform: translateY(14px); }
+	}
+	.layer-rivet { animation-name: layer-rivet; }
+	@keyframes layer-rivet {
+		0%, 62.5% { opacity: 0; transform: translateY(14px); }
+		67.5%, 95.62% { opacity: 1; transform: translateY(0); }
+		95.63%, 100% { opacity: 0; transform: translateY(14px); }
+	}
+
+	/* The whole stage fades out and back in around the reset. */
+	.stage { animation-name: stage; }
+	@keyframes stage {
+		0%, 92.5% { opacity: 1; }
+		95.62%, 95.63% { opacity: 0; }
+		100% { opacity: 1; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.stage, .cmd-before, .cmd-dev, .cover, .prompt-2, .cursor, .cursor-blink, .cf, .dc, .dc-box,
+		.caption, .mover, .svc, .svc-card, .svc-label, .bundle-label, .layer {
+			animation: none;
+		}
+		/* Finished state: both commands run, the stack settled in the middle. */
+		.cmd-before { opacity: 0; }
+		.cover-1 { transform: translateX(var(--w-dev)); }
+		.cover-2 { transform: translateX(var(--w-deploy)); }
+		.cursor { opacity: 0; }
+		.cf { opacity: 0; }
+		.dc, .mover { transform: translateX(var(--settle-x)); }
+		.svc { transform: translate(var(--travel-x), var(--unfold-y)); }
+		.svc-card { width: 440px; height: 50px; }
+		.svc-label { opacity: 0; }
+		.bundle-label { transform: translate(var(--travel-x), -5px); }
+	}
+</style>

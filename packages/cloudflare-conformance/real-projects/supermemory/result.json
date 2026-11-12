@@ -1,0 +1,75 @@
+{
+	"schemaVersion": 1,
+	"id": "supermemory",
+	"repo": "supermemoryai/supermemory",
+	"commit": "16ed414e0e0c61c946b7687ec813b2064fe75dd4",
+	"stars": 31518,
+	"origin": "search",
+	"directory": "apps/mcp",
+	"ranAt": "2026-11-05T02:38:19.246Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 6,
+		"command": "bun install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 5,
+		"command": "bun run build:widget"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 12
+	},
+	"steps": [
+		{
+			"name": "serves the server description and the OAuth resource metadata",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "an MCP client without a token gets 401 with the resource metadata",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "SpaceState refuses an upload token with no session",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the active space is stored in SpaceState and an upload session is consumed once",
+			"kind": "do-state",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"SUPERMEMORY_OAUTH_ACCESS_TOKEN"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"SpaceState"
+		],
+		"file": "apps/mcp/src/server/space-state.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"storage.transaction",
+			"storage.setAlarm"
+		]
+	}
+}

@@ -1,0 +1,8 @@
+{
+	"name": "sqlite-surface",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-01",
+	"durable_objects": { "bindings": [{ "name": "SQL", "class_name": "Sql" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Sql"] }],
+	"d1_databases": [{ "binding": "DB", "database_name": "probe", "database_id": "probe" }]
+}

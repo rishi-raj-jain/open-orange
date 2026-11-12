@@ -1,0 +1,29 @@
+{
+	"id": "company-brain",
+	"repo": "supermemoryai/company-brain",
+	"commit": "ef8a45ef3aed97b32599c7d8007edefab6d14e9a",
+	"stars": 1081,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "bun install --ignore-scripts",
+	"build": [
+		"node node_modules/bun/install.js",
+		"bun run build:web"
+	],
+	"durableObjects": {
+		"classes": [
+			"CompanyBrainAgent"
+		],
+		"file": "src/brain/turn/agent.ts",
+		"uses": [
+			"Agent",
+			"storage.sql",
+			"storage.setAlarm"
+		]
+	},
+	"changes": []
+}

@@ -1,0 +1,10 @@
+{
+	"name": "orange-content-encoding",
+	"main": "./worker.js",
+	"compatibility_date": "2026-09-03",
+	"services": [
+		{ "binding": "ASSETS", "service": "orange-content-encoding", "entrypoint": "Assets" }
+	],
+	"durable_objects": { "bindings": [{ "name": "ENCODED", "class_name": "Encoded" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Encoded"] }]
+}

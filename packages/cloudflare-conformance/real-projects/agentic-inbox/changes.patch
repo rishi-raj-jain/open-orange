@@ -1,0 +1,15 @@
+diff --git a/wrangler.jsonc b/wrangler.jsonc
+index 53a65cd..2bd8ba9 100644
+--- a/wrangler.jsonc
++++ b/wrangler.jsonc
+@@ -14,7 +14,9 @@
+ 		// TEAM_DOMAIN may be the base Access URL or the full /cdn-cgi/access/certs URL.
+ 		// The worker now fails closed outside local development if Access is not configured.
+ 		"DOMAINS": "example.com",
+-		"EMAIL_ADDRESSES": []
++		"EMAIL_ADDRESSES": [],
++		"POLICY_AUD": "corpus-local-access-audience",
++		"TEAM_DOMAIN": "http://127.0.0.1:38917"
+ 	},
+ 	"send_email": [
+ 		{

@@ -1,0 +1,19 @@
+--- a/wrangler.toml
++++ b/wrangler.toml
+@@ -41,13 +41,9 @@
+ name = "CREDENTIAL_VAULT"
+ class_name = "CredentialVault"
+ 
+-[exports.SyncHub]
+-type = "durable-object"
+-storage = "sqlite"
+-
+-[exports.CredentialVault]
+-type = "durable-object"
+-storage = "sqlite"
++[[migrations]]
++tag = "v1"
++new_sqlite_classes = ["SyncHub", "CredentialVault"]
+ 
+ [ai]
+ binding = "AI"

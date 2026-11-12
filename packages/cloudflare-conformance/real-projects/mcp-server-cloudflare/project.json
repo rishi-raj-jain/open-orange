@@ -1,0 +1,24 @@
+{
+	"id": "mcp-server-cloudflare",
+	"repo": "cloudflare/mcp-server-cloudflare",
+	"commit": "a21972e219289337731a066befb5c66886b9ce7b",
+	"stars": 4441,
+	"origin": "search",
+	"directory": "apps/dex-analysis",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --frozen-lockfile --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"WarpDiagReader"
+		],
+		"file": "apps/dex-analysis/src/warp_diag_reader.ts",
+		"uses": [
+			"RPC methods on a stub",
+			"instance memory as a per-capture cache"
+		]
+	},
+	"changes": []
+}

@@ -1,0 +1,46 @@
+---
+title: Worker Loader
+description: Load and run dynamic Workers at runtime with the worker_loaders binding in OpenOrange.
+---
+
+# Worker Loader
+
+**Status:** Partial
+
+## Configuration
+
+```jsonc
+{
+  "worker_loaders": [{ "binding": "LOADER" }]
+}
+```
+
+## How OpenOrange implements it
+
+- Dynamic Worker code is untrusted, so each dynamic Worker runs in its own Node.js process inside an agentOS VM, never on the host. It does not share globals, module state, `process.env`, or `env` with the parent Worker. If the VM cannot boot, `get()` and `load()` calls fail with the boot error. OpenOrange never falls back to the host.
+- The parent and the dynamic Worker talk Workers RPC over Cap'n Web, framed on the dynamic Worker process's stdin and stdout. The dynamic Worker's own stdout output still reaches the parent's stdout. Stubs, `RpcTarget`s, functions, service bindings, and Durable Object stubs in `env`, `props`, arguments, and results travel by reference.
+- `get(name, getCode)` keeps one Worker per name in each binding. `get(null, ...)` and `load(code)` always start a new Worker.
+- Supported module types: string `.js` (ES module), `{ js }`, `{ cjs }`, `{ text }`, `{ data }`, `{ json }`, and `{ wasm }` with bytes. Relative imports, `cloudflare:*`, and `node:*` imports resolve like the parent Worker.
+- `globalOutbound: null` makes `fetch()` reject and `connect()` throw with the workerd message. A Fetcher receives the Worker's `fetch()` calls.
+- If a dynamic Worker process exits, its pending calls reject and the next `get()` with that name loads it again. Stopping `orange dev` stops every dynamic Worker process.
+- Each dynamic Worker gets its own VM, as each gets its own isolate on Cloudflare. Two dynamic Workers do not share a filesystem, processes, or loopback. A Worker with the default `globalOutbound` gets a VM with network access. A Worker with `globalOutbound: null` or a Fetcher outbound gets a VM with no network. The VM is disposed when the dynamic Worker process exits or `orange dev` stops. `pnpm build` emits the VM bundle to `dist/runtime/worker-loader-vm/`.
+- Each VM boots on demand when its dynamic Worker loads, so the first call to a dynamic Worker waits for the boot of about 1 s. If the boot fails, that call throws the error.
+- The agentOS VM runs Node.js 22. The VM bundle fills missing Web globals from `node:stream/web`, `node:buffer`, `node:crypto`, and `node:perf_hooks`, builds `CompressionStream` and `DecompressionStream` on `node:zlib`, adds `URLPattern` from `urlpattern-polyfill`, and sets `navigator`. Any other global that the VM lacks becomes a class that throws when constructed. Workerd stream fixes that read Node.js 24 stream internals do not apply in the VM, and dynamic Workers there use the VM's own `WebSocket` class.
+
+## Conformance coverage
+
+`src/runtime/worker-loader.test.ts` drives a real `orange dev` over HTTP: fetch and RPC, env and props capabilities, isolation, `globalOutbound: null`, name caching, syntax errors, process crashes, and module types.
+
+## Known differences from Cloudflare
+
+- `compatibilityDate`, `compatibilityFlags`, `allowExperimental`, and `limits` are accepted and ignored. The dynamic Worker uses the same compatibility profile as the parent.
+- OpenOrange does not copy Cloudflare's 64 MiB code and 1 MiB `env` limits. The limits are agentOS's, which runs the dynamic Worker: its VM filesystem holds 64 MiB by default, including OpenOrange's own runtime files, and one file is written as one message of at most 16 MiB. A larger module fails with a `RangeError` that names that limit. In a test with agentOS 0.4.1, a 5 MiB `env` worked and a 10 MiB `env` made the dynamic Worker exit with code 1.
+- `tails` and `streamingTails` are accepted and receive no events.
+- `getDurableObjectClass()` throws a `NotSupportedError`.
+- `connect()` on a dynamic entrypoint, and `connect()` through a Fetcher `globalOutbound`, throw a `NotSupportedError`-style error.
+- Python modules and compiled `WebAssembly.Module` values throw a `TypeError`. Pass Wasm bytes as `{ wasm: ArrayBuffer }`.
+- `globalOutbound: null` blocks the global `fetch()` and `cloudflare:sockets` `connect()`. The VM with no network also blocks `node:net` and `node:http` connections.
+- `node:fs` sees only the VM filesystem, not host files, and a dynamic Worker cannot connect to host loopback ports, whatever its `globalOutbound`.
+- A Worker that fails to load is forgotten, so the next `get()` with that name calls `getCode` again. Workerd keeps the failed Worker.
+- Orange allows dynamic entrypoint stubs and uncalled `ctx.exports` stubs in `props`, where workerd throws `DataCloneError`.
+- Dynamic Worker processes are not unloaded while idle. Each `load()` keeps a process until `orange dev` stops.

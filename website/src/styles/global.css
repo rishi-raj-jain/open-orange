@@ -1,0 +1,467 @@
+@import 'tailwindcss';
+
+/* Two self-hosted OFL variable fonts. Inter carries headings and body;
+   JetBrains Mono is for commands, code and tabular numbers only. */
+@font-face {
+	font-family: 'Inter';
+	src: url('/fonts/inter/Inter-Variable-latin.woff2') format('woff2');
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'JetBrains Mono';
+	src: url('/fonts/jetbrains-mono/JetBrainsMono-Variable-latin.woff2') format('woff2');
+	font-weight: 100 800;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* Warm off-white field, white panels, near-black type. Orange is the accent:
+   the mark, highlights, figure fills and the closing panel. Buttons are ink
+   pills. Ink plates are for terminals. */
+@theme {
+	--color-*: initial;
+	--color-orange: #f26b1d;
+	--color-orange-deep: #c4500f;
+	--color-orange-soft: #fff1e8;
+	--color-ink: #1a1918;
+	--color-ink-soft: #44403c;
+	--color-ink-faint: #78716c;
+	--color-paper: #f9f8f7;
+	--color-paper-mid: #f1efed;
+	--color-line: #e9e6e3;
+	/* Panels and cards on the field. White in light, a raised dark in dark. */
+	--color-surface: #ffffff;
+	/* Dark plates that stay dark in both themes: terminals, tooltips, the
+	   highlighted panel on comparison pages. */
+	--color-plate: #1a1918;
+	--color-cream: #f5f5f4;
+	--color-white: #ffffff;
+	--color-transparent: transparent;
+
+	/* Result colors. Only the compatibility and bindings pages use them, so a
+	   pass, a partial and a failure can never be confused with the brand orange. */
+	--color-pass: #1a8a4a;
+	--color-pass-soft: #e6f6ec;
+	--color-warn: #b8700a;
+	--color-warn-soft: #fff4df;
+	--color-fail: #c2362b;
+	--color-fail-soft: #fdeceb;
+
+	--font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Dark theme. `.dark` on <html> is set before paint by the script in
+   src/layouts/Base.astro (system setting, or the header toggle's override). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+	color-scheme: light;
+}
+.dark {
+	color-scheme: dark;
+	--color-orange-deep: #ff9a5c;
+	--color-orange-soft: #36210f;
+	--color-ink: #f2efeb;
+	--color-ink-soft: #c5bfb8;
+	--color-ink-faint: #958e87;
+	--color-paper: #141312;
+	--color-paper-mid: #22201e;
+	--color-line: #2f2c29;
+	--color-surface: #1b1a18;
+	--color-plate: #2a2725;
+	--color-pass: #45c27a;
+	--color-pass-soft: #14301f;
+	--color-warn: #e6a640;
+	--color-warn-soft: #33260f;
+	--color-fail: #f2786c;
+	--color-fail-soft: #3a1915;
+}
+/* Objects that stay light on a dark page (the paper receipt, the app window
+   in the terminal demo): the light tokens again. */
+.dark .theme-light {
+	color-scheme: light;
+	--color-orange-deep: #c4500f;
+	--color-orange-soft: #fff1e8;
+	--color-ink: #1a1918;
+	--color-ink-soft: #44403c;
+	--color-ink-faint: #78716c;
+	--color-paper: #f9f8f7;
+	--color-paper-mid: #f1efed;
+	--color-line: #e9e6e3;
+	--color-surface: #ffffff;
+	--color-plate: #1a1918;
+}
+
+html {
+	scroll-behavior: smooth;
+	scroll-padding-top: 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+}
+
+body {
+	@apply min-h-screen bg-paper font-sans text-[16px] leading-[1.6] text-ink antialiased;
+	font-feature-settings: 'cv11', 'ss01';
+}
+
+::selection {
+	background-color: #f26b1d;
+	color: #ffffff;
+}
+
+/* Layout. */
+@utility container-x {
+	@apply mx-auto w-full max-w-6xl px-6;
+}
+@utility section {
+	@apply py-20 md:py-32;
+}
+/* Data pages: the same rhythm, tighter. */
+@utility section-tight {
+	@apply py-16 md:py-24;
+}
+/* Hairline between sections. */
+@utility rule {
+	@apply border-t border-line;
+}
+/* Section header: heading left, one sentence right. */
+@utility split-head {
+	@apply grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-16;
+}
+
+/* Surfaces. */
+@utility card {
+	@apply rounded-2xl border border-line bg-surface;
+}
+@utility card-mid {
+	@apply rounded-2xl border border-line bg-paper-mid;
+}
+/* Feature column with a hairline on its left (Linear-style three-up). */
+@utility col-rule {
+	@apply border-l border-line pl-6;
+}
+
+/* Buttons. */
+@utility btn {
+	@apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-5 py-2.5 text-[15px] font-medium transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 dark:focus-visible:ring-offset-paper;
+}
+@utility btn-primary {
+	@apply btn bg-ink text-white hover:bg-ink-soft dark:text-paper;
+}
+@utility btn-ink {
+	@apply btn bg-ink text-white hover:bg-ink-soft dark:text-paper;
+}
+@utility btn-secondary {
+	@apply btn border border-ink/15 bg-surface text-ink hover:border-ink/40;
+}
+@utility btn-light {
+	@apply btn bg-white text-ink hover:bg-cream focus-visible:ring-white focus-visible:ring-offset-ink;
+}
+@utility btn-outline-light {
+	@apply btn border border-white/25 text-white hover:bg-white/10 focus-visible:ring-white focus-visible:ring-offset-ink;
+}
+
+/* Type scale. */
+@utility h-hero {
+	@apply text-balance text-[2.75rem] font-medium leading-[1.02] tracking-[-0.035em] sm:text-[3.5rem] md:text-[4.75rem];
+}
+@utility h-section {
+	@apply text-balance text-[2rem] font-medium leading-[1.08] tracking-[-0.03em] md:text-[3rem];
+}
+@utility h-sub {
+	@apply text-[1.25rem] font-medium leading-[1.2] tracking-[-0.02em] md:text-[1.625rem];
+}
+@utility h-card {
+	@apply text-[17px] font-medium leading-snug tracking-[-0.01em];
+}
+@utility lede {
+	@apply text-pretty text-[17px] leading-[1.55] text-ink-soft md:text-[19px];
+}
+@utility body-copy {
+	@apply text-[15px] leading-[1.65] md:text-[16px];
+}
+@utility caption {
+	@apply text-[13px] leading-relaxed text-ink-faint;
+}
+@utility label {
+	@apply text-[13px] font-semibold text-ink-faint;
+}
+@utility stat {
+	@apply font-medium leading-none tracking-[-0.035em] tabular-nums;
+}
+@utility link {
+	@apply font-medium text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink;
+}
+@utility link-on-ink {
+	@apply font-medium text-white underline decoration-white/40 underline-offset-4 hover:decoration-white;
+}
+@utility code-chip {
+	@apply rounded-md border border-line bg-paper-mid px-1.5 py-0.5 font-mono text-[0.85em];
+}
+
+/* Status chips. */
+@utility chip {
+	@apply inline-flex items-center whitespace-nowrap rounded px-2 py-0.5 text-[12px] font-medium;
+}
+@utility chip-good {
+	@apply chip bg-orange-soft text-orange-deep;
+}
+@utility chip-neutral {
+	@apply chip bg-paper-mid text-ink-soft;
+}
+@utility chip-muted {
+	@apply chip border border-dashed border-line text-ink-faint;
+}
+
+/* Result tones: chips, dots and bars on the compatibility and bindings pages. */
+@utility tone-pass {
+	@apply bg-pass-soft text-pass;
+}
+@utility tone-warn {
+	@apply bg-warn-soft text-warn;
+}
+@utility tone-fail {
+	@apply bg-fail-soft text-fail;
+}
+@utility tone-none {
+	@apply border border-dashed border-ink/20 bg-transparent text-ink-faint;
+}
+@utility dot {
+	@apply inline-block size-2.5 shrink-0 rounded-full;
+}
+@utility dot-pass {
+	@apply dot bg-pass;
+}
+@utility dot-warn {
+	@apply dot bg-warn;
+}
+@utility dot-fail {
+	@apply dot bg-fail;
+}
+@utility dot-none {
+	@apply dot border border-dashed border-ink/30 bg-transparent;
+}
+
+/* Filter and jump-link pill. `aria-pressed="true"` is the selected state. */
+@utility pill {
+	@apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-3.5 py-1.5 text-[13.5px] font-medium text-ink-soft transition-colors hover:text-ink aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-white dark:aria-pressed:text-paper motion-reduce:transition-none;
+}
+
+/* Hover tooltip. The trigger is `.tip`; the body is its `.tip-body` child.
+   TipScript opens it (`is-open`) on hover or focus and closes it on leave,
+   blur and scroll, so a body can never stay pinned. Bodies open upward and
+   hug the trigger's right edge so they never leave the table. */
+.tip {
+	@apply relative;
+}
+.tip > .tip-body,
+.test-tip {
+	@apply pointer-events-none absolute bottom-full right-0 z-40 mb-2 hidden w-[22rem] max-w-[90vw] rounded-xl bg-plate px-3.5 py-3 text-left text-[12.5px] font-normal leading-[1.5] text-cream shadow-lg;
+	white-space: normal;
+}
+.tip.tip-left > .tip-body {
+	@apply left-0 right-auto;
+}
+.tip.tip-down > .tip-body {
+	@apply top-full bottom-auto mt-2 mb-0;
+}
+.tip.is-open > .tip-body {
+	@apply block;
+}
+.tip-body .mono {
+	@apply mt-1.5 block whitespace-pre-wrap break-words font-mono text-[11.5px] leading-[1.45] text-cream/80;
+}
+.tip-body .k {
+	@apply text-cream/50;
+}
+
+/* The test grid: one box per scored test. A box the matrix cites opens its row on click. */
+.test-grid .cells {
+	@apply flex flex-wrap gap-[2px];
+}
+.cell {
+	@apply block size-2 rounded-[1.5px];
+}
+.cell-pass {
+	@apply bg-pass;
+}
+.cell-fail {
+	@apply bg-fail;
+}
+.cell[data-m] {
+	@apply cursor-pointer;
+}
+.cell:hover,
+.cell.is-on {
+	@apply outline outline-2 outline-offset-1 outline-ink;
+}
+.test-tip {
+	@apply fixed bottom-auto right-auto mb-0;
+}
+.test-tip:not([hidden]) {
+	@apply block;
+}
+
+/* Every list on the compatibility and bindings pages is a stack of rows on one
+   grid: chevron, status, name, two text columns, and a right-aligned end
+   column. `.row-head` is the column header on the same grid. On narrow screens
+   the columns stack under the chevron. */
+.row-cols {
+	@apply grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 px-2 md:grid-cols-[1.25rem_7rem_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.3fr)_8rem] md:items-center md:gap-x-5;
+}
+.row-cols > :not(:first-child) {
+	@apply col-start-2 min-w-0 md:col-start-auto;
+}
+.row-cols > :last-child:not(:first-child) {
+	@apply md:justify-self-end;
+}
+.row-head {
+	@apply hidden border-b border-line pb-2.5 text-[12px] font-medium text-ink-faint md:grid;
+}
+.row-head > :last-child {
+	@apply md:text-right;
+}
+/* The stack of rows. The header draws its top line when there is one. */
+.rows {
+	@apply border-t border-line;
+}
+.row-head + .rows {
+	@apply border-t-0;
+}
+.row-name {
+	@apply text-[14.5px] font-medium leading-snug text-ink;
+}
+.row-text {
+	@apply text-[13.5px] leading-snug text-ink-soft;
+	overflow-wrap: anywhere;
+}
+.row-text-faint {
+	@apply text-[13.5px] leading-snug text-ink-faint;
+	overflow-wrap: anywhere;
+}
+.row-name {
+	overflow-wrap: anywhere;
+}
+.row-meta {
+	@apply block truncate text-[12.5px] text-ink-faint;
+}
+.row-num {
+	@apply font-mono text-[12.5px] tabular-nums text-ink-soft;
+}
+
+/* A result row that opens on click. `summary` is the row, the rest is detail. */
+.row {
+	@apply border-b border-line;
+}
+.row > summary,
+.row > .row-cols {
+	@apply py-3.5;
+}
+.row > summary {
+	@apply cursor-pointer list-none select-none transition-colors hover:bg-paper-mid/60 motion-reduce:transition-none;
+}
+.row > summary::-webkit-details-marker {
+	display: none;
+}
+.row[open] > summary {
+	@apply bg-paper-mid/60;
+}
+.row .chev {
+	@apply mt-0.5 size-4 shrink-0 text-ink-faint transition-transform duration-150 motion-reduce:transition-none md:mt-0;
+}
+.row[open] > summary .chev {
+	transform: rotate(90deg);
+}
+/* The detail sits on the same columns as the row: labels under Status, content
+   from the name column to the right edge. */
+.row-detail {
+	@apply border-t border-line bg-paper-mid/40 px-2 py-5 text-[14px] leading-[1.6] text-ink-soft md:pl-[3rem];
+}
+.row-detail dl {
+	@apply grid gap-y-4 md:grid-cols-[7rem_minmax(0,1fr)] md:gap-x-5;
+}
+.row-detail dt {
+	@apply label -mb-3 md:mb-0 md:pt-0.5;
+}
+.row-detail dd {
+	@apply min-w-0;
+}
+/* A list of results inside a detail. */
+.row-detail .results {
+	@apply divide-y divide-line rounded-xl border border-line bg-surface;
+}
+.row-detail .results > li {
+	@apply grid gap-x-4 gap-y-1 px-3.5 py-2.5 text-[13px] sm:grid-cols-[1fr_auto];
+}
+.row-detail .err {
+	@apply mt-1 block whitespace-pre-wrap break-words rounded-md bg-fail-soft px-2.5 py-1.5 font-mono text-[12px] leading-[1.45] text-fail;
+}
+.row-detail code {
+	@apply rounded border border-line bg-surface px-1 py-px font-mono text-[0.9em];
+}
+/* Inline code in prose, mostly identifiers and env var names that can be long. */
+.prose-code code,
+.prose-code dt {
+	overflow-wrap: anywhere;
+}
+.row:target > summary {
+	@apply bg-orange-soft;
+}
+
+/* Terminal plate. */
+.plate {
+	@apply overflow-hidden rounded-2xl border border-plate bg-plate font-mono text-[13.5px] leading-[1.9] text-cream;
+}
+.plate ::selection {
+	background-color: #f26b1d;
+	color: #111111;
+}
+.plate .prompt {
+	@apply select-none text-cream/40;
+}
+.plate .muted {
+	color: rgb(245 245 244 / 0.4);
+}
+.plate .ok {
+	@apply rounded-sm bg-orange px-1.5 text-[12px] font-semibold text-white;
+}
+.plate-bar {
+	@apply flex items-center gap-2 border-b border-white/10 px-4 py-2 font-sans text-[12px] font-medium text-cream/60;
+}
+/* The orange turns. Slowly on its own, faster when you hover it. */
+@keyframes spin-slow {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.spin-slow {
+	animation: spin-slow 36s linear infinite;
+}
+.spin-slow:hover {
+	animation-duration: 6s;
+}
+@media (prefers-reduced-motion: reduce) {
+	.spin-slow {
+		animation: none;
+	}
+}
+
+/* Shiki code blocks render both themes: light inline, dark as --shiki-dark
+   variables (astro.config.ts). In dark, use the dark colors on the panel color. */
+.dark .astro-code {
+	background-color: var(--color-surface) !important;
+}
+.dark .astro-code,
+.dark .astro-code span {
+	color: var(--shiki-dark) !important;
+	font-style: var(--shiki-dark-font-style) !important;
+	font-weight: var(--shiki-dark-font-weight) !important;
+	text-decoration: var(--shiki-dark-text-decoration) !important;
+}

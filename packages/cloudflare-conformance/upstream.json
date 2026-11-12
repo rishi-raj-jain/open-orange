@@ -1,0 +1,51 @@
+{
+	"repository": "https://github.com/cloudflare/workerd.git",
+	"tag": "v1.20260903.1",
+	"commit": "b73ce3ae105c35bafaaad864095079524573a465",
+	"configSchema": "src/workerd/server/workerd.capnp",
+	"testDirectories": [
+		"src/workerd/api/tests",
+		"src/workerd/api/node/tests"
+	],
+	"localTestDirectories": [
+		"synthetic"
+	],
+	"notSupported": {
+		"api-tests--new-module-registry-test": "Tests the opt-in new_module_registry flag: unbundled modules resolved as URLs at runtime. Orange always bundles the worker.",
+		"api-tests--ts-webfs-writable-test": "Tests the Web File System API, which workerd only enables with the experimental enable_web_file_system flag. Cloudflare does not deploy experimental flags.",
+		"api-tests--webfs-test": "Tests the Web File System API, which workerd only enables with the experimental enable_web_file_system flag. Cloudflare does not deploy experimental flags.",
+		"api-tests--webfs-ts-test": "Tests the Web File System API, which workerd only enables with the experimental enable_web_file_system flag. Cloudflare does not deploy experimental flags."
+	},
+	"tmpWriters": {
+		"node-tests--fs-access-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-chown-chmod-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-cp-into-subdirectory-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-cp-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-dir-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-filehandle-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-glob-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-link-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-misc-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-nodejs-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-readstream-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-readsync-byteoffset-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-stat-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-utimes-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test.",
+		"node-tests--fs-writestream-test": "Writes to /tmp. Orange runs the file unmodified under the host safety net. On plain Node.js /tmp is the host /tmp, so that run rewrites every /tmp path to a scratch directory that it resets before each test."
+	},
+	"notRunTests": {
+		"node-tests--fs-dir-test > opendirSyncAndAsyncTest2": "Lists the whole host disk recursively from /. On workerd, / holds only /bundle, /tmp, and /dev."
+	},
+	"unguaranteedTests": {},
+	"cloudflareQuotaTests": {
+		"api-tests--actor-block-concurrency-depth-test > main": "blockConcurrencyWhile() nested at most 64 deep",
+		"api-tests--blob-test > overLarge": "A Blob of at most 128 MiB",
+		"api-tests--global-scope-test > timeoutCount": "At most 10,000 active timeouts per event",
+		"api-tests--js-rpc-socket-streams-ts-test > stubDepthLimitTest": "An RPC property path at most 64 deep",
+		"api-tests--js-rpc-socket-test > stubDepthLimitTest": "An RPC property path at most 64 deep",
+		"api-tests--js-rpc-streams-ts-test > stubDepthLimitTest": "An RPC property path at most 64 deep",
+		"api-tests--js-rpc-test > stubDepthLimitTest": "An RPC property path at most 64 deep",
+		"api-tests--worker-loader-limits-test > codeSizeExceedsLimit": "Dynamic Worker code of at most 64 MiB",
+		"api-tests--worker-loader-limits-test > envSizeExceedsLimit": "Dynamic Worker env of at most 1 MiB"
+	}
+}

@@ -1,0 +1,238 @@
+{
+	"upstream": {
+		"repository": "https://github.com/cloudflare/workerd.git",
+		"tag": "v1.20260903.1",
+		"commit": "b73ce3ae105c35bafaaad864095079524573a465"
+	},
+	"files": {
+		"do-alarm-test.wd-test": [
+			{
+				"path": "src/workerd/io/actor-cache-test.c++",
+				"blob": "d391bc0035e02493912617690bc5115eac23a684",
+				"tests": [
+					"ActorCache alarm get/put",
+					"ActorCache deleteAll() with deleteAlarm deletes alarm after deleteAll succeeds",
+					"ActorCache deleteAll() with deleteAlarm does not overwrite subsequent setAlarm",
+					"ActorCache deleteAll() with deleteAlarm during alarm handler cancels deferred delete",
+					"ActorCache alarm cleared by abandonAlarm",
+					"ActorCache abandonAlarm is a no-op when a newer alarm has replaced the abandoned one"
+				]
+			},
+			{
+				"path": "src/workerd/io/actor-sqlite-test.c++",
+				"blob": "db3f02c9021e159e67c98563bdad826f170f3fa6",
+				"tests": [
+					"initial alarm value is unset",
+					"can set and get alarm",
+					"alarm write happens transactionally with storage ops",
+					"can clear alarm",
+					"can set alarm twice",
+					"tells alarm handler to cancel when committed alarm is empty",
+					"tells alarm handler to reschedule when handler alarm is later than committed alarm",
+					"tells alarm handler to reschedule when handler alarm is earlier than committed alarm",
+					"runs overdue alarm immediately when local alarm time is in the past",
+					"getAlarm() returns null during handler",
+					"alarm handler handle clears alarm when dropped with no writes",
+					"alarm deleter does not clear alarm when dropped with writes",
+					"can cancel deferred alarm deletion during handler",
+					"calling deleteAll() preserves alarm state if alarm is not set",
+					"deleteAll with deleteAlarm option deletes alarm",
+					"deleteAll with deleteAlarm during alarm handler cancels deferred delete",
+					"deleteAll deleteAlarm does not schedule alarm cancellation if setAlarm interleaves",
+					"rolling back transaction leaves alarm in expected state",
+					"rolling back transaction leaves deferred alarm deletion in expected state",
+					"committing transaction leaves deferred alarm deletion in expected state",
+					"rolling back nested transaction leaves deferred alarm deletion in expected state",
+					"ActorSqlite alarm cleared by abandonAlarm",
+					"ActorSqlite abandonAlarm is a no-op when a newer alarm has replaced the abandoned one"
+				]
+			},
+			{
+				"path": "src/workerd/api/alarm-retry-test.c++",
+				"blob": "8bb905d5f5140b4d55f2b8db99d00d9ba2b7ecac",
+				"tests": [
+					"alarmRetryCountsAgainstLimit: failures without a broken output gate always count"
+				]
+			},
+			{
+				"path": "src/workerd/server/alarm-scheduler-test.c++",
+				"blob": "7a51f08ed31bf3b2ece8ea1c500eb450d4877c17",
+				"tests": [
+					"AlarmScheduler restores the persisted actor_name onto the ActorKey when an alarm fires",
+					"AlarmScheduler abandons an alarm when ctx.abort() sets retryAlarm to false",
+					"AlarmScheduler preserves an alarm queued while abandonment is pending"
+				]
+			}
+		],
+		"do-id-test.wd-test": [
+			{
+				"path": "src/workerd/server/actor-id-impl-test.c++",
+				"blob": "6d1d5e7e83c0393683818dcb7b688f29eef1860d",
+				"tests": [
+					"ActorIdImpl equals test",
+					"ActorIdImplFactory idFromString test"
+				]
+			}
+		],
+		"do-input-gate-test.wd-test": [
+			{
+				"path": "src/workerd/io/io-gate-test.c++",
+				"blob": "4bc00db635c2328738f4f5a9e71623c2784f8238",
+				"tests": [
+					"InputGate basics",
+					"InputGate critical section",
+					"InputGate nested critical sections",
+					"InputGate deeply nested critical sections",
+					"InputGate broken"
+				]
+			}
+		],
+		"do-sql-test.wd-test": [
+			{
+				"path": "src/workerd/util/sqlite-test.c++",
+				"blob": "d0c4e209911d30c6a7d78a6efa0e168b4ff02c94",
+				"tests": [
+					"SQLite Regulator",
+					"SQLite read row counters (basic)",
+					"SQLite write row counters (basic)",
+					"SQLite read/write row counters (large row insert)",
+					"SQLite row counters with triggers",
+					"DELETE with LIMIT",
+					"reset database",
+					"SQLite failed statement reset",
+					"SQLite extended error codes in messages",
+					"SQLite prepareMulti",
+					"SQLite prepareMulti with failure",
+					"SQLite prepareMulti w/BEGIN TRANSACTION",
+					"SQLite Regulator blocks RENAME TO reserved name",
+					"SQLite restrict internal functions to nested parse",
+					"SQLite authorizer is called in default column expressions",
+					"SQLite authorizer matches default function names case-insensitively",
+					"SQLite R*Tree extension is enabled"
+				]
+			}
+		],
+		"do-storage-test.wd-test": [
+			{
+				"path": "src/workerd/io/actor-cache-test.c++",
+				"blob": "d391bc0035e02493912617690bc5115eac23a684",
+				"tests": [
+					"ActorCache single-key basics",
+					"ActorCache multi-key basics",
+					"ActorCache more puts",
+					"ActorCache more deletes",
+					"ActorCache more multi-puts",
+					"ActorCache more multi-deletes",
+					"ActorCache deleteAll()",
+					"ActorCache deleteAll() during transaction commit",
+					"ActorCache deleteAll() again when previous one isn't done yet",
+					"ActorCache get-put ordering",
+					"ActorCache put during flush",
+					"ActorCache get-multiple multiple blocks",
+					"ActorCache list()",
+					"ActorCache list() all",
+					"ActorCache list() with limit",
+					"ActorCache list() with limit around negative entries",
+					"ActorCache list() start point is not present",
+					"ActorCache list() multiple ranges",
+					"ActorCache list() with some already-cached keys in range",
+					"ActorCache list() with seemingly-redundant dirty entries",
+					"ActorCache list() starting from known value",
+					"ActorCache list() starting from unknown value",
+					"ActorCache list() consecutively, absent midpoint",
+					"ActorCache list() consecutively reverse, absent midpoint",
+					"ActorCache list() consecutively, present midpoint",
+					"ActorCache list() consecutively reverse, present midpoint",
+					"ActorCache list() starting in known-empty gap",
+					"ActorCache list() ending in known-empty gap",
+					"ActorCache list() with limit and dirty puts that end up past the limit",
+					"ActorCache list() overwrite endpoint",
+					"ActorCache list() delete endpoint",
+					"ActorCache list() delete endpoint empty range",
+					"ActorCache list() interleave streaming with other ops",
+					"ActorCache get() of endpoint of previous list() returning negative is cached correctly",
+					"ActorCache listReverse()",
+					"ActorCache listReverse() all",
+					"ActorCache listReverse() with limit",
+					"ActorCache listReverse() with limit around negative entries",
+					"ActorCache listReverse() start point is not present",
+					"ActorCache listReverse() multiple ranges",
+					"ActorCache listReverse() with some already-cached keys in range",
+					"ActorCache listReverse() with seemingly-redundant dirty entries",
+					"ActorCache listReverse() starting from known value",
+					"ActorCache listReverse() starting from unknown value",
+					"ActorCache listReverse() consecutively, absent midpoint",
+					"ActorCache listReverse() consecutively reverse, absent midpoint",
+					"ActorCache listReverse() consecutively, present midpoint",
+					"ActorCache listReverse() consecutively reverse, present midpoint",
+					"ActorCache listReverse() starting in known-empty gap",
+					"ActorCache listReverse() ending in known-empty gap",
+					"ActorCache listReverse() with limit and dirty puts that end up past the limit",
+					"ActorCache listReverse() overwrite endpoint",
+					"ActorCache listReverse() delete endpoint",
+					"ActorCache listReverse() interleave streaming with other ops",
+					"ActorCache transaction read-through",
+					"ActorCache transaction overlay changes",
+					"ActorCache transaction overlay changes precached",
+					"ActorCache transaction multiple counted delete batches",
+					"ActorCache transaction negative list range returns nothing",
+					"ActorCache can wait for flush"
+				]
+			},
+			{
+				"path": "src/workerd/io/actor-sqlite-test.c++",
+				"blob": "db3f02c9021e159e67c98563bdad826f170f3fa6",
+				"tests": [
+					"check put multiple wraps operations in a transaction",
+					"check put multiple wraps operations in a transaction and rollback on error",
+					"sync() returns immediately when no writes are pending"
+				]
+			},
+			{
+				"path": "src/workerd/util/sqlite-kv-test.c++",
+				"blob": "0d60038868a0cab4a7f4c01684e7efad5000b7b7",
+				"tests": [
+					"SQLite-KV",
+					"SQLite-KV multi-put",
+					"SQLite-KV multi-put rollback on error"
+				]
+			}
+		],
+		"do-websocket-hibernation-test.wd-test": [
+			{
+				"path": "src/workerd/io/hibernation-manager-test.c++",
+				"blob": "56ca25a368425f7d3dc0e51a4c2a1273fd210975",
+				"tests": [
+					"HibernationManager: eyeball close dispatches webSocketClose to worker",
+					"HibernationManager: delivering one event leaves other hibernated WebSockets registered"
+				]
+			}
+		],
+		"do-websocket-test.wd-test": [
+			{
+				"path": "src/workerd/io/hibernation-manager-test.c++",
+				"blob": "56ca25a368425f7d3dc0e51a4c2a1273fd210975",
+				"tests": [
+					"HibernationManager: smoke (create, accept, query)",
+					"HibernationManager: DO sends string message to eyeball",
+					"HibernationManager: eyeball sends non-auto-response message → dispatched to worker",
+					"HibernationManager: DO close sends close frame to eyeball",
+					"HibernationManager: eyeball close dispatches webSocketClose to worker",
+					"HibernationManager: DO sends binary message to eyeball",
+					"HibernationManager: eyeball sends binary message → dispatched to worker",
+					"HibernationManager: multiple tagged WebSockets are addressable independently",
+					"HibernationManager: auto-response request not dispatched to worker (active)",
+					"HibernationManager: auto-response interleaved with DO sends (active)",
+					"HibernationManager: auto-response is skipped after close is queued"
+				]
+			}
+		]
+	},
+	"notPorted": [
+		{
+			"path": "src/workerd/util/sqlite-kv-test.c++",
+			"test": "large key",
+			"reason": "workerd allows a 4 MiB key. Cloudflare production limits key + value to 2 MB, and Orange enforces 2 MiB."
+		}
+	]
+}

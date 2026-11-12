@@ -1,0 +1,14 @@
+{
+	"name": "jobs",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"kv_namespaces": [{ "binding": "OUTBOX", "id": "multi-worker-outbox" }],
+	"queues": {
+		"producers": [{ "binding": "EMAILS", "queue": "emails" }],
+		"consumers": [
+			{ "queue": "emails", "max_batch_timeout": 1, "max_retries": 1, "dead_letter_queue": "emails-failed" },
+			{ "queue": "emails-failed", "max_batch_timeout": 1 }
+		]
+	},
+	"workflows": [{ "binding": "SIGNUPS", "name": "signups", "class_name": "SignupWorkflow" }]
+}

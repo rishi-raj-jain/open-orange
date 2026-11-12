@@ -1,0 +1,63 @@
+---
+import BreakGlass from './BreakGlass.astro';
+import { CHEAPER_COMPUTE, CHEAPER_DATABASE, HERO } from '@/data/site';
+import aws from '@/assets/migrator/aws.svg?raw';
+import gcp from '@/assets/migrator/gcp.svg?raw';
+import azure from '@/assets/migrator/azure.svg?raw';
+import rivet from '@/assets/migrator/rivet-white.svg?raw';
+import server from '@/assets/migrator/server.svg?raw';
+
+// Where it runs, as logos under the title. Sized by CSS, so the SVGs lose their width/height.
+const fit = (svg: string) =>
+	svg.replace(/<!--.*?-->/gs, '').replace(/<svg([^>]*)>/, (_, attrs: string) => {
+		const size = (name: string) => attrs.match(new RegExp(`\\s${name}="([\\d.]+)"`))?.[1];
+		const viewBox = /viewBox=/.test(attrs) ? '' : ` viewBox="0 0 ${size('width')} ${size('height')}"`;
+		return `<svg${attrs.replace(/\s(width|height|class)="[^"]*"/g, '')}${viewBox} class="h-full w-auto" aria-hidden="true">`;
+	});
+const clouds = [
+	{ name: 'AWS', svg: fit(aws.replaceAll('#252F3E', 'currentColor')), label: false },
+	{ name: 'Google Cloud', svg: fit(gcp), label: true },
+	{ name: 'Azure', svg: fit(azure), label: true },
+	{ name: 'Rivet Cloud', svg: fit(rivet), label: true },
+	{ name: 'Your servers', svg: fit(server), label: true },
+];
+
+const stats = [
+	{ value: `${CHEAPER_COMPUTE.toFixed(1)}×`, label: 'cheaper compute', href: '#cost' },
+	{ value: `${CHEAPER_DATABASE.toFixed(1)}×`, label: 'cheaper storage', href: '#cost' },
+	{ value: '0', label: 'downtime to migrate', href: '#migrate' },
+];
+---
+
+<section>
+	<div class="container-x grid items-center gap-14 pt-20 pb-20 md:pt-28 md:pb-28 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:gap-16">
+		<div>
+			<h1 class="h-hero">{HERO.title}</h1>
+			<ul class="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3 text-[14px] font-medium text-ink-soft" aria-label="Runs on">
+				{clouds.map((c) => (
+					<li class="flex items-center gap-2" title={c.name}>
+						<span class="flex h-5 items-center text-ink" set:html={c.svg} />
+						{c.label ? <span>{c.name}</span> : <span class="sr-only">{c.name}</span>}
+					</li>
+				))}
+			</ul>
+			<p class="lede mt-7 max-w-xl">{HERO.lede}</p>
+			<p class="lede mt-3 max-w-xl !text-ink-faint">{HERO.tagline}</p>
+			<div class="mt-10 flex flex-wrap items-center gap-3">
+				<a href="#get-started" class="btn-primary">Get started</a>
+				<a href="/architecture/" class="btn-secondary">How it works</a>
+			</div>
+
+			<dl class="mt-12 flex flex-wrap gap-x-8 gap-y-4 md:mt-14">
+				{stats.map((stat) => (
+					<a href={stat.href} class="flex items-baseline gap-2">
+						<dd class="stat text-[1.75rem]">{stat.value}</dd>
+						<dt class="text-[15px] text-ink-faint">{stat.label}</dt>
+					</a>
+				))}
+			</dl>
+		</div>
+
+		<BreakGlass />
+	</div>
+</section>

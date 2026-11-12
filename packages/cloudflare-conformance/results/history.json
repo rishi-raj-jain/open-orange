@@ -1,0 +1,1864 @@
+[
+	{
+		"source": "run",
+		"date": "2026-10-20",
+		"label": "Orange PR #2 base (Orange PR #1 head)",
+		"sha": "e1aec90",
+		"rivetkit": "0.0.0-sync-sqlite.0ed739a",
+		"pass": 684,
+		"total": 2182,
+		"synthetic": {
+			"pass": 49,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 177,
+			"total": 1012
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 507,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 69,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 63,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 1,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 30,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 6,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 8,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-20-e1aec90.json",
+		"note": "Run with the upstream runner from 3ca6350, because the runner did not exist at e1aec90. Orange runtime and RivetKit are from e1aec90."
+	},
+	{
+		"source": "manual",
+		"date": "2026-10-16",
+		"label": "Orange PR #1",
+		"sha": "e1aec90",
+		"rivetkit": null,
+		"pass": 744,
+		"total": 2174,
+		"synthetic": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 517,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 72,
+				"total": 426
+			},
+			"Streams": {
+				"pass": 108,
+				"total": 251
+			},
+			"RPC + entrypoints": {
+				"pass": 1,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 32,
+				"total": 106
+			},
+			"Durable Objects": {
+				"pass": 6,
+				"total": 22
+			},
+			"Crypto": {
+				"pass": 8,
+				"total": 14
+			}
+		},
+		"note": "RivetKit preview build from rivet PR #5659. Recorded from the run's aggregate before saved results existed."
+	},
+	{
+		"source": "manual",
+		"date": "2026-10-16",
+		"label": "Fixes to Orange PR #1",
+		"sha": null,
+		"rivetkit": null,
+		"pass": 1611,
+		"total": 2168,
+		"synthetic": null,
+		"perArea": null,
+		"note": "Earlier rivet stack with a debug NAPI build. Only totals were recorded.",
+		"unverified": [
+			"date"
+		]
+	},
+	{
+		"source": "manual",
+		"date": "2026-10-17",
+		"label": "Fixes + DO fixes",
+		"sha": null,
+		"rivetkit": null,
+		"pass": 1616,
+		"total": 2168,
+		"synthetic": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 982,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 240,
+				"total": 424
+			},
+			"Streams": {
+				"pass": 203,
+				"total": 247
+			},
+			"RPC + entrypoints": {
+				"pass": 80,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 86,
+				"total": 106
+			},
+			"Durable Objects": {
+				"pass": 17,
+				"total": 22
+			},
+			"Crypto": {
+				"pass": 8,
+				"total": 14
+			}
+		},
+		"note": "Final rivet stack 9177a822 with a linked release build. Recorded from the run's aggregate before saved results existed."
+	},
+	{
+		"source": "run",
+		"date": "2026-10-18",
+		"label": "Orange PR #2",
+		"sha": "b170fbd",
+		"rivetkit": "0.0.0-feat-sqlite-sync.18dce02",
+		"pass": 1636,
+		"total": 2164,
+		"synthetic": null,
+		"cloudflare": {
+			"pass": 654,
+			"total": 994
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 982,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 240,
+				"total": 424
+			},
+			"Streams": {
+				"pass": 203,
+				"total": 247
+			},
+			"RPC + entrypoints": {
+				"pass": 100,
+				"total": 181
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 86,
+				"total": 106
+			},
+			"Durable Objects": {
+				"pass": 17,
+				"total": 22
+			},
+			"Crypto": {
+				"pass": 8,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-18-b170fbd.json",
+		"note": "Before the synthetic Durable Object tests. Commit b170fbd was made 34 s before the run started, but the tree was not checked against it.",
+		"unverified": [
+			"orange.sha"
+		]
+	},
+	{
+		"source": "run",
+		"date": "2026-10-18",
+		"label": "Orange PR #2 + DO fixes",
+		"sha": "669cad5",
+		"rivetkit": "0.0.0-feat-sqlite-sync.18dce02",
+		"pass": 1637,
+		"total": 2164,
+		"synthetic": {
+			"pass": 66,
+			"total": 74
+		},
+		"cloudflare": {
+			"pass": 655,
+			"total": 994
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 982,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 240,
+				"total": 424
+			},
+			"Streams": {
+				"pass": 203,
+				"total": 247
+			},
+			"RPC + entrypoints": {
+				"pass": 100,
+				"total": 181
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 87,
+				"total": 106
+			},
+			"Durable Objects": {
+				"pass": 17,
+				"total": 22
+			},
+			"Crypto": {
+				"pass": 8,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-18-669cad5.json",
+		"note": "Ran on the working tree that became commit 669cad5."
+	},
+	{
+		"source": "run",
+		"date": "2026-10-19",
+		"label": "Orange PR #2 conformance push",
+		"sha": "9e5e48b",
+		"rivetkit": "0.0.0-feat-sqlite-sync.18dce02",
+		"pass": 1826,
+		"total": 2182,
+		"synthetic": {
+			"pass": 66,
+			"total": 74
+		},
+		"cloudflare": {
+			"pass": 758,
+			"total": 1012
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 1068,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 264,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 119,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 96,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 19,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-19-9e5e48b.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-19",
+		"label": "Orange PR #2: 85% push",
+		"sha": "1d75c46",
+		"rivetkit": "0.0.0-feat-sqlite-sync.32022a9",
+		"pass": 1857,
+		"total": 2182,
+		"synthetic": {
+			"pass": 66,
+			"total": 74
+		},
+		"cloudflare": {
+			"pass": 783,
+			"total": 1012
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 1074,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 279,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 126,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-19-1d75c46.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-19",
+		"label": "Orange PR #2: Wrangler build fixes",
+		"sha": "caa4bb7",
+		"rivetkit": "0.0.0-feat-sqlite-sync.32022a9",
+		"pass": 1863,
+		"total": 2182,
+		"synthetic": {
+			"pass": 66,
+			"total": 74
+		},
+		"cloudflare": {
+			"pass": 788,
+			"total": 1012
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 1075,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 282,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-19-caa4bb7.json",
+		"note": "Run on 896d16d, which has the same tree as caa4bb7."
+	},
+	{
+		"source": "run",
+		"date": "2026-10-20",
+		"label": "Orange PR #2: assets, D1 migrations, WebSocket and small fixes",
+		"sha": "9b0fdb1",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1863,
+		"total": 2182,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 788,
+			"total": 1012
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 1075,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 282,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-20-9b0fdb1.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-20",
+		"label": "Orange PR #2: Durable Object fetch heads, no_bundle, restart fix",
+		"sha": "4ec8d56",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1862,
+		"total": 2182,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 787,
+			"total": 1012
+		},
+		"node": null,
+		"perArea": {
+			"Node.js compat": {
+				"pass": 1075,
+				"total": 1170
+			},
+			"Web platform": {
+				"pass": 282,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 97,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-20-4ec8d56.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-20",
+		"label": "Stock Node.js for node: imports",
+		"sha": "6b50c33",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1386,
+		"total": 1888,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 787,
+			"total": 1012
+		},
+		"node": {
+			"pass": 599,
+			"total": 876
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 599,
+				"total": 876
+			},
+			"Web platform": {
+				"pass": 281,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-20-6b50c33.json",
+		"note": "Run on 2e1179f, which has the same content as 6b50c33 apart from file modes."
+	},
+	{
+		"source": "run",
+		"date": "2026-10-20",
+		"label": "Stock Node.js, fs tests with /tmp remapped",
+		"sha": "fb6ea99",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1386,
+		"total": 1629,
+		"synthetic": {
+			"pass": 67,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 787,
+			"total": 1012
+		},
+		"node": {
+			"pass": 599,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 599,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 281,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-20-fb6ea99.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-20",
+		"label": "Real backends for bindings, multi-Worker, sandboxes",
+		"sha": "2c3c4c0",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1386,
+		"total": 1629,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 787,
+			"total": 1012
+		},
+		"node": {
+			"pass": 599,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 599,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 281,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-20-2c3c4c0.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-20",
+		"label": "Stack rebased on the CLI",
+		"sha": "afe3ba7",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1385,
+		"total": 1629,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 786,
+			"total": 1012
+		},
+		"node": {
+			"pass": 599,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 599,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 281,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 97,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-20-afe3ba7.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-23",
+		"label": "Bindings cleanup, serve and deploy fixes, conformance gate",
+		"sha": "58f3e73",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1386,
+		"total": 1629,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 787,
+			"total": 1012
+		},
+		"node": {
+			"pass": 599,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 599,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 281,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 128,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-23-58f3e73.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-23",
+		"label": "Conformance fixes: Worker Loader, RPC, SubtleCrypto, ctx.abort()",
+		"sha": "ee51c45",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1426,
+		"total": 1629,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 826,
+			"total": 1012
+		},
+		"node": {
+			"pass": 600,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 600,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 290,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 158,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-23-ee51c45.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-24",
+		"label": "DO stub errors + RPC types",
+		"sha": "6b1d4f6",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1427,
+		"total": 1629,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 827,
+			"total": 1012
+		},
+		"node": {
+			"pass": 600,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 600,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 290,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 158,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 99,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-24-6b1d4f6.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-24",
+		"label": "Workflows port + facets clone + edge fixes",
+		"sha": "e939c3b",
+		"rivetkit": "0.0.0-feat-sqlite-sync.a2b9069",
+		"pass": 1426,
+		"total": 1629,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 826,
+			"total": 1012
+		},
+		"node": {
+			"pass": 600,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 600,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 290,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 158,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 98,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-24-e939c3b.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-29",
+		"label": "RivetKit 3 + sync SQLite, v3 only 2026-10-29",
+		"sha": "161e250",
+		"rivetkit": "0.0.0-feat-sqlite-sync-3x.a00b07f",
+		"pass": 1426,
+		"total": 1629,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 828,
+			"total": 1012
+		},
+		"node": {
+			"pass": 598,
+			"total": 617
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 598,
+				"total": 617
+			},
+			"Web platform": {
+				"pass": 290,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 158,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 100,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-29-161e250.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-29",
+		"label": "v3gate2",
+		"sha": "38b6161",
+		"rivetkit": "0.0.0-sqlite-sync-3x-release.a00b07f",
+		"pass": 1581,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 830,
+			"total": 1012
+		},
+		"node": {
+			"pass": 751,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 751,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 290,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 246,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 100,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-29-38b6161.json"
+	},
+	{
+		"source": "run",
+		"date": "2026-10-31",
+		"label": "Tail Workers + req.socket + /tmp quirks removed",
+		"sha": "ac85bc6",
+		"rivetkit": "0.0.0-sqlite-sync-3x-release.a00b07f",
+		"pass": 1590,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 835,
+			"total": 1012
+		},
+		"node": {
+			"pass": 755,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 755,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 294,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 100,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-10-31-ac85bc6.json",
+		"note": "Adds tail_consumers, a facet string id, req.socket address fields, and removes the two /tmp workerd quirks."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-04",
+		"label": "PR #8 on RivetKit 3.0.1",
+		"sha": "814001d",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1590,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 835,
+			"total": 1012
+		},
+		"node": {
+			"pass": 755,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 755,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 294,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 100,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-04-814001d.json",
+		"note": "Orange 814001d with the sync SQLite preview on v3.0.1 (5663d2f)."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-04",
+		"label": "PR #10 at 1d97c8ff",
+		"sha": "1d97c8f",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1590,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 835,
+			"total": 1012
+		},
+		"node": {
+			"pass": 755,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 755,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 294,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 100,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-04-1d97c8f.json",
+		"note": "Orange 1d97c8ff with the DO fixes and the open-socket workaround, on RivetKit 5663d2f."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-05",
+		"label": "PR #10 at a060c26",
+		"sha": "a060c26",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1605,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 849,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 308,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 159,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 101,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-05-a060c26.json",
+		"note": "Orange a060c26 with the DO fixes, on RivetKit 5663d2f."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-05",
+		"label": "PR #10 at e4c405f",
+		"sha": "e4c405f",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1606,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 850,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 308,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 101,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-05-e4c405f.json",
+		"note": "Orange e4c405f with the DO fixes, on RivetKit 5663d2f."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-05",
+		"label": "PR #10 at cb1ffb0",
+		"sha": "cb1ffb0",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1609,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-05-cb1ffb0.json",
+		"note": "Orange cb1ffb0 with the DO fixes, on RivetKit 5663d2f."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-05",
+		"label": "PR #10 at 80d6328",
+		"sha": "80d6328",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1609,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-05-80d6328.json",
+		"note": "Orange 80d6328 with the DO fixes, on RivetKit 5663d2f."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-05",
+		"label": "PR #10 at 96efb7b",
+		"sha": "96efb7b",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1609,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-05-96efb7b.json",
+		"note": "Orange 96efb7b with the DO fixes, on RivetKit 5663d2f."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-05",
+		"label": "PR #10 at 4208c60",
+		"sha": "4208c60",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1608,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 852,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 102,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-05-4208c60.json",
+		"note": "Orange 4208c60 with the DO fixes, on RivetKit 5663d2f."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-05",
+		"label": "#10 at 6feb94b with #11 and #7",
+		"sha": "6feb94b",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1609,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-05-6feb94b.json",
+		"note": "Cascade tip: #9 ywmtylvu, #10 with the stub order fix, #11, and #7."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-06",
+		"label": "#10 at 66696ab with #11 and #7",
+		"sha": "66696ab",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1609,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 756,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 756,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-06-66696ab.json",
+		"note": "Cascade tip: #9 zpsykowm, #10 with the stub order, schema listing, and module import fixes, #11, and #7."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-06",
+		"label": "#10 at 09b4d1d with #11 and #7",
+		"sha": "09b4d1d",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1607,
+		"total": 1779,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 754,
+			"total": 767
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 754,
+				"total": 767
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-06-09b4d1d.json",
+		"note": "Cascade 3 tip: #9 zpsykowm, #10 with the node:http, email, and Browser Rendering revisions, #11 with the do-rpc claim, and #7."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-07",
+		"label": "#10 at 62e4783 with #11 and #7",
+		"sha": "62e4783",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+		"pass": 1611,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 758,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 758,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-07-62e4783.json",
+		"note": "Cascade 4 tip: #9 zpsykowm, #10 with the kody fixes (multi-Worker serve, Vectorize, config and runtime fixes), #11, and #7."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-09",
+		"label": "#10 at 9d24f50 on RivetKit 3.0.6, with #11 and #7",
+		"sha": "9d24f50",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+		"pass": 1611,
+		"total": 1783,
+		"synthetic": {
+			"pass": 66,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 758,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 758,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-09-9d24f50.json",
+		"note": "Cascade 5 tip: #8 re-pinned to 0.0.0-sqlite-sync-3-0-6-final.cf8679c, then #9, #10, #11, and #7."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-10",
+		"label": "#10 at ee0b731 on RivetKit 3.0.6, with #11 and #7",
+		"sha": "ee0b731",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+		"pass": 1611,
+		"total": 1783,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 853,
+			"total": 1012
+		},
+		"node": {
+			"pass": 758,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 758,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 309,
+				"total": 429
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 160,
+				"total": 185
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 20,
+				"total": 23
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-10-ee0b731.json",
+		"note": "Cascade 7 tip: deploy variables and secrets in #9, WebSocket hibernation emulation in #10, then #11 and #7."
+	},
+	{
+		"source": "run",
+		"date": "2026-11-10",
+		"label": "#10 at 028a0da with #11 and #7: Cloudflare quotas removed, quota-only tests cut",
+		"sha": "ea40348",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+		"pass": 1602,
+		"total": 1774,
+		"synthetic": {
+			"pass": 68,
+			"total": 77
+		},
+		"cloudflare": {
+			"pass": 844,
+			"total": 1003
+		},
+		"node": {
+			"pass": 758,
+			"total": 771
+		},
+		"perArea": {
+			"Node.js compat": {
+				"pass": 758,
+				"total": 771
+			},
+			"Web platform": {
+				"pass": 307,
+				"total": 427
+			},
+			"Streams": {
+				"pass": 247,
+				"total": 254
+			},
+			"RPC + entrypoints": {
+				"pass": 154,
+				"total": 179
+			},
+			"Fetch, HTTP, sockets": {
+				"pass": 103,
+				"total": 107
+			},
+			"Durable Objects": {
+				"pass": 19,
+				"total": 22
+			},
+			"Crypto": {
+				"pass": 14,
+				"total": 14
+			}
+		},
+		"run": "runs/2026-11-10-ea40348.json",
+		"note": "Limits revisions on #10 (Rivet limits only), with 9 quota-only workerd tests cut from the score."
+	}
+]

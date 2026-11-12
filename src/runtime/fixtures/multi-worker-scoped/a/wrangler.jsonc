@@ -1,0 +1,11 @@
+{
+	"name": "scoped-a",
+	"main": "worker.js",
+	"compatibility_date": "2025-09-01",
+	"vars": { "NAME": "scoped-a" },
+	"triggers": { "crons": ["* * * * *"] },
+	"queues": {
+		"producers": [{ "binding": "JOBS", "queue": "jobs" }]
+	},
+	"services": [{ "binding": "B", "service": "scoped-b" }]
+}

@@ -1,0 +1,75 @@
+{
+	"schemaVersion": 1,
+	"id": "mcp-server-cloudflare",
+	"repo": "cloudflare/mcp-server-cloudflare",
+	"commit": "a21972e219289337731a066befb5c66886b9ce7b",
+	"stars": 4441,
+	"origin": "search",
+	"directory": "apps/dex-analysis",
+	"ranAt": "2026-11-05T02:32:10.790Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 12,
+		"command": "pnpm install --frozen-lockfile --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 9
+	},
+	"steps": [
+		{
+			"name": "the MCP endpoint asks an anonymous client to authorize",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the OAuth metadata points a client at registration",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a registered client is known to the token endpoint, and a stranger is not",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "the registered client survives a restart",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 9.6
+		},
+		{
+			"name": "the DEX tools read a remote capture through WarpDiagReader",
+			"kind": "do-state",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"CLOUDFLARE_CLIENT_ID",
+				"CLOUDFLARE_CLIENT_SECRET"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"WarpDiagReader"
+		],
+		"file": "apps/dex-analysis/src/warp_diag_reader.ts",
+		"uses": [
+			"RPC methods on a stub",
+			"instance memory as a per-capture cache"
+		]
+	}
+}

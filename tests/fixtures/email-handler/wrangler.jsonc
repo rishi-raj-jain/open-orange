@@ -1,0 +1,5 @@
+{
+	"name": "orange-test-email-handler",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-03"
+}

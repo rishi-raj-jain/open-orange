@@ -1,0 +1,160 @@
+diff --git a/test/workers-test.ts b/test/workers-test.ts
+index 658a4e2..8a89e9e 100644
+--- a/test/workers-test.ts
++++ b/test/workers-test.ts
+@@ -9,6 +9,10 @@ import {
+     BallotNumber,
+ } from "../src/experimental/consensus/caspaxos";
+ export { RegionPlacer, RegionPlacerDO } from "../src/experimental/region-placer";
++import { StaticShardedDO } from "../src/do-sharding";
++import { stubByName } from "../src/do-utils";
++import { tryN } from "../src/retries";
++import { SQLSchemaMigration, SQLSchemaMigrations } from "../src/sql-migrations";
+ 
+ export class SQLiteDO extends DurableObject {
+     constructor(ctx: DurableObjectState, env: Env) {
+@@ -96,6 +100,9 @@ export default {
+             }
+         }
+ 
++        const consumerResponse = await handleConsumerRoute(request, env, pathname);
++        if (consumerResponse) return consumerResponse;
++
+         return new Response("-_-", { status: 404 });
+     },
+ };
+@@ -115,3 +122,115 @@ export class TargetWorker extends RegionPlaceableWorkerEntrypoint {
+         return "ping:" + v;
+     }
+ }
++
++const Migrations: SQLSchemaMigration[] = [
++    {
++        idMonotonicInc: 1,
++        description: "initial version",
++        sql: `
++            CREATE TABLE IF NOT EXISTS wikis (
++                wikiId TEXT PRIMARY KEY,
++                name TEXT
++            );
++        `,
++    },
++    {
++        idMonotonicInc: 2,
++        description: "add timestamp column to wikis",
++        sql: `
++            ALTER TABLE wikis
++            ADD createdAtMs INTEGER;
++        `,
++    },
++];
++
++export class TenantDO extends DurableObject {
++    sql: SqlStorage;
++    _migrations: SQLSchemaMigrations;
++
++    constructor(ctx: DurableObjectState, env: Env) {
++        super(ctx, env);
++        this.sql = ctx.storage.sql;
++        this._migrations = new SQLSchemaMigrations({ doStorage: ctx.storage, migrations: Migrations });
++    }
++
++    async addWiki(wikiId: string, name: string) {
++        this._migrations.runAllSync();
++        this.sql.exec("INSERT INTO wikis(wikiId, name, createdAtMs) VALUES (?, ?, ?)", wikiId, name, Date.now());
++    }
++
++    async listWikis() {
++        this._migrations.runAllSync();
++        return this.sql.exec("SELECT wikiId, name, createdAtMs FROM wikis ORDER BY wikiId").toArray();
++    }
++
++    async lastMigrationId() {
++        this._migrations.runAllSync();
++        return this.ctx.storage.kv.get<number>("__sql_migrations_lastID");
++    }
++
++    async fail(message: string): Promise<string> {
++        throw new Error(message);
++    }
++
++    // Fails until its third call, and counts calls in storage.
++    async flaky() {
++        const calls = (this.ctx.storage.kv.get<number>("flakyCalls") ?? 0) + 1;
++        this.ctx.storage.kv.put("flakyCalls", calls);
++        if (calls < 3) throw new Error(`flaky call ${calls}`);
++        return calls;
++    }
++}
++
++async function handleConsumerRoute(request: Request, env: Env, pathname: string): Promise<Response | null> {
++    const sdo = new StaticShardedDO(env.TenantDO, { numShards: 5, concurrency: 3 });
++
++    if (pathname.startsWith("/wikis/") && request.method === "POST") {
++        const wikiId = pathname.slice("/wikis/".length);
++        const { name } = (await request.json()) as { name: string };
++        const shard = await sdo.one(wikiId, async (stub, shard) => {
++            await stub.addWiki(wikiId, name);
++            return shard;
++        });
++        return Response.json({ shard });
++    }
++    if (pathname === "/wikis") {
++        const rows = await sdo.all(async (stub) => await stub.listWikis());
++        return Response.json({ wikis: rows.flat() });
++    }
++    if (pathname === "/migrations") {
++        return Response.json({ lastIds: await sdo.all(async (stub) => await stub.lastMigrationId()) });
++    }
++    if (pathname === "/try-all") {
++        const results = await sdo.tryAll(async (stub, shard) =>
++            shard % 2 === 0 ? await stub.fail(`shard ${shard} failed`) : `shard ${shard} ok`,
++        );
++        return Response.json({
++            results: results.map((r) =>
++                r.ok ? { shard: r.shard, result: r.result } : { shard: r.shard, error: String(r.error) },
++            ),
++        });
++    }
++    if (pathname === "/all-fails") {
++        try {
++            await sdo.all(async (stub, shard) => await stub.fail(`shard ${shard} failed`));
++            return Response.json({ thrown: null });
++        } catch (error) {
++            return Response.json({ thrown: String(error) });
++        }
++    }
++    if (pathname === "/flaky") {
++        const stub = stubByName(env.TenantDO, "flaky");
++        let attempts = 0;
++        const calls = await tryN(
++            5,
++            async () => {
++                attempts++;
++                return await stub.flaky();
++            },
++            { baseDelayMs: 1, maxDelayMs: 5, isRetryable: () => true },
++        );
++        return Response.json({ attempts, calls });
++    }
++    return null;
++}
+diff --git a/test/wrangler.toml b/test/wrangler.toml
+index 3d330a2..142dc5d 100644
+--- a/test/wrangler.toml
++++ b/test/wrangler.toml
+@@ -19,8 +19,14 @@ bindings = [
+ 	{ name = "RegionPlacerDO", class_name = "RegionPlacerDO" },
+ 
+ 	{ name = "CASPaxosDO", class_name = "CASPaxosDO" },
++
++	{ name = "TenantDO", class_name = "TenantDO" },
+ ]
+ 
+ [[migrations]]
+ tag = "v1"
+ new_sqlite_classes = ["SQLiteDO", "RegionPlacerDO", "CASPaxosDO"]
++
++[[migrations]]
++tag = "v2"
++new_sqlite_classes = ["TenantDO"]

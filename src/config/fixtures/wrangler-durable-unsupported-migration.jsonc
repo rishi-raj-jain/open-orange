@@ -1,0 +1,22 @@
+{
+	"name": "orange-durable-object-unsupported-migration",
+	"main": "./worker.ts",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"durable_objects": {
+		"bindings": [{ "name": "COUNTER", "class_name": "Counter" }]
+	},
+	"migrations": [
+		{ "tag": "v1", "new_classes": ["Counter"] },
+		{
+			"tag": "v2",
+			"transferred_classes": [
+				{
+					"from": "Counter",
+					"from_script": "old-worker",
+					"to": "Counter"
+				}
+			]
+		}
+	]
+}

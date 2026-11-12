@@ -1,0 +1,104 @@
+---
+// Every scored test as one box, grouped by area. Hover a box for the test and
+// its error; click a box that a matrix row cites to open that row.
+import { TESTS_BY_AREA, fmt, isSynthetic, matrixRowFor } from '@/data/conformance';
+
+const areas = TESTS_BY_AREA;
+const total = areas.reduce((n, a) => n + a.total, 0);
+const pass = areas.reduce((n, a) => n + a.pass, 0);
+---
+
+<div class="test-grid space-y-5" id="test-grid">
+	{areas.map((a) => (
+		<div class="grid items-start gap-x-8 gap-y-2 md:grid-cols-[15rem_minmax(0,1fr)]">
+			<div class="flex items-baseline gap-3 leading-none">
+				<span class="text-[14px] font-medium text-ink">{a.area}</span>
+				<span class="font-mono text-[12.5px] tabular-nums text-ink-soft">{fmt(a.pass)} / {fmt(a.total)}</span>
+			</div>
+			<div class="cells" role="img" aria-label={`${a.area}: ${a.pass} of ${a.total} tests pass`}>
+				{a.tests.map((t) => {
+					const row = matrixRowFor(t);
+					return (
+						<i
+							class={`cell ${t.status === 'pass' ? 'cell-pass' : 'cell-fail'}`}
+							data-f={t.file}
+							data-t={t.test}
+							data-k={isSynthetic(t) ? 'OpenOrange test' : 'workerd test'}
+							data-c={t.cause ?? undefined}
+							data-e={t.error ?? undefined}
+							data-m={row?.id}
+							data-n={row?.name}
+						></i>
+					);
+				})}
+			</div>
+		</div>
+	))}
+	<p class="caption">
+		{fmt(total)} boxes, one per scored test, in file order. {fmt(pass)} pass. Hover a box for the test and its error. A box the matrix cites opens its row on click.
+	</p>
+	<div class="tip-body test-tip" id="test-tip" role="tooltip" hidden></div>
+</div>
+
+
+<script>
+	// One shared tooltip for every box, filled from the box's data attributes.
+	const grid = document.getElementById('test-grid');
+	const tip = document.getElementById('test-tip');
+	let on: HTMLElement | null = null;
+
+	function line(cls: string, text: string) {
+		const el = document.createElement('span');
+		el.className = cls;
+		el.textContent = text;
+		return el;
+	}
+
+	function show(cell: HTMLElement) {
+		if (!tip) return;
+		on?.classList.remove('is-on');
+		on = cell;
+		cell.classList.add('is-on');
+		const d = cell.dataset;
+		const pass = cell.classList.contains('cell-pass');
+		tip.replaceChildren(
+			line('k', d.k ?? 'test'),
+			line('mt-0.5 block font-medium text-white', `${d.f} › ${d.t}`),
+			line('mt-1 block', pass ? 'Pass' : `Fail${d.c ? ` · ${d.c}` : ''}`),
+		);
+		if (d.e) tip.append(line('mono', d.e));
+		if (d.m) tip.append(line('mt-2 block text-cream/70', `Cited by “${d.n}” in the matrix. Click to open it.`));
+		tip.hidden = false;
+		const at = cell.getBoundingClientRect();
+		const w = tip.offsetWidth;
+		const h = tip.offsetHeight;
+		let left = at.left + at.width / 2 - w / 2;
+		left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+		let top = at.top - h - 10;
+		if (top < 88) top = at.bottom + 10;
+		tip.style.left = `${left}px`;
+		tip.style.top = `${top}px`;
+	}
+
+	function hide() {
+		if (!tip) return;
+		tip.hidden = true;
+		on?.classList.remove('is-on');
+		on = null;
+	}
+
+	grid?.addEventListener('mouseover', (event) => {
+		const cell = (event.target as HTMLElement).closest<HTMLElement>('.cell');
+		if (cell && cell !== on) show(cell);
+	});
+	grid?.addEventListener('mouseleave', hide);
+	grid?.addEventListener('click', (event) => {
+		const cell = (event.target as HTMLElement).closest<HTMLElement>('.cell');
+		if (!cell?.dataset.m) return;
+		hide();
+		const hash = `#${cell.dataset.m}`;
+		if (location.hash === hash) window.dispatchEvent(new HashChangeEvent('hashchange'));
+		else location.hash = hash;
+	});
+	window.addEventListener('scroll', hide, { passive: true });
+</script>

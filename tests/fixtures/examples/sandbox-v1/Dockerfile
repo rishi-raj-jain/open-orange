@@ -1,0 +1,8 @@
+# The donor image ships the shim that @cloudflare/sandbox runs in the container.
+# Keep its tag equal to the installed @cloudflare/sandbox version.
+FROM docker.io/cloudflare/sandbox:1.0.1 AS sandbox-tools
+
+FROM alpine:3.24
+COPY --from=sandbox-tools /usr/local/bin/sandbox-shim /usr/local/bin/sandbox-shim
+RUN mkdir -p /workspace
+CMD ["sleep", "infinity"]

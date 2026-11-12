@@ -1,0 +1,83 @@
+{
+	"schemaVersion": 1,
+	"id": "userdo",
+	"repo": "acoyfellow/UserDO",
+	"commit": "f2a1040343728d4e041679ed124699fbd4281921",
+	"stars": 138,
+	"origin": "named",
+	"directory": "examples/hono",
+	"ranAt": "2026-11-10T02:12:07.836Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 0,
+		"command": "bun install --ignore-scripts --frozen-lockfile"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "a socket stays open while the user's object hibernates, and a message wakes it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.2
+		},
+		{
+			"name": "signup and login keep the account, and refuse bad credentials",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 10.2
+		},
+		{
+			"name": "key-value data and posts persist per user, with no leak to another user",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a new post reaches the user's open socket",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "data and posts survive the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the account, data, and posts survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.6
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"MyAppDO",
+			"UserDO"
+		],
+		"file": "examples/hono/index.tsx",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.sql",
+			"acceptWebSocket",
+			"getWebSockets",
+			"RPC"
+		]
+	}
+}

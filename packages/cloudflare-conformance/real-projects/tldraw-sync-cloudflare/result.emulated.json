@@ -1,0 +1,104 @@
+{
+	"schemaVersion": 1,
+	"id": "tldraw-sync-cloudflare",
+	"repo": "tldraw/tldraw-sync-cloudflare",
+	"commit": "1a4243e3aefd6c2a72f821b6b6c7a85af6577405",
+	"stars": 153,
+	"origin": "named",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:11:21.852Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 28,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "serves the app page",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a page pushed by one client reaches the other client in the room",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a later client hydrates the page from the room's SQLite storage",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the client's ping gets the auto-response pong",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "an uploaded asset is stored once in R2 and comes back",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the room sleeps when everyone left, and the page comes back",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the room hibernates while a connected client pings every 5 s",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 17.2
+		},
+		{
+			"name": "a client stays connected while the room hibernates, and its next push commits",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 25.1
+		},
+		{
+			"name": "the pages survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.7
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"TldrawDurableObject"
+		],
+		"file": "worker/TldrawDurableObject.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"setWebSocketAutoResponse",
+			"storage.sql"
+		]
+	}
+}

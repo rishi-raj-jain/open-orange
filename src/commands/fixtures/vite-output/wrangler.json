@@ -1,0 +1,7 @@
+{
+	"name": "vite-output",
+	"main": "index.js",
+	"compatibility_date": "2026-09-03",
+	"no_bundle": true,
+	"rules": [{ "type": "ESModule", "globs": ["**/*.js", "**/*.mjs"] }]
+}

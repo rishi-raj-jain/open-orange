@@ -1,0 +1,98 @@
+{
+	"schemaVersion": 1,
+	"id": "vibesdk",
+	"repo": "cloudflare/vibesdk",
+	"commit": "32c9e429cd2712ea5959a89f65ae434162b89229",
+	"stars": 5451,
+	"origin": "official",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:47:19.412Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 4,
+		"command": "bun install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 7,
+		"command": "bun run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 18
+	},
+	"steps": [
+		{
+			"name": "the app page and the platform status are served",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 1.5
+		},
+		{
+			"name": "a user registers with email, and D1 and the session cookie recognize them",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.7
+		},
+		{
+			"name": "DORateLimitStore counts app creations, and the fourth in a day is refused",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 3.3
+		},
+		{
+			"name": "the count and the sign-in survive the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.8
+		},
+		{
+			"name": "the count and the sign-in survive a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 21.3
+		},
+		{
+			"name": "the agent builds an app from a prompt through ThinkAgent and SpaceDO",
+			"kind": "websocket",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"CLOUDFLARE_AI_GATEWAY_TOKEN",
+				"ANTHROPIC_API_KEY"
+			]
+		}
+	],
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Two imports in worker/api/controllers/artifacts/controller.ts use the relative path that the wrangler.jsonc alias names",
+			"why": "Orange ignores the Wrangler alias field, and orange dev exits with: No such module \"artifacts-viewer\". The patch shows what lies behind that error. Repro: repros/wrangler-alias-field."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"DORateLimitStore",
+			"ThinkAgent",
+			"SpaceDO",
+			"CodeGeneratorAgent",
+			"UserAppSandboxService",
+			"UserSecretsStore"
+		],
+		"file": "worker/services/rate-limit/DORateLimitStore.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"RPC methods",
+			"agents Agent"
+		]
+	}
+}

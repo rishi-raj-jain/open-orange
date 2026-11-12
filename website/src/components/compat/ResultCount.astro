@@ -1,0 +1,23 @@
+---
+// "3/4 pass" for a list of recorded results, colored by outcome. The open row
+// lists each result in full; this is the summary in the end column.
+import { OUTCOME_LABEL, TONE_CLASS, type EvidenceResult } from '@/data/conformance';
+
+interface Props {
+	evidence: EvidenceResult[];
+	class?: string;
+}
+
+const { evidence, class: className = '' } = Astro.props;
+const ran = evidence.filter((e) => e.orange !== 'not-run' && e.orange !== 'needs-secrets');
+const pass = ran.filter((e) => e.orange === 'pass').length;
+const skipped = evidence.length - ran.length;
+const tone = ran.length === 0 ? 'none' : pass === ran.length ? 'pass' : pass === 0 ? 'fail' : 'warn';
+const skippedLabel = skipped ? OUTCOME_LABEL[evidence.find((e) => e.orange === 'not-run' || e.orange === 'needs-secrets')!.orange].label.toLowerCase() : '';
+---
+
+<span class={`row-num whitespace-nowrap ${className}`}>
+	{ran.length ? <span class={TONE_CLASS[tone].text}>{pass}/{ran.length} pass</span> : null}
+	{skipped ? <span class="text-ink-faint">{ran.length ? ' · ' : ''}{skipped} {skippedLabel}</span> : null}
+	{!evidence.length ? <span class="text-ink-faint">—</span> : null}
+</span>

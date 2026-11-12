@@ -1,0 +1,89 @@
+{
+	"schemaVersion": 1,
+	"id": "pastebin-worker",
+	"repo": "SharzyL/pastebin-worker",
+	"commit": "aae764cb29d94a5680a9140831820f09879ad29d",
+	"stars": 1070,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:09:45.867Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 6,
+		"command": "pnpm install --ignore-scripts --frozen-lockfile"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 1,
+		"command": "pnpm run build:frontend"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "peers stay connected across the channel's hibernation, and a frame wakes it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "serves the rendered index page",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a small paste is kept in KV, and can be edited and deleted",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a paste over the threshold is kept in R2",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the channel relays encrypted frames to the other peer and counts peers",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the channel answers ping and refuses a text frame",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "pastes survive a restart, and a channel works after it",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 9
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"LiveChannel"
+		],
+		"file": "worker/live.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"setWebSocketAutoResponse"
+		]
+	}
+}

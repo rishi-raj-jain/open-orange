@@ -1,0 +1,133 @@
+---
+// Cloudflare's limits as walls. When the card scrolls into view, each row's
+// bar runs into its wall, the wall cracks and falls away, and the bar runs on
+// to the OpenOrange value. Without JS or with reduced motion the walls are
+// already broken. Each limit's details are on hover.
+import Argument from '@/components/Argument.astro';
+import Tip from '@/components/Tip.astro';
+import { LIMITS, SITE } from '@/data/site';
+---
+
+<Argument
+	id="limits"
+	split
+	heading="No runtime limits."
+	lede="Memory, CPU time and connections are set by the instance you choose, not a platform cap."
+	link={{ label: 'Cloudflare limits', href: 'https://developers.cloudflare.com/workers/platform/limits/' }}
+>
+	<div class="card limits px-5 py-4 md:px-6" data-limits>
+		<div class="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+			<span class="flex items-center gap-2"><span class="h-3 w-[3px] rounded-full bg-ink"></span><Tip tip={`Workers Paid plan, checked ${SITE.verified}. Free plan limits are stricter.`} align="start">Cloudflare's wall</Tip></span>
+			<span class="text-orange-deep">OpenOrange</span>
+		</div>
+		<ul>
+			{LIMITS.map((row, i) => (
+				<li class="grid items-center gap-x-4 py-2 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:py-2.5" style={`--i:${i}`}>
+					<span class="text-[14px] font-medium"><Tip tip={row.detail} align="start">{row.limit}</Tip></span>
+					<span class="track relative block h-9">
+						<span class="absolute inset-x-0 bottom-1.5 h-2 rounded-full bg-paper-mid"></span>
+						<span class="fill absolute bottom-1.5 left-0 h-2 rounded-full bg-gradient-to-r from-orange to-orange-deep"></span>
+						<span class="wall absolute bottom-0 left-[34%] h-5 w-[3px]" aria-hidden="true">
+							<span class="half top absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-ink"></span>
+							<span class="half bottom absolute inset-x-0 bottom-0 h-1/2 rounded-b-full bg-ink"></span>
+						</span>
+						<span class="cf absolute left-[34%] top-0 ml-2 whitespace-nowrap font-mono text-[11.5px] text-ink-soft">{row.cloudflare}</span>
+						<span class="oo absolute right-0 top-0 whitespace-nowrap text-[13px] font-semibold">{row.openorange}</span>
+					</span>
+				</li>
+			))}
+		</ul>
+	</div>
+</Argument>
+
+<style>
+	/* One 1.8 s timeline per row, staggered: run into the wall (0–28%), shake
+	   (28–40%), crack and fall (40–62%), run to the end (62–90%). */
+	.limits li {
+		--delay: calc(var(--i) * 0.22s);
+	}
+	.fill {
+		width: 100%;
+	}
+	.half {
+		opacity: 0;
+	}
+	.cf {
+		color: var(--color-ink-faint);
+		text-decoration: line-through;
+	}
+	.limits[data-run] .fill {
+		animation: fill 1.8s var(--delay) both;
+	}
+	.limits[data-run] .wall {
+		animation: shake 1.8s var(--delay) both;
+	}
+	.limits[data-run] .half.top {
+		animation: fall-top 1.8s var(--delay) both;
+	}
+	.limits[data-run] .half.bottom {
+		animation: fall-bottom 1.8s var(--delay) both;
+	}
+	.limits[data-run] .cf {
+		animation: struck 1.8s var(--delay) both;
+	}
+	.limits[data-run] .oo {
+		animation: arrive 1.8s var(--delay) both;
+	}
+	@keyframes fill {
+		0% { width: 0; animation-timing-function: cubic-bezier(0.5, 0, 1, 1); }
+		28% { width: 34%; }
+		34% { width: 32.5%; }
+		62% { width: 33%; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+		90%, 100% { width: 100%; }
+	}
+	@keyframes shake {
+		0%, 28% { transform: none; }
+		31% { transform: translateX(2px) rotate(4deg); }
+		34% { transform: translateX(-1px) rotate(-3deg); }
+		37% { transform: translateX(1px) rotate(2deg); }
+		40%, 100% { transform: none; }
+	}
+	@keyframes fall-top {
+		0%, 40% { opacity: 1; transform: none; }
+		62%, 100% { opacity: 0; transform: translate(-6px, -10px) rotate(-40deg); }
+	}
+	@keyframes fall-bottom {
+		0%, 40% { opacity: 1; transform: none; }
+		62%, 100% { opacity: 0; transform: translate(7px, 12px) rotate(35deg); }
+	}
+	@keyframes struck {
+		0%, 40% { color: var(--color-ink); text-decoration-color: transparent; }
+		50%, 100% { color: var(--color-ink-faint); text-decoration-color: currentColor; }
+	}
+	@keyframes arrive {
+		0%, 78% { opacity: 0; transform: translateX(-6px); }
+		92%, 100% { opacity: 1; transform: none; }
+	}
+	/* Armed on load and held at the start until the card is on screen. */
+	.limits[data-run]:not([data-go]) * {
+		animation-play-state: paused !important;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.limits[data-run] * {
+			animation: none !important;
+		}
+	}
+</style>
+
+<script>
+	const card = document.querySelector<HTMLElement>('[data-limits]');
+	if (card && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		card.toggleAttribute('data-run', true);
+		const io = new IntersectionObserver(
+			(entries) => {
+				if (!entries.some((e) => e.isIntersecting)) return;
+				card.toggleAttribute('data-go', true);
+				io.disconnect();
+			},
+			{ threshold: 0.4 },
+		);
+		io.observe(card);
+	}
+</script>
+

@@ -1,0 +1,119 @@
+---
+title: D1
+description: Use D1 databases with OpenOrange, backed by a local Rivet Actor with SQLite.
+---
+
+# D1
+
+**Status:** Supported. Runs on one Rivet Actor for each database.
+
+## Configuration
+
+OpenOrange reads the standard Wrangler D1 binding. No extra setup is needed:
+
+```jsonc
+{
+  "d1_databases": [
+    { "binding": "DB", "database_name": "app", "database_id": "<DATABASE_ID>" }
+  ]
+}
+```
+
+Like `wrangler dev`, OpenOrange uses `preview_database_id` when it is set, then
+`database_id`, then the binding name. Bindings with the same ID share data.
+
+## How it works
+
+Each database is one internal Durable Object, which runs as a Rivet Actor with
+SQLite storage. Data persists across `orange dev` restarts in the project's
+`.open-orange` directory.
+
+The client is a port of workerd's D1 binding, and the backend follows the local
+D1 backend of `wrangler dev`:
+
+- `prepare()`, `bind()`, `first()`, `all()`, `run()`, and `raw()`, with the same
+  result shapes and `meta` fields.
+- `batch()` runs all statements in one transaction. If one statement fails, none
+  of them apply.
+- `exec()` runs each line as one statement.
+- `withSession()` returns a session whose bookmark advances after each query.
+- Errors use D1's prefixes, for example
+  `D1_ERROR: no such table: users: SQLITE_ERROR`.
+
+## Commands
+
+These commands work on the same local database that `orange dev` uses:
+
+```sh
+orange d1 migrations list DB
+orange d1 migrations apply DB
+orange d1 execute DB --command "SELECT * FROM users"
+orange d1 execute DB --file ./seed.sql --json
+```
+
+Like Wrangler, the commands find the database by binding or `database_name`
+and target the local database when `--remote` is not given. Migrations come
+from `migrations_dir` (default `migrations`), optionally filtered by
+`migrations_pattern`, and run in the order of their leading number. The
+`migrations_table` (default `d1_migrations`) records each applied migration.
+Each migration runs as one batch with its record, so a failed migration rolls
+back and the later ones do not run.
+
+Each command briefly starts the OpenOrange runtime, which writes through the
+same internal Durable Object as `orange dev`.
+
+With `--remote`, the commands target the database that `orange serve` uses:
+the Rivet Engine in `RIVET_ENDPOINT`. Run them from the project with the same
+Worker name and `--env` as the deployment:
+
+```sh
+RIVET_ENDPOINT=https://<namespace>:<token>@api.rivet.dev orange d1 migrations apply DB --remote
+```
+
+The Engine runs the database on the deployed `orange serve`, so the deployment
+must be up and its pool configured.
+
+## Conformance
+
+An end-to-end test applies migrations with `orange d1`, including a failed
+migration that rolls back, and reads the result through `orange dev`.
+An end-to-end `orange dev` test covers result shapes, `meta`, BLOB and boolean
+bindings, batch rollback, error text, sessions, overlapping inserts, and
+persistence across restarts. The same Worker returns identical results under
+`wrangler dev`. The upstream workerd D1 tests are not part of the conformance
+corpus.
+
+## Limits and deviations
+
+- `DELETE ... LIMIT` and `UPDATE ... LIMIT` fail, with or without `RETURNING` and
+  `ORDER BY`. Cloudflare D1 accepts them. Orange's SQLite comes from RivetKit,
+  which builds SQLite 3.46.0 from its amalgamation without
+  `SQLITE_ENABLE_UPDATE_DELETE_LIMIT`, so the parser has no `LIMIT` for these
+  statements. The query fails with:
+
+  ```
+  D1_ERROR: near "LIMIT": syntax error at offset <n>: SQLITE_ERROR
+  ```
+
+  chanfana before 3.1.0 deletes a row with `DELETE ... RETURNING * LIMIT 1`, so
+  every `D1DeleteEndpoint` of such an app answers 500 on Orange. Upgrade
+  chanfana to 3.1.0 or later, which deletes without `LIMIT`. `orange doctor`
+  flags an older chanfana in a project with a D1 database. In your own SQL,
+  select the rows in a subquery instead:
+  `DELETE FROM t WHERE rowid IN (SELECT rowid FROM t WHERE ... LIMIT 1)`.
+
+- `--remote` reads `RIVET_ENDPOINT`, not a Cloudflare account. `--preview`
+  and `--persist-to` fail.
+- `orange d1 migrations apply` does not ask for confirmation and does not
+  capture a backup.
+- `meta.rows_read` and `meta.rows_written` count returned rows and changed rows.
+  They do not include index reads and writes.
+- `sqlite_master` also lists OpenOrange's internal `_rivet_` tables. User SQL
+  cannot read or change them.
+- A prepared statement with several statements returns the last statement's rows.
+  `wrangler dev` rejects it.
+- `dump()` fails with `D1_DUMP_ERROR`, like `wrangler dev`.
+- `query()` requires the `d1_binding_jsrpc` compatibility flag, which OpenOrange
+  does not apply, so it always fails.
+- Read replication is not simulated. Every query reaches the single local
+  database.

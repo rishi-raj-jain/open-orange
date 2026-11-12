@@ -1,0 +1,91 @@
+---
+title: Hyperdrive
+description: Use a Hyperdrive binding with OpenOrange. The Worker connects directly to the database.
+---
+
+# Hyperdrive
+
+**Status:** Supported. The Worker connects directly to the database.
+
+## Choose a provider
+
+Any PostgreSQL or MySQL database works. Use its connection string as the
+[local connection string](#configuration):
+
+| Provider | Connection string | Notes |
+| --- | --- | --- |
+| [PlanetScale Postgres](https://planetscale.com/docs/postgres/connecting/quickstart) | `postgresql://<role>.<branch ID>:<password>@<host>.horizon.psdb.cloud:5432/<database>?sslmode=verify-full` | Copy the host from the **Connect** page. |
+| [PlanetScale MySQL](https://planetscale.com/docs/vitess/connecting/connection-strings) | `mysql://<user>:<password>@<host>/<database>` | Copy the host from the **Connect** page, with the **Other** format. |
+| [Amazon RDS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_CommonTasks.Connect.html) | `postgres://<user>:<password>@<instance>.<ID>.<region>.rds.amazonaws.com:5432/<database>` | For MySQL, use `mysql://` and port `3306`. The instance must accept connections from the runner. |
+| [Neon](https://neon.com/docs/connect/connect-from-any-app) | `postgresql://<role>:<password>@ep-<compute ID>.<region>.aws.neon.tech/<database>?sslmode=require` | A `-pooler` host, such as `ep-<compute ID>-pooler`, uses Neon's connection pooler. |
+| [Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres) | `postgresql://postgres:<password>@db.<project ref>.supabase.co:5432/postgres` | The direct host uses IPv6 on the Free and Pro plans. On an IPv4-only network, use the session pooler: `postgresql://postgres.<project ref>:<password>@<pooler host>:5432/postgres`. |
+| A database that you run | `postgres://<user>:<password>@localhost:5432/<database>` | |
+
+OpenOrange has no connection pool, so each connection that the Worker opens goes to the
+database. A provider's pooler, such as Neon's `-pooler` host or the Supabase pooler,
+can take more connections than the database itself.
+
+## Configuration
+
+OpenOrange reads the standard Wrangler `hyperdrive` configuration:
+
+```jsonc
+{
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<HYPERDRIVE_ID>",
+      "localConnectionString": "postgres://user:password@localhost:5432/app"
+    }
+  ]
+}
+```
+
+`orange dev` finds the connection string the same way as `wrangler dev`:
+
+1. The `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>` variable.
+2. The deprecated `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_<BINDING>`
+   variable. `orange dev` prints a deprecation warning.
+3. `localConnectionString` in the configuration.
+
+The variables can come from the shell, `.dev.vars`, or `.env`. If no
+connection string is set, `orange dev` stops with the Wrangler error.
+
+## Usage
+
+Worker code runs unchanged:
+
+```ts
+import postgres from "postgres";
+
+export default {
+	async fetch(request, env) {
+		const sql = postgres(env.HYPERDRIVE.connectionString);
+		const rows = await sql`select now()`;
+		return Response.json(rows);
+	},
+};
+```
+
+`env.HYPERDRIVE` has the same shape as the workerd `Hyperdrive` type:
+
+| Property | Type | Value |
+| --- | --- | --- |
+| `connectionString` | `string` | The connection string. |
+| `host` | `string` | The database host. |
+| `port` | `number` | The URL port, else 5432 for `postgres`/`postgresql` and 3306 for `mysql`. |
+| `user` | `string` | The URL-decoded user name. |
+| `password` | `string` | The URL-decoded password. |
+| `database` | `string` | The URL-decoded database name. |
+| `connect()` | `Socket` | A TCP socket to `host:port`. |
+
+OpenOrange checks the connection string with Miniflare's rules. It must use
+the `postgres`, `postgresql`, or `mysql` scheme and include a host, user,
+password, and database.
+
+## Differences from Cloudflare
+
+- The Worker connects directly to the database. There is no connection
+  pooling and no query caching.
+- `host` and `port` name the database itself. On Cloudflare they name a
+  Hyperdrive endpoint.

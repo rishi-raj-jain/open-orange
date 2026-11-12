@@ -1,0 +1,8 @@
+{
+	"name": "facets-loader",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": { "bindings": [{ "name": "WORKSPACES", "class_name": "Workspace" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Workspace"] }],
+	"worker_loaders": [{ "binding": "LOADER" }]
+}

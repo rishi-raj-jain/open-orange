@@ -1,0 +1,6 @@
+{
+	"name": "observability-issues-field",
+	"main": "worker.js",
+	"compatibility_date": "2025-05-05",
+	"observability": { "enabled": true, "issues": { "enabled": true } }
+}

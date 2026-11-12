@@ -1,0 +1,17 @@
+{
+  "name": "orange-test-hyperdrive",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "hyperdrive-from-env",
+      "localConnectionString": "postgres://config:config@config.example:6543/config"
+    },
+    {
+      "binding": "FROM_CONFIG",
+      "id": "hyperdrive-from-config",
+      "localConnectionString": "mysql://app%40team:p%40ss%3Aw%2Frd%20%25@db.internal/shop%20db"
+    }
+  ]
+}

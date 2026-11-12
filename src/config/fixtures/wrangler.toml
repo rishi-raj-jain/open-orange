@@ -1,0 +1,12 @@
+name = "orange-config-toml"
+main = "./worker.ts"
+compatibility_date = "2026-09-03"
+compatibility_flags = []
+
+[[secrets_store_secrets]]
+binding = "TOML_SECRET"
+store_id = "toml-store"
+secret_name = "toml-secret"
+
+[version_metadata]
+binding = "TOML_VERSION"

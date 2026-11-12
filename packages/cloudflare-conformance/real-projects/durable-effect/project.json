@@ -1,0 +1,35 @@
+{
+	"id": "durable-effect",
+	"repo": "backpine/durable-effect",
+	"commit": "e93ed103efce4205d469b890be93a6fed7bf881e",
+	"stars": 97,
+	"origin": "named",
+	"directory": "examples/effect-worker-api",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts",
+	"build": [
+		"pnpm --filter @durable-effect/task build"
+	],
+	"durableObjects": {
+		"classes": [
+			"CounterDO",
+			"OnboardingDO",
+			"BillingDO"
+		],
+		"file": "packages/task-group/src/cloudflare/runtime.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"setAlarm",
+			"getAlarm",
+			"deleteAlarm",
+			"alarm",
+			"rpc"
+		]
+	},
+	"changes": []
+}

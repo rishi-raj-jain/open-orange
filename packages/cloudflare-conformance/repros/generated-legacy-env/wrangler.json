@@ -1,0 +1,6 @@
+{
+	"legacy_env": true,
+	"name": "legacy-env",
+	"main": "worker.js",
+	"compatibility_date": "2025-11-28"
+}

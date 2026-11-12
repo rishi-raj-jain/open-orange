@@ -1,0 +1,29 @@
+diff --git a/worker/orange-bootstrap/0001_schema.sql b/worker/orange-bootstrap/0001_schema.sql
+new file mode 120000
+index 0000000..1450fbb
+--- /dev/null
++++ b/worker/orange-bootstrap/0001_schema.sql
+@@ -0,0 +1 @@
++../schema.sql
+\ No newline at end of file
+diff --git a/worker/orange-bootstrap/0002_admin.sql b/worker/orange-bootstrap/0002_admin.sql
+new file mode 100644
+index 0000000..16e3a7b
+--- /dev/null
++++ b/worker/orange-bootstrap/0002_admin.sql
+@@ -0,0 +1,3 @@
++-- The row `npm run admin:bootstrap` generates, for a local-only password.
++INSERT INTO users (username, display_name, password_hash, password_salt, is_admin, is_super_admin, management_protected, is_disabled)
++VALUES ('admin', 'admin', 'XJj3xn0dx-IweiwOGzyfFaxsrlSPWMl0SHWyLns9UVw', 'b3JhbmdlLWRldi1zYWx0IQ', 1, 1, 1, 0);
+diff --git a/wrangler.example.toml b/wrangler.example.toml
+index e91a7be..13129db 100644
+--- a/wrangler.example.toml
++++ b/wrangler.example.toml
+@@ -40,6 +40,7 @@ binding = "DB"
+ # Legacy D1 resource name kept intentionally; do not rename without a data migration plan.
+ database_name = "cfchat-db"
+ database_id = "YOUR_D1_DATABASE_ID_HERE"
++migrations_dir = "worker/orange-bootstrap"
+ 
+ [[kv_namespaces]]
+ binding = "SESSIONS"

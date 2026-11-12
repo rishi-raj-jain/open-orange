@@ -1,0 +1,907 @@
+{
+	"version": 1,
+	"commands": {
+		"dev": {
+			"helpHash": "c4617da6ee1980dcb4ec2b7c8cf5475df8f1615a298ddcf4d78f493cf6138ea3",
+			"status": "partial"
+		},
+		"types": {
+			"helpHash": "a3df4f28e1c95d3f7567b9c5861962461cfd62222e71a0d699b478a13d875968",
+			"status": "partial"
+		}
+	},
+	"globals": {
+		"AbortController": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "AbortController",
+					"signatureHashes": ["9070b7bf9a25b4319f60b7278a89e9f6730265c8e015962c355e06758d082720"]
+				}
+			]
+		},
+		"AbortSignal": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "AbortSignal",
+					"signatureHashes": ["0b6f961f7399d5cf4d9a88913bf1adaa6d8e18f2ece5bd5ace8fb23274c7d85f"]
+				}
+			]
+		},
+		"Blob": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "Blob",
+					"signatureHashes": ["c4e9869ef80864ff9132c38db97601802bc001cd75d762c35205af3c45aad052"]
+				}
+			]
+		},
+		"ByteLengthQueuingStrategy": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "ByteLengthQueuingStrategy",
+					"signatureHashes": ["bd82a8f4fab18dca689a43b3e373e1bfbaa01565604ffcf054fcd56d488ab6a5"]
+				}
+			]
+		},
+		"Cache": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "Cache",
+					"signatureHashes": ["ac9a199d5ac07e082fc4828d5311f08741ccea7d16cf3240135eb7905a343c2d"]
+				}
+			]
+		},
+		"CacheStorage": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "CacheStorage",
+					"signatureHashes": ["9c8caefbfe34c4273f2472e6e9ef4f86d293e8b124145ffaf4733f1df87759cc"]
+				}
+			]
+		},
+		"CloseEvent": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "CloseEvent",
+					"signatureHashes": ["c27b67d0e6fd80276df6972ea8bc8325e82174497b2209f2060d90b53f0a8fc9"]
+				}
+			]
+		},
+		"Cloudflare": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "Cloudflare",
+					"signatureHashes": ["c4849c234ff946acc0be49745f84481f12b0c1fbfecd9b177c6259b3af639eef"]
+				},
+				{
+					"kind": "namespace",
+					"name": "Cloudflare",
+					"signatureHashes": ["9ed86969a17e50f355e5ff36fcd6c8f67de661ecddf6f3fb2785a7d230061af1"]
+				}
+			]
+		},
+		"CompressionStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "CompressionStream",
+					"signatureHashes": ["366a153af4f95e897764e21c91a5426c3ff21d522f848f9201be98aea20fcd31"]
+				}
+			]
+		},
+		"CountQueuingStrategy": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "CountQueuingStrategy",
+					"signatureHashes": ["b74bd7cd5d14a5b9622da699e5d60889ef1122dad932755e6951ff6e5d8daae0"]
+				}
+			]
+		},
+		"Crypto": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "Crypto",
+					"signatureHashes": ["af7ed792b31c51d6fe500d144fd0f4588b1eb1fd122baaf1e02b28143826518c"]
+				}
+			]
+		},
+		"CryptoKey": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "CryptoKey",
+					"signatureHashes": ["155d4cf386a7963cc787ee20389a0e2ded3114988749845d6d5c4f2bf8613bec"]
+				}
+			]
+		},
+		"CustomEvent": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "CustomEvent",
+					"signatureHashes": ["f6f95d80608d81c6e71fe9fcecc01545bd5fe0d81209cfd6a19b6e5c820d7820"]
+				}
+			]
+		},
+		"DOMException": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "DOMException",
+					"signatureHashes": ["a1793405fbd1fd6e32f70f10c0ff664a04a41df8bf8e9044a68a9e219e219460"]
+				}
+			]
+		},
+		"DecompressionStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "DecompressionStream",
+					"signatureHashes": ["4c928aa50c5180242057be94d2b3bda9f60a4a19bd80f6aa052b732958871f4f"]
+				}
+			]
+		},
+		"ErrorEvent": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "ErrorEvent",
+					"signatureHashes": ["9ca0b2bed6b017105b9ac68443a2b7bdd755fd424693225b5b7eddf7bd4a0d84"]
+				}
+			]
+		},
+		"Event": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "Event",
+					"signatureHashes": ["fb082f4e3f82f5f1ed1749ca2762f1b7d5df33f10f2056397f84b34ed8a8bb54"]
+				}
+			]
+		},
+		"EventSource": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "EventSource",
+					"signatureHashes": ["ba4367330ba4982f370883b1d9ec0e3c3792da706db88ace217a9cb4fc6187a3"]
+				}
+			]
+		},
+		"EventTarget": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "EventTarget",
+					"signatureHashes": ["300a03c698de7be42500c0ed995b20a0777c08de858b051c10237ba60ce9da43"]
+				}
+			]
+		},
+		"File": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "File",
+					"signatureHashes": ["bfd4410000db91625141e3f6b3a90d4a938ea82e62f2ae85b26866f4495a639e"]
+				}
+			]
+		},
+		"FixedLengthStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "FixedLengthStream",
+					"signatureHashes": ["3c984013f4577b4e3534b8a07b070941e401183b400429dc4501bb8cf4088d36"]
+				}
+			]
+		},
+		"FormData": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "FormData",
+					"signatureHashes": ["52dd16aaefc9ef3a9be6269822671f4c75f546d13930412d2d2f68fd6d2b145d"]
+				}
+			]
+		},
+		"HTMLRewriter": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "HTMLRewriter",
+					"signatureHashes": ["7b42a1e14921a1a4b614d4d6e846a9ba418a5fb6faac7e7099228efc335a4b16"]
+				}
+			]
+		},
+		"Headers": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "Headers",
+					"signatureHashes": ["80f6b260e8d8c7a0ed276bc8709c8c13e740ba4449c041763615712e0136e496"]
+				}
+			]
+		},
+		"IdentityTransformStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "IdentityTransformStream",
+					"signatureHashes": ["f6b0ce7ed218201a1fa87425f5983d66b2db316cd23e9f3e9228f0b0cbef88b5"]
+				}
+			]
+		},
+		"MessageChannel": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "MessageChannel",
+					"signatureHashes": ["7bf3ab36608659a1b13e2614e1f3d14b68c82089e0d83a5a1cf76de283c77eff"]
+				}
+			]
+		},
+		"MessageEvent": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "MessageEvent",
+					"signatureHashes": ["909542ce0e92c7a8a23f31af68d5e27b49be4bb9c02d6bfe3e5121cda993d290"]
+				}
+			]
+		},
+		"MessagePort": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "MessagePort",
+					"signatureHashes": ["7f9eb984c3c3b2e2feb9b7a6f03ac767468c0d29eca7517574886bc0cf1db52a"]
+				}
+			]
+		},
+		"Navigator": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "Navigator",
+					"signatureHashes": ["647caa822a3a942273d4656fb603e4a828d846b34e4bf2fdba380d83101b3778"]
+				}
+			]
+		},
+		"Performance": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "Performance",
+					"signatureHashes": ["d17a013b22c523b455f44bb5419b62c55b0cc10f6dc185acbc68b8eb9aad2530"]
+				}
+			]
+		},
+		"PromiseRejectionEvent": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "PromiseRejectionEvent",
+					"signatureHashes": ["4e9d7f41c2080db55327de257908a34cef73b8cf4cddc1d88a7c97737c351f40"]
+				}
+			]
+		},
+		"ReadableByteStreamController": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "ReadableByteStreamController",
+					"signatureHashes": ["a78dc3eacc89194e8271e902450eae1b1f4590300eb77bdde8adf928f6b53679"]
+				}
+			]
+		},
+		"ReadableStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "ReadableStream",
+					"signatureHashes": ["daf92738ce76a0aee86e7e828a4239bf9afe2f41ae977e69adefe8996463ab6a"]
+				}
+			]
+		},
+		"ReadableStreamBYOBReader": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "ReadableStreamBYOBReader",
+					"signatureHashes": ["4ab432e6f744ca416c0654765620ca297972983ea3d823c7f59e179603c80b0b"]
+				}
+			]
+		},
+		"ReadableStreamBYOBRequest": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "ReadableStreamBYOBRequest",
+					"signatureHashes": ["c95d229af0fd1d11cccf638add4ab1eab1cb7f9592c570e6a2091b1474595629"]
+				}
+			]
+		},
+		"ReadableStreamDefaultController": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "ReadableStreamDefaultController",
+					"signatureHashes": ["d930131dccae7edfceca13a291066262eb113560308f7027bcbfb0d259e87d6c"]
+				}
+			]
+		},
+		"ReadableStreamDefaultReader": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "ReadableStreamDefaultReader",
+					"signatureHashes": ["f60a2a646ce15cef21e4e8528d0cce47032305fba4b4ca1ac6b6d50d9b6e822c"]
+				}
+			]
+		},
+		"Request": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "var",
+					"name": "Request",
+					"signatureHashes": ["f2da44592b725e385a29e5c0e4acc40d86e631b90ebe2d6c7efb447d2309d2d7"]
+				}
+			]
+		},
+		"Response": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "var",
+					"name": "Response",
+					"signatureHashes": ["dafbbc126f8bd35c05940c7e0002013b983385f2a37a07393e7be8d1017b06a3"]
+				}
+			]
+		},
+		"SubtleCrypto": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "SubtleCrypto",
+					"signatureHashes": ["81765a8549824c1eeb1ab2a1277d6e29d332bd1b8df1129327cfdf5226a038b1"]
+				}
+			]
+		},
+		"TextDecoder": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "TextDecoder",
+					"signatureHashes": ["8fc7280259359503802d17cfdbdb639195e14d1bc7d963005e7a08b4f099946c"]
+				}
+			]
+		},
+		"TextDecoderStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "TextDecoderStream",
+					"signatureHashes": ["847a3dadf017e503e8b6fb03d76f1d965569f31141cecb3fd5fba6ce332cc3ec"]
+				}
+			]
+		},
+		"TextEncoder": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "TextEncoder",
+					"signatureHashes": ["102a392a1a1375ac088a456d405ce9173014a0e30876906c7f26209dc2c91d47"]
+				}
+			]
+		},
+		"TextEncoderStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "TextEncoderStream",
+					"signatureHashes": ["261380018af0cf0096214888f3407a70307a3db239659595ce656f4b7a6448c5"]
+				}
+			]
+		},
+		"TransformStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "TransformStream",
+					"signatureHashes": ["0e8f3909178ceb0b7787ff7eb192d0e5b2512378f71dbbd186dd503b1e306952"]
+				}
+			]
+		},
+		"TransformStreamDefaultController": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "TransformStreamDefaultController",
+					"signatureHashes": ["a1452a7e63d1b2f770e65283dd8b4ff7ca4300d18fbe2ade345ec1ff87b10926"]
+				}
+			]
+		},
+		"URL": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "URL",
+					"signatureHashes": ["37b34154272307bcd5958a5b01793e1de5f24d00b5648f9a8431d144ede049a5"]
+				}
+			]
+		},
+		"URLPattern": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "URLPattern",
+					"signatureHashes": ["10a07c717e7071cd78e936661763279cca0e393ab4756281a456dda028200a08"]
+				}
+			]
+		},
+		"URLSearchParams": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "URLSearchParams",
+					"signatureHashes": ["a0db120bb006de3d4303aaf84c6f3cf71d5687e612a4f2106b5f4aebc99f902d"]
+				}
+			]
+		},
+		"WebAssembly": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "namespace",
+					"name": "WebAssembly",
+					"signatureHashes": ["b1695656ec84a66e0cc732df8e7f1ecef6e9ebeede756c8163acbc0ba1b41f5d"]
+				}
+			]
+		},
+		"WebSocket": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "var",
+					"name": "WebSocket",
+					"signatureHashes": ["f26a26dcd928c373d78ed39babb0b1cbae66450910349ac7dfba5bef5b2db1bd"]
+				}
+			]
+		},
+		"WebSocketPair": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "WebSocketPair",
+					"signatureHashes": ["44dedc0a89056586ba3d707ad2d9d019ae090f7c6dd238cc35690b51fb374793"]
+				}
+			]
+		},
+		"WebSocketRequestResponsePair": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "WebSocketRequestResponsePair",
+					"signatureHashes": ["7611b6ec638984145c844ec289f754fe4393b3144a160e41bd90c26a8c84aed9"]
+				}
+			]
+		},
+		"WorkerGlobalScope": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "WorkerGlobalScope",
+					"signatureHashes": ["589df3dc44f75c8a9c9944154770ee3b3dad64be7ae480f72e5537d3e6c7123c"]
+				}
+			]
+		},
+		"WritableStream": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "WritableStream",
+					"signatureHashes": ["b9273f76c05d7f496809a0d10bcd2f24c8207cc8bdef8836688ebcd461825d1f"]
+				}
+			]
+		},
+		"WritableStreamDefaultController": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "WritableStreamDefaultController",
+					"signatureHashes": ["76333a21394cbf17986422fb00666f5e02f451edb801ba5d221a780e4c07492f"]
+				}
+			]
+		},
+		"WritableStreamDefaultWriter": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "class",
+					"name": "WritableStreamDefaultWriter",
+					"signatureHashes": ["6d3679e58f0a8090d4f7bc80ac702f053e2c72e7a97574e8613293f21660552c"]
+				}
+			]
+		},
+		"addEventListener": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "addEventListener",
+					"signatureHashes": ["88c8de598bcade6c3a5bb952d505a1295be938538c1ed8fdf1d524eaa46730f5"]
+				}
+			]
+		},
+		"atob": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "atob",
+					"signatureHashes": ["ebf86091a6102a6b34d041645799a9ffa2cdd32bad8aedf2a82a5b93f73b4f8c"]
+				}
+			]
+		},
+		"btoa": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "btoa",
+					"signatureHashes": ["699b27bf82cf0b5e1748a479f01ba1060d302bcd6d2da0581fcf2f65616f5afc"]
+				}
+			]
+		},
+		"caches": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "caches",
+					"signatureHashes": ["9b444184619921b833b37f93f0a5ba6d1589a08797772d609d00278ba24cf9c1"]
+				}
+			]
+		},
+		"clearInterval": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "clearInterval",
+					"signatureHashes": ["d1f826f7977c9feb78bc6fcdca7ccfaf2f74ca98be93642ea97d352e7f587846"]
+				}
+			]
+		},
+		"clearTimeout": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "clearTimeout",
+					"signatureHashes": ["10cfdb81767e4f402492da9a5add1453413e2dde940f413d827936beaca04327"]
+				}
+			]
+		},
+		"console": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "console",
+					"signatureHashes": ["aea9fe658ef06ebd3fc45952933ff519e182a8a7a914e9b4d945bdd57c7b191d"]
+				}
+			]
+		},
+		"crypto": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "crypto",
+					"signatureHashes": ["a2d45984e7ca47d26c922f23549bdaba0a4513e2cdea14eb9d307d98b5b9cfd8"]
+				}
+			]
+		},
+		"dispatchEvent": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "dispatchEvent",
+					"signatureHashes": ["b24adb10f4f8e65d0e9c61306e6c725d24466e1228d07d1bf72497bbbada860c"]
+				}
+			]
+		},
+		"fetch": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "fetch",
+					"signatureHashes": ["cfb349c7479871306a07bf7c9cf87a151691459bb459a9e52e380c8ca34b6a61"]
+				}
+			]
+		},
+		"navigator": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "navigator",
+					"signatureHashes": ["38a73d755ddb3db8bbf310129e68191556a40b44440f55cecc6a63381c66870f"]
+				}
+			]
+		},
+		"performance": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "performance",
+					"signatureHashes": ["688189e88ed94ba8d1ad0ed58b238ff89a5d1a734c9046d2f26eecdd75e54f16"]
+				}
+			]
+		},
+		"queueMicrotask": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "queueMicrotask",
+					"signatureHashes": ["3ecc7997daae03cb9fc042b89c9ed70c6a35c9a48045359d985904cf6eedbe32"]
+				}
+			]
+		},
+		"removeEventListener": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "removeEventListener",
+					"signatureHashes": ["917615f4fc9768516445b793436895a799c448ee07cccf9c0377f69cece3b9bf"]
+				}
+			]
+		},
+		"reportError": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "reportError",
+					"signatureHashes": ["b7042187faed2b3f9e7a6a899b69d1233ff3cabba77db0bc556991078ad6f8b2"]
+				}
+			]
+		},
+		"scheduler": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "scheduler",
+					"signatureHashes": ["aa024807a0d6a1f38ba2817efa004b22f066365a193b0a05b1dd20b094cf196b"]
+				}
+			]
+		},
+		"self": {
+			"status": "partial",
+			"absentMembers": ["Body", "ExtendableEvent", "FetchEvent", "ScheduledEvent", "TailEvent", "TraceEvent", "origin"],
+			"declarations": [
+				{
+					"kind": "const",
+					"name": "self",
+					"signatureHashes": ["2bfb00562e15e116d42fced2c42a729d9099f4632941f7add8d82dc71c6d4a4a"]
+				}
+			]
+		},
+		"setInterval": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "setInterval",
+					"signatureHashes": [
+						"1f1a181d457a51a4c54c69ad49d90a78345127740a6e5e2b62cf95ea37d373b9",
+						"21397fd0e1da49b93aceb4f9195a3cc8651bfed203f38127c51da223e42ec0f4"
+					]
+				}
+			]
+		},
+		"setTimeout": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "setTimeout",
+					"signatureHashes": [
+						"44265c3b060129e948ce09877808ad1a902eb7e549921e85aefdced2674d7f06",
+						"f0465bdeffdd9fb35e9112a3153d2ff4e131d0d53922bb3a9787a8fc869e528b"
+					]
+				}
+			]
+		},
+		"structuredClone": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "function",
+					"name": "structuredClone",
+					"signatureHashes": ["b62574cb1be30679800d9713764a47fbbeb183ffa502216e64c5bb9c58fd80f1"]
+				}
+			]
+		}
+	},
+	"modules": {
+		"cloudflare_workers_durable_object": {
+			"status": "partial",
+			"declarations": [
+				{
+					"exported": true,
+					"kind": "export-assignment",
+					"moduleSpecifier": "cloudflare:workers",
+					"name": "export=",
+					"signatureHashes": ["b82286ebd4dc31905095b8103d2cc3654fd064af6bb681863b8e716fdd605ba4"]
+				},
+				{
+					"exported": true,
+					"kind": "class",
+					"name": "DurableObject",
+					"namespacePath": ["CloudflareWorkersModule"],
+					"signatureHashes": ["912069a21deaa2213d4c92049ecf6da1a28fa4d0db936ebeabf2fc78076ee3cc"]
+				}
+			]
+		},
+		"cloudflare_workers_rpc_target": {
+			"status": "partial",
+			"declarations": [
+				{
+					"exported": true,
+					"kind": "export-assignment",
+					"moduleSpecifier": "cloudflare:workers",
+					"name": "export=",
+					"signatureHashes": ["b82286ebd4dc31905095b8103d2cc3654fd064af6bb681863b8e716fdd605ba4"]
+				},
+				{
+					"exported": true,
+					"kind": "class",
+					"name": "RpcTarget",
+					"namespacePath": ["CloudflareWorkersModule"],
+					"signatureHashes": ["74235fa306b9d06410e2331cb940f5ed7c85ad84b32c3deda83b22f1bda70ad1"]
+				}
+			]
+		},
+		"cloudflare_workers_rpc_stub": {
+			"status": "partial",
+			"declarations": [
+				{
+					"exported": true,
+					"kind": "export-assignment",
+					"moduleSpecifier": "cloudflare:workers",
+					"name": "export=",
+					"signatureHashes": ["b82286ebd4dc31905095b8103d2cc3654fd064af6bb681863b8e716fdd605ba4"]
+				},
+				{
+					"exported": true,
+					"kind": "const",
+					"name": "RpcStub",
+					"namespacePath": ["CloudflareWorkersModule"],
+					"signatureHashes": ["ffa61ff62a628ec180d0933eb574c2d9398dda939cab4fc923c002231faf03f8"]
+				},
+				{
+					"exported": true,
+					"kind": "type-alias",
+					"name": "RpcStub",
+					"namespacePath": ["CloudflareWorkersModule"],
+					"signatureHashes": ["fb2d773f2429a930aa2e3783fdbea984197fe712a6476b6a113008b50c346e29"]
+				}
+			]
+		}
+	},
+	"bindings": {
+		"secrets_store_secret": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "interface",
+					"name": "SecretsStoreSecret",
+					"signatureHashes": ["baea3cd2ff1f3c2119117c986ca18aba7986c6815af4779b284257efd90d4884"]
+				}
+			]
+		},
+		"version_metadata": {
+			"status": "implemented",
+			"declarations": [
+				{
+					"kind": "type-alias",
+					"name": "WorkerVersionMetadata",
+					"signatureHashes": ["151c17f9c1209bf82981111bb55a6f30730281bc6f5aa2673fc25a1c0b0b842a"]
+				}
+			]
+		}
+	},
+	"events": {
+		"fetch": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "interface",
+					"name": "ExecutionContext",
+					"signatureHashes": ["136054a11291ac4791eed3f6ebb8683c6644423025e3773cbc9412ae228170d5"]
+				}
+			]
+		},
+		"scheduled": {
+			"status": "partial",
+			"declarations": [
+				{
+					"kind": "interface",
+					"name": "ExecutionContext",
+					"signatureHashes": ["136054a11291ac4791eed3f6ebb8683c6644423025e3773cbc9412ae228170d5"]
+				}
+			]
+		}
+	}
+}

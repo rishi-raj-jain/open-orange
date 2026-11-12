@@ -1,0 +1,7 @@
+{
+	"name": "orange-test-shared-primary", "main": "primary.js", "compatibility_date": "2026-09-03",
+	"services": [{ "binding": "PEER", "service": "orange-test-shared-peer" }],
+	"d1_databases": [{ "binding": "DB", "database_name": "shared" }, { "binding": "OTHER_DB", "database_name": "other" }],
+	"kv_namespaces": [{ "binding": "KV" }],
+	"r2_buckets": [{ "binding": "BUCKET", "bucket_name": "shared" }]
+}

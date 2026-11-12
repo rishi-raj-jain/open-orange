@@ -1,0 +1,6 @@
+// The config sits in `app/`, and its Worker code in `../worker/`, as in a monorepo.
+{
+	"name": "deploy-outside-main",
+	"main": "../worker/src/index.ts",
+	"compatibility_date": "2026-09-03"
+}

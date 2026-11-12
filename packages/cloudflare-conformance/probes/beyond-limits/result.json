@@ -1,0 +1,67 @@
+{
+	"schemaVersion": 1,
+	"id": "beyond-limits",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:50:16.349Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": null,
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "a Worker whose global scope runs for 1.5 s starts",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a Durable Object runs 35 s of CPU in one request",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 35
+		},
+		{
+			"name": "a Durable Object holds 512 MiB between requests",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.3
+		},
+		{
+			"name": "one request makes 2,000 subrequests",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 1.2
+		},
+		{
+			"name": "a 600 MiB request body streams through",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.4
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Big"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"in-memory state",
+			"long request"
+		]
+	}
+}

@@ -1,0 +1,18 @@
+---
+import ArchitectureDiagram from './ArchitectureDiagram.astro';
+---
+
+<section id="architecture" class="scroll-mt-20">
+	<div class="container-x section">
+		<div class="mx-auto max-w-2xl text-center">
+			<h2 class="h-section"><span class="text-ink-faint">Every service</span><br />has a place to land.</h2>
+			<p class="lede mt-6">
+				The runtime speaks the Workers API. <a href="https://rivet.dev" class="link">Rivet</a> handles the stateful parts. Storage and model gateways plug into the providers you already use.
+			</p>
+		</div>
+		<figure class="card mt-10 p-4 md:p-6">
+			<ArchitectureDiagram class="mx-auto h-auto w-full max-w-5xl" />
+		</figure>
+		<p class="mt-8 text-center text-[15px]"><a href="/architecture/#services" class="link">Full service map</a></p>
+	</div>
+</section>

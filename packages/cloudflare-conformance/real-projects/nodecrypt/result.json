@@ -1,0 +1,85 @@
+{
+	"schemaVersion": 1,
+	"id": "nodecrypt",
+	"repo": "shuaiplus/nodecrypt",
+	"commit": "54ed04903182799895e98af365cf4172f7b2f3f3",
+	"stars": 897,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T03:37:23.966Z",
+	"orange": {
+		"sha": "cb1ffb0",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 40,
+		"command": "npm ci --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 4
+	},
+	"steps": [
+		{
+			"name": "serves the built client, its SPA fallback, and the API route",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "two clients secure a session, join a room, and pass messages through the object",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a client in another room does not see this room's members",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "an open socket keeps the room in memory while the client stays idle",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 15.1
+		},
+		{
+			"name": "the server's RSA key comes back from storage after the object sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the server's RSA key survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.4
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"ChatRoom"
+		],
+		"file": "worker/index.js",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"WebSocketPair",
+			"WebSocket.accept",
+			"crypto.subtle"
+		]
+	}
+}

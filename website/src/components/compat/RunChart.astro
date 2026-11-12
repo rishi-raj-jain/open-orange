@@ -1,0 +1,156 @@
+---
+// Every saved run as a stacked area of its outcomes, one point per run in
+// commit order, evenly spaced so a long gap between commits does not crowd the
+// rest. Drawn at build time; the script only moves a guide and fills the
+// tooltip for the run nearest the pointer.
+import { HISTORY_BANDS, HISTORY_RUNS, fmt, percent, utcTime } from '@/data/conformance';
+
+const runs = HISTORY_RUNS;
+const last = runs.length - 1;
+/** x in percent of the plot width, y in percent of its height from the top. */
+const xOf = (i: number) => (last === 0 ? 50 : (i / last) * 100);
+const share = (count: number, total: number) => (total === 0 ? 0 : count / total);
+const stacks = runs.map((r) => {
+	let running = 0;
+	return r.counts.map((c) => (running += share(c, r.total)));
+});
+const yOf = (s: number) => (1 - s) * 100;
+const point = (i: number, s: number) => `${xOf(i).toFixed(2)},${yOf(s).toFixed(2)}`;
+
+// Bands only show when some run has tests in them.
+const bands = HISTORY_BANDS.map((b, index) => ({ ...b, index })).filter((b) => runs.some((r) => r.counts[b.index] > 0));
+const areas = bands
+	.map((b) => {
+		const upper = runs.map((_, i) => point(i, stacks[i][b.index]));
+		const lower = runs.map((_, i) => point(i, b.index === 0 ? 0 : stacks[i][b.index - 1])).reverse();
+		return { ...b, polygon: [...upper, ...lower].join(' '), line: upper.join(' ') };
+	})
+	.reverse();
+
+// The first and last runs always get a label; the others where one fits, on wide screens.
+const labelWidth = 10;
+const ticks: { i: number; align: 'start' | 'middle' | 'end'; always: boolean }[] = [{ i: 0, align: 'start', always: true }];
+let end = labelWidth;
+for (let i = 1; i < last; i++) {
+	const x = xOf(i);
+	if (x - labelWidth / 2 >= end + 1 && x + labelWidth / 2 <= 100 - labelWidth - 1) {
+		ticks.push({ i, align: 'middle', always: false });
+		end = x + labelWidth / 2;
+	}
+}
+if (last > 0) ticks.push({ i: last, align: 'end', always: true });
+
+const latest = runs[last];
+const tips = runs.map((r, i) => ({
+	x: xOf(i),
+	title: r.name,
+	meta: `${r.sha} · ${r.committed ? 'committed' : 'run started'} ${utcTime(r.at)} UTC`,
+	rows: bands.filter((b) => b.id !== 'remapped' || r.counts[b.index] > 0).map((b) => [
+		b.id === 'remapped' ? `${b.name} (${r.remapped.pass} pass)` : b.name,
+		b.color,
+		fmt(r.counts[b.index]),
+		`${percent(r.counts[b.index], r.total)}%`,
+	]),
+}));
+const swatch = (b: { id: string; color: string }) =>
+	b.id === 'remapped' ? `background:repeating-linear-gradient(135deg,${b.color} 0 2px,transparent 2px 4px)` : `background:${b.color}`;
+---
+
+<div>
+	<ul class="flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-ink-soft">
+		{bands.map((b) => (
+			<li class="flex items-center gap-2">
+				<span class="inline-block size-2.5 rounded-[3px]" style={swatch(b)}></span>
+				{b.name}
+				<span class="font-mono text-[12.5px] tabular-nums text-ink-faint">{fmt(latest.counts[b.index])}</span>
+			</li>
+		))}
+	</ul>
+
+	<div class="run-chart relative mt-8 pl-10" data-run-chart data-runs={JSON.stringify(tips)}>
+		<div class="relative h-56 md:h-72">
+			{[0, 20, 40, 60, 80, 100].map((p) => (
+				<div class="absolute inset-x-0 border-t border-line" style={`top:${100 - p}%`}>
+					<span class="absolute -left-10 -translate-y-1/2 font-mono text-[11px] tabular-nums text-ink-faint">{p}%</span>
+				</div>
+			))}
+			<svg class="absolute inset-0 size-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`Share of tests by outcome across ${runs.length} saved runs`}>
+				<defs>
+					<pattern id="run-chart-hatch" width="1.2" height="2.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+						<rect width="0.6" height="2.4" fill="var(--color-ink-soft)" fill-opacity="0.35"></rect>
+					</pattern>
+				</defs>
+				{areas.map((a) => (
+					<>
+						<polygon points={a.polygon} fill={a.id === 'remapped' ? 'url(#run-chart-hatch)' : a.color} fill-opacity={a.id === 'remapped' ? 1 : 0.16}></polygon>
+						<polyline points={a.line} fill="none" stroke={a.color} stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+					</>
+				))}
+			</svg>
+			{runs.map((_, i) => (
+				<span class="pointer-events-none absolute size-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-surface bg-pass" style={`left:${xOf(i)}%;top:${yOf(stacks[i][0])}%`}></span>
+			))}
+			<div class="run-chart-guide pointer-events-none absolute inset-y-0 hidden w-px bg-ink/50" data-guide></div>
+			<div class="tip-body pointer-events-none absolute top-2 z-40 w-[19rem] max-w-[80vw] rounded-xl bg-plate px-3.5 py-3 text-left text-[12.5px] leading-[1.5] text-cream shadow-lg" data-tip role="tooltip" hidden></div>
+		</div>
+		<div class="relative mt-2 h-9 font-mono text-[11px] leading-[1.35] tabular-nums text-ink-faint">
+			{ticks.map((t) => (
+				<span
+					class:list={['absolute whitespace-nowrap', !t.always && 'hidden lg:block', t.align === 'middle' && '-translate-x-1/2', t.align === 'end' && '-translate-x-full text-right']}
+					style={`left:${xOf(t.i)}%`}
+				>
+					<span class="block text-ink-soft">{runs[t.i].sha}</span>
+					{utcTime(runs[t.i].at)}
+				</span>
+			))}
+		</div>
+	</div>
+</div>
+
+<script>
+	// The run nearest the pointer: a guide through it and its counts in a tooltip.
+	type RunTip = { x: number; title: string; meta: string; rows: [string, string, string, string][] };
+
+	for (const chart of document.querySelectorAll<HTMLElement>('[data-run-chart]')) {
+		const plot = chart.firstElementChild as HTMLElement;
+		const guide = chart.querySelector<HTMLElement>('[data-guide]');
+		const tip = chart.querySelector<HTMLElement>('[data-tip]');
+		if (!guide || !tip) continue;
+		const runs: RunTip[] = JSON.parse(chart.dataset.runs ?? '[]');
+
+		const line = (cls: string, text: string) => {
+			const el = document.createElement('span');
+			el.className = cls;
+			el.textContent = text;
+			return el;
+		};
+
+		plot.addEventListener('pointermove', (event) => {
+			const rect = plot.getBoundingClientRect();
+			const x = ((event.clientX - rect.left) / rect.width) * 100;
+			const run = runs.reduce((best, r) => (Math.abs(r.x - x) < Math.abs(best.x - x) ? r : best));
+			guide.style.left = `${run.x}%`;
+			guide.classList.remove('hidden');
+
+			const rows = run.rows.map(([name, color, count, share]) => {
+				const row = document.createElement('span');
+				row.className = 'mt-1 flex items-center gap-2';
+				const sw = document.createElement('i');
+				sw.className = 'inline-block size-2 shrink-0 rounded-[2px]';
+				sw.style.background = color;
+				row.append(sw, line('flex-1', name), line('font-mono text-[11.5px] tabular-nums text-cream/70', `${count} · ${share}`));
+				return row;
+			});
+			tip.replaceChildren(line('block font-medium text-white', run.title), line('k mb-1.5 block', run.meta), ...rows);
+			tip.hidden = false;
+			const px = (run.x / 100) * rect.width;
+			const left = px + 14 + tip.offsetWidth > rect.width ? px - 14 - tip.offsetWidth : px + 14;
+			tip.style.left = `${Math.max(-40, left)}px`;
+		});
+		plot.addEventListener('pointerleave', () => {
+			guide.classList.add('hidden');
+			tip.hidden = true;
+		});
+	}
+</script>
+

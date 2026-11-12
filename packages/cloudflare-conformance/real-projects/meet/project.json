@@ -1,0 +1,47 @@
+{
+	"id": "meet",
+	"repo": "cloudflare/meet",
+	"commit": "314d42405e4d2b0fbdc8c7dafeca999e431a50ce",
+	"stars": 2317,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "npm ci --ignore-scripts",
+	"build": [
+		"npm run build"
+	],
+	"devVars": {
+		"CALLS_APP_SECRET": "local-only-no-real-sfu"
+	},
+	"durableObjects": {
+		"classes": [
+			"ChatRoom"
+		],
+		"file": "app/durableObjects/ChatRoom.server.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.list",
+			"storage.delete",
+			"storage.deleteAll",
+			"setAlarm",
+			"getAlarm",
+			"alarm"
+		]
+	},
+	"changes": [
+		{
+			"kind": "config",
+			"what": "wrangler.toml: [site] bucket becomes [assets] directory",
+			"why": "Orange rejects Workers Sites at config load: `Unsupported Wrangler configuration: site` (repros/workers-sites-unsupported)."
+		},
+		{
+			"kind": "code",
+			"what": "server.ts: removes the __STATIC_CONTENT_MANIFEST import and the Workers Sites asset handler",
+			"why": "With no [site], that module does not exist. Static files are served by the assets directory instead."
+		}
+	]
+}

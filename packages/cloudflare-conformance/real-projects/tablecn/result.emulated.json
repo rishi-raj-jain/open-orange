@@ -1,0 +1,85 @@
+{
+	"schemaVersion": 1,
+	"id": "tablecn",
+	"repo": "sadmann7/tablecn",
+	"commit": "2d74ac5827aa7abf60e334759e38cf7cdcb24d54",
+	"stars": 6371,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:00:15.123Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 10,
+		"command": "pnpm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "a second client gets the same seeded rows, and the first sees it join",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "edits and added and deleted rows reach the other client and are acknowledged",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the room refuses an invalid value, and the row keeps its value",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the room sleeps, and the edits come back from its storage",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "a client stays connected while the room hibernates, and its next edit is acknowledged",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 20.1
+		},
+		{
+			"name": "the edits survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 8.7
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"SkaterRoom"
+		],
+		"file": "party/index.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"storage.deleteAll",
+			"storage.setAlarm",
+			"storage.deleteAlarm",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment"
+		]
+	}
+}

@@ -1,0 +1,9 @@
+{
+	"name": "hello-durable-object",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": {
+		"bindings": [{ "name": "GREETER", "class_name": "Greeter" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Greeter"] }]
+}

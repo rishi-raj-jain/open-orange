@@ -1,0 +1,83 @@
+{
+	"schemaVersion": 1,
+	"id": "company-brain",
+	"repo": "supermemoryai/company-brain",
+	"commit": "ef8a45ef3aed97b32599c7d8007edefab6d14e9a",
+	"stars": 1081,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:21:11.331Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "bun install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 2,
+		"command": "node node_modules/bun/install.js && bun run build:web"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 11
+	},
+	"steps": [
+		{
+			"name": "the worker migrates D1 on the first request and answers its health route",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the setup page reports a ready database",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a signed-out visitor gets a session answer from D1 and KV",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the Slack app manifest lists the worker's Slack routes",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a Slack event wakes CompanyBrainAgent, which runs a turn and answers",
+			"kind": "do-state",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"SLACK_CLIENT_ID",
+				"SLACK_CLIENT_SECRET",
+				"SLACK_SIGNING_SECRET",
+				"SUPERMEMORY_API_KEY",
+				"MODEL_API_KEY"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"CompanyBrainAgent"
+		],
+		"file": "src/brain/turn/agent.ts",
+		"uses": [
+			"Agent",
+			"storage.sql",
+			"storage.setAlarm"
+		]
+	}
+}

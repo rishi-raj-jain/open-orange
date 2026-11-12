@@ -1,0 +1,100 @@
+diff --git a/src/orange-entry.ts b/src/orange-entry.ts
+new file mode 100644
+index 0000000..d0f2f4d
+--- /dev/null
++++ b/src/orange-entry.ts
+@@ -0,0 +1,80 @@
++// src/do.ts and src/worker.ts without Alchemy's Effect wrappers, which only its own bundler can run.
++import { DurableObject } from "cloudflare:workers";
++
++import { SessionExecutor, type Peer } from "./session";
++import { Store } from "./store";
++import { r2ColdBucket } from "./tier/bucket";
++import { encodeUtf8 } from "./types";
++
++interface Env {
++	ColdTier: Parameters<typeof r2ColdBucket>[0];
++	REDIS: DurableObjectNamespace;
++	RADISH_AUTH_TOKEN: string;
++}
++
++export class RedisDO extends DurableObject<Env> {
++	readonly #store: Store;
++	readonly #executor: SessionExecutor;
++
++	constructor(ctx: DurableObjectState, env: Env) {
++		super(ctx, env);
++		const sql = ctx.storage.sql;
++		this.#store = new Store(sql);
++		this.#executor = new SessionExecutor({
++			sql,
++			store: this.#store,
++			bucket: r2ColdBucket(env.ColdTier),
++			peers: () => ctx.getWebSockets() as unknown as Iterable<Peer>,
++			atomically: (run) => ctx.storage.transactionSync(run),
++		});
++	}
++
++	async #rearm(): Promise<void> {
++		const next = this.#store.nextExpiry();
++		if (next !== null) await this.ctx.storage.setAlarm(next);
++	}
++
++	override fetch(request: Request): Response {
++		if ((request.headers.get("upgrade") ?? "").toLowerCase() !== "websocket") {
++			return new Response("radish: connect with a WebSocket", { status: 426 });
++		}
++		const [client, server] = Object.values(new WebSocketPair());
++		this.ctx.acceptWebSocket(server);
++		this.#executor.open(server as unknown as Peer);
++		return new Response(null, { status: 101, webSocket: client });
++	}
++
++	override async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
++		const bytes = typeof message === "string" ? encodeUtf8(message) : new Uint8Array(message);
++		await this.#executor.message(socket as unknown as Peer, bytes, Date.now());
++		await this.#rearm();
++	}
++
++	override webSocketClose(socket: WebSocket): void {
++		this.#executor.close(socket as unknown as Peer);
++	}
++
++	override async alarm(): Promise<void> {
++		this.#store.sweep();
++		this.#executor.reap();
++		await this.#executor.relieve();
++		await this.#rearm();
++	}
++}
++
++export default {
++	async fetch(request: Request, env: Env): Promise<Response> {
++		const url = new URL(request.url);
++		if (url.pathname === "/health") {
++			return Response.json({ ok: true, service: "radish", router: "live", authentication: "required" });
++		}
++		if (url.pathname !== "/connect") {
++			return new Response("radish: open a WebSocket to /connect", { status: 404 });
++		}
++		if (request.headers.get("x-radish-auth") !== env.RADISH_AUTH_TOKEN) {
++			return new Response("radish: x-radish-auth is missing or wrong", { status: 401 });
++		}
++		const name = url.searchParams.get("db") ?? "default";
++		return env.REDIS.get(env.REDIS.idFromName(name)).fetch(request);
++	},
++};
+diff --git a/wrangler.jsonc b/wrangler.jsonc
+new file mode 100644
+index 0000000..d0f7e3a
+--- /dev/null
++++ b/wrangler.jsonc
+@@ -0,0 +1,8 @@
++{
++	"name": "radish",
++	"main": "src/orange-entry.ts",
++	"compatibility_date": "2026-08-31",
++	"durable_objects": { "bindings": [{ "name": "REDIS", "class_name": "RedisDO" }] },
++	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["RedisDO"] }],
++	"r2_buckets": [{ "binding": "ColdTier", "bucket_name": "radish-cold-tier" }]
++}

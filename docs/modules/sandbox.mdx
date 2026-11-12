@@ -1,0 +1,237 @@
+---
+title: Sandbox
+description: Run the Cloudflare Sandbox SDK on OpenOrange with a sandbox provider you choose.
+---
+
+# Sandbox
+
+**Status:** Partial. Needs a sandbox provider: set `ORANGE_SANDBOX_PROVIDER`, or use the `local` default.
+
+On Cloudflare, `@cloudflare/sandbox` runs each sandbox in a Container. On
+OpenOrange, the same Worker code runs each sandbox on a provider you choose:
+E2B, Daytona, Freestyle, an embedded agentOS VM, or a local directory on the
+host.
+
+## Choose a provider
+
+| Provider | `ORANGE_SANDBOX_PROVIDER` | Also set | Extra package | Isolation |
+| --- | --- | --- | --- | --- |
+| [E2B](https://e2b.dev/docs) | `e2b` | `E2B_API_KEY` | `e2b` | E2B micro-VM |
+| [Daytona](https://www.daytona.io/docs) | `daytona` | `DAYTONA_API_KEY` | `@daytonaio/sdk` | Daytona sandbox |
+| [Freestyle](https://docs.freestyle.sh) | `freestyle` | `FREESTYLE_API_KEY` | `freestyle` | Freestyle VM |
+| agentOS | `agentos` | | None | agentOS VM in the `orange dev` process. See [The agentOS provider](#the-agentos-provider). |
+| Local directory | `local` (default) | `ORANGE_SANDBOX_DIR` (optional) | None | **None**. Commands run as host processes. See [The local provider](#the-local-provider). |
+
+```sh
+# .dev.vars
+ORANGE_SANDBOX_PROVIDER=e2b
+E2B_API_KEY=<API key>
+```
+
+## Configuration
+
+Use the Wrangler configuration from Cloudflare's Sandbox guide. No changes are
+needed:
+
+```jsonc
+{
+  "containers": [
+    { "class_name": "Sandbox", "image": "./Dockerfile", "instance_type": "lite" }
+  ],
+  "durable_objects": {
+    "bindings": [{ "class_name": "Sandbox", "name": "Sandbox" }]
+  },
+  "migrations": [{ "new_sqlite_classes": ["Sandbox"], "tag": "v1" }]
+}
+```
+
+`orange dev` does not build or run the container image. It prints one warning
+for `containers` and runs the `Sandbox` class on the provider instead.
+
+Pick the provider with the variables in [Choose a provider](#choose-a-provider).
+This works like the S3 option for [R2](./r2) and the provider for
+[Workers AI](./workers-ai).
+
+A wrong configuration fails the first sandbox call with an error that names
+the fix. For example:
+
+```text
+ORANGE_SANDBOX_PROVIDER=e2b needs E2B_API_KEY. Set E2B_API_KEY in the environment of orange dev, or unset ORANGE_SANDBOX_PROVIDER to use the local provider.
+```
+
+If the provider rejects the key or cannot be reached, the error names the
+provider and the key:
+
+```text
+The daytona sandbox provider failed: Invalid credentials. Check DAYTONA_API_KEY, and that orange dev can reach daytona.
+```
+
+## Usage
+
+```js
+import { getSandbox, proxyToSandbox } from "@cloudflare/sandbox";
+
+export { Sandbox } from "@cloudflare/sandbox";
+
+export default {
+  async fetch(request, env) {
+    const proxyResponse = await proxyToSandbox(request, env);
+    if (proxyResponse) return proxyResponse;
+
+    const sandbox = getSandbox(env.Sandbox, "my-sandbox");
+    const result = await sandbox.exec("python3 -c 'print(2 + 2)'");
+    return Response.json({ exitCode: result.exitCode, output: result.stdout });
+  },
+};
+```
+
+You do not need to install `@cloudflare/sandbox` for `orange dev`. OpenOrange
+replaces the package with its own module when it bundles the Worker, like
+`cloudflare:*` modules.
+
+## How it works
+
+```text
+getSandbox(env.Sandbox, "my-sandbox")
+  -> Sandbox Durable Object (Rivet Actor)
+       storage: { provider: "local", id: "<provider sandbox id>" }
+  -> provider sandbox (local directory, E2B, Daytona, or Freestyle)
+```
+
+- Each `Sandbox` Durable Object owns one provider sandbox. The first call
+  creates it and stores its id and provider name in the object's storage.
+- When the object wakes, for example after an `orange dev` restart, it
+  reconnects to the stored sandbox. If the provider no longer has it, the
+  object creates a new one.
+- `destroy()` deletes the provider sandbox and the stored id. The next call
+  starts a new, empty sandbox.
+- If `ORANGE_SANDBOX_PROVIDER` changes after a sandbox was created, calls fail
+  and name both providers. Switch back, or call `destroy()`. `destroy()`
+  deletes the sandbox with the provider that created it, so that provider's
+  key must still be set.
+- E2B, Daytona, and Freestyle come from
+  [`@rivet-dev/sandbox-adapter`](https://www.npmjs.com/package/@rivet-dev/sandbox-adapter).
+  They load only when selected.
+
+### The E2B, Daytona, and Freestyle providers
+
+- `/workspace` is the working directory for commands, as on Cloudflare.
+  Orange creates it when it connects to a sandbox. On Daytona, it uses `sudo`.
+- Freestyle VMs can reach the Internet, as Cloudflare sandboxes can by default.
+- Daytona returns a command's output only when the command ends. While a
+  background process runs, `getProcessLogs()`, `streamProcessLogs()`, and
+  `waitForLog()` see no output.
+- On Daytona, `killProcess()` stops Orange's wait for the process, but the
+  command keeps running in the sandbox until it exits or the sandbox is
+  destroyed.
+- Daytona runs commands with `zsh`.
+
+### The agentOS provider
+
+The agentOS provider runs each sandbox in a VM from
+[`@rivet-dev/agentos-core`](https://www.npmjs.com/package/@rivet-dev/agentos-core),
+embedded in the `orange dev` process. It needs no account or API key.
+
+- Each sandbox id gets one VM. The first call boots it, which takes about 1 to
+  3 seconds.
+- `/workspace` is a directory inside the VM and is the working directory for
+  commands. Absolute paths in commands are VM paths.
+- Commands run in the VM's shell with its tools, such as `sh` and `node`.
+  Host environment variables are not passed.
+- VMs are in memory. `destroy()` disposes the VM. Files do not survive an
+  `orange dev` restart, so the next call after a restart starts an empty VM.
+- Preview URLs go through a small proxy in the VM. Servers in the VM listen
+  only on the VM's own network, so no host port bypasses the preview URL token.
+
+### The local provider
+
+The local provider is for development. It is **not isolated**:
+
+- Each sandbox is a directory: `<ORANGE_SANDBOX_DIR>/<id>`. The default is a
+  `sandboxes` folder in the project's `.open-orange` RivetKit storage, so files
+  survive `orange dev` restarts.
+- File APIs map sandbox paths into that directory. `/workspace/a.txt` is
+  `<dir>/workspace/a.txt`.
+- Commands run as host processes with `sh -c`, as your user. The working
+  directory is the sandbox's `workspace` folder. A command that uses an
+  absolute path, such as `cat /workspace/a.txt`, reads the host path. Use
+  relative paths in commands.
+- Commands see the host's tools, for example the host's `python3` and `node`.
+- Commands get only `PATH` and `LANG` from the host, plus the `env` you pass.
+  `HOME` is the sandbox's `workspace` folder. Other variables of `orange dev`,
+  such as API keys, are not passed.
+- `orange dev` kills running sandbox processes when it exits.
+- A server in the sandbox listens on a host port. Anything that can reach that
+  port, such as another process or, for a server that binds `0.0.0.0`, your
+  network, reaches it without the preview URL token.
+
+Use `agentos`, `e2b`, `daytona`, or `freestyle` to run untrusted code.
+
+### Preview URLs
+
+`exposePort(port, { hostname, token? })` returns
+`<scheme>://<port>-<sandbox name>-<token>.<hostname>/`, as on Cloudflare. The
+scheme is `http` for `localhost` hostnames and `https` otherwise. The token is
+16 random characters (`a-z`, `0-9`, `_`), or the `token` option (1 to 16 of
+the same characters, unique per sandbox). Exposing an exposed port again keeps
+its token. `unexposePort()` revokes it, so the next `exposePort()` returns a
+new URL. `getExposedPorts(hostname)` lists the exposed ports and their URLs.
+
+`proxyToSandbox()` in the Worker's `fetch` handler sends matching requests to
+the Sandbox object, which compares the token in constant time and forwards to
+the port. A wrong token, a missing token, or an unexposed port gets Cloudflare's
+`404` with `{"error":"Access denied: Invalid token or port not exposed","code":"INVALID_TOKEN"}`.
+
+With `orange dev`, send requests to the dev server with that `Host` header,
+for example `http://8080-my-sandbox-<token>.localhost:8787/`. Most systems
+resolve `*.localhost` to `127.0.0.1`. The local and agentOS providers serve
+preview URLs.
+
+## Supported API
+
+| API | Status |
+| --- | --- |
+| `getSandbox`, `Sandbox` export | Supported |
+| `exec` | Supported. Options: `cwd`, `env`, `timeout`. |
+| `execStream`, `parseSSEStream` | Supported. SSE events `start`, `stdout`, `stderr`, `complete`, `error`. |
+| `startProcess`, `listProcesses`, `getProcess`, `killProcess`, `killAllProcesses` | Supported. Returns `Process` objects with `kill`, `getStatus`, `getLogs`, `waitForLog`, `waitForPort`, and `waitForExit`. |
+| `getProcessLogs`, `streamProcessLogs` | Supported |
+| `writeFile`, `readFile` | Supported, with `encoding: "base64"` |
+| `mkdir`, `deleteFile`, `renameFile`, `moveFile`, `exists`, `listFiles` | Supported |
+| `gitCheckout` | Supported. Runs `git clone` in the sandbox. |
+| `setEnvVars` | Supported |
+| `exposePort`, `unexposePort`, `getExposedPorts`, `proxyToSandbox` | Local and agentOS providers. Ports 1024 to 65535. |
+| `destroy` | Supported |
+| `createSession` | Throws. Use `exec()` with `cwd` and `env`. |
+| `createCodeContext`, `runCode` | Throws. Run code with `exec()`. |
+
+## Conformance
+
+An end-to-end `orange dev` test uses a Worker that imports
+`@cloudflare/sandbox` as Cloudflare's docs show.
+
+| Provider | What the test covers |
+| --- | --- |
+| Local | Exit codes for failing commands, streamed exec output, file round trips, streamed background process logs, killing a process, isolation of two sandbox ids, `destroy()`, preview URL tokens (wrong, missing, revoked, and custom tokens), reconnecting after an `orange dev` restart, `destroy()` after `ORANGE_SANDBOX_PROVIDER` changed, and errors for a missing API key and an unknown provider |
+| agentOS | Exec output and exit codes, a file round trip, a missing file, a preview URL, `waitForPort()`, and a sandbox that is still there after its Durable Object sleeps |
+| E2B, Daytona, and Freestyle | A file round trip in `/workspace`, `waitForPort()`, and the error for a wrong API key |
+
+The E2B, Daytona, and Freestyle tests create real provider sandboxes, so they run only when
+`SANDBOX_TEST_E2B_API_KEY`, `SANDBOX_TEST_DAYTONA_API_KEY`, or `SANDBOX_TEST_FREESTYLE_API_KEY` is set.
+
+## Limits and deviations
+
+- No container image runs. The `image` in `containers` must name a Cloudflare
+  Sandbox image (`cloudflare/sandbox`). `ctx.container.start()` refuses any
+  other image. A sandbox has the provider's tools, not the tools in your
+  Dockerfile.
+- The local provider is not isolated. See [The local provider](#the-local-provider).
+- Background processes belong to the `orange dev` process. They stop when
+  `orange dev` stops. On Cloudflare they run until the container sleeps.
+- `Process` methods work only on a stub from `getSandbox()`. A raw
+  `env.Sandbox.get(id)` stub returns plain process data.
+- `kill(signal)` always sends `SIGKILL` to the process group.
+- E2B, Daytona, and Freestyle report stdout and stderr as one stream, so
+  streamed output arrives as `stdout` events.
+- `createSession`, `createCodeContext`, and `runCode` throw.
+- agentOS VMs do not survive an `orange dev` restart.

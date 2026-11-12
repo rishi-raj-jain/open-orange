@@ -1,0 +1,5 @@
+{
+	"coverage": "excluded",
+	"expectation": "unsupported",
+	"source": "worker.ts"
+}

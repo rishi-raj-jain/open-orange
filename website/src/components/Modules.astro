@@ -1,0 +1,25 @@
+---
+import Argument from '@/components/Argument.astro';
+import { MODULES, MODULES_NOT_BUILT, SITE } from '@/data/site';
+
+const docBase = '/docs/bindings/';
+---
+
+<Argument
+	id="bindings"
+	heading="Supported bindings."
+	lede="Every Cloudflare binding OpenOrange runs, plus the fetch handler and runtime globals. Each is documented with its status, configuration and known differences from Cloudflare."
+	link={{ label: 'Bindings documentation', href: SITE.docsBindings }}
+	caption={`Not built yet: ${MODULES_NOT_BUILT.join(', ')}. These bindings load, and each call throws an error that names the binding.`}
+>
+	<ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+		{MODULES.map((m) => (
+			<li>
+				<a href={`${docBase}${m.doc}/`} class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-[14px] font-medium transition-colors hover:border-ink/30 motion-reduce:transition-none">
+					{m.label}
+					<span class="text-ink-faint" aria-hidden="true">→</span>
+				</a>
+			</li>
+		))}
+	</ul>
+</Argument>

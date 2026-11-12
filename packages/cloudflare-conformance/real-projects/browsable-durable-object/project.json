@@ -1,0 +1,31 @@
+{
+	"id": "browsable-durable-object",
+	"repo": "outerbase/browsable-durable-object",
+	"commit": "1299aa4e99f09a51a7d6a48970c4a3f49e9db90f",
+	"stars": 44,
+	"origin": "awesome-list",
+	"directory": "consumer",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --frozen-lockfile --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"MyDurableObject"
+		],
+		"file": "src/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"RPC"
+		]
+	},
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Adds consumer/: the README's @Browsable() class and studio() Worker, importing the committed dist/index.js, with a Wrangler config and a tsconfig.json with target es2024.",
+			"why": "library: no deployable Worker in the repository. The consumer needs its own tsconfig.json because the library's (target ES2020) makes the decorated class throw 'Must call super constructor' when it has a class field, on wrangler dev too."
+		}
+	]
+}

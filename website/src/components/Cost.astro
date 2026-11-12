@@ -1,0 +1,273 @@
+---
+// Cloudflare's meters next to raw AWS prices for the same unit, printed as a
+// receipt. Four lines show; the rest print out on demand. Each line's details
+// are on hover. The numbers and how they are converted live in COST in
+// src/data/site.ts.
+import Argument from '@/components/Argument.astro';
+import Tip from '@/components/Tip.astro';
+import Line from '@/components/ReceiptLine.astro';
+import { CHEAPER_COMPUTE, CHEAPER_DATABASE, COST, COST_EXTRAS, SITE, WRITE_ESTIMATE } from '@/data/site';
+
+const w = WRITE_ESTIMATE;
+const writesNote = `Measured on Rivet: ${w.agents.toLocaleString('en-US')} concurrent agents, each writing a 64-byte SQLite upsert every 10 s, made ${(w.writesPerMonth / 1e9).toFixed(2)} billion writes a month for $${w.requestCostPerMonth} in S3 requests. Your cost per write depends on your workload.`;
+
+const LABELS: Record<string, string> = {
+	'durable-objects': 'DO compute',
+	workers: 'Workers CPU',
+	'do-sqlite-storage': 'DO SQLite',
+	'd1-storage': 'D1',
+	'kv-storage': 'KV',
+	'workflows-storage': 'Workflows',
+	'sqlite-writes': 'SQLite writes',
+	'kv-writes': 'KV writes',
+	queues: 'Queue msgs',
+	'workflow-steps': 'Workflow steps',
+};
+const UNITS: Record<string, string> = { 'GB-hour': 'GB-h', 'vCPU-hour': 'vCPU-h', 'GB-month': 'GB-mo' };
+const SHOWN = new Set(['durable-objects', 'workers', 'do-sqlite-storage', 'sqlite-writes']);
+const lines = COST.groups.flatMap((g) =>
+	g.meters.map((m) => ({
+		...m,
+		label: LABELS[m.id],
+		unit: UNITS[m.unit] ?? m.unit.replace('million ', '1M '),
+		tip: `${m.title}, per ${m.unit}. Cloudflare: ${m.cloudflareNote}. OpenOrange: ${m.openorangeNote}. ${(m.cloudflare / m.openorange).toFixed(1)}× cheaper.${g.title === 'Writes' ? ` ${writesNote}` : ''}`,
+	})),
+);
+const shown = lines.filter((l) => SHOWN.has(l.id));
+const more = lines.filter((l) => !SHOWN.has(l.id));
+const [egress, credits] = COST_EXTRAS;
+const writes = lines.find((l) => l.id === 'sqlite-writes')!;
+const stats = [
+	{ value: `${CHEAPER_COMPUTE.toFixed(1)}×`, label: 'cheaper compute' },
+	{ value: `${CHEAPER_DATABASE.toFixed(1)}×`, label: 'cheaper storage' },
+	{ value: `${(writes.cloudflare / writes.openorange).toFixed(1)}×`, label: 'cheaper writes' },
+];
+---
+
+<Argument
+	id="cost"
+	split
+	flip
+	heading="Same work. A fraction of the bill."
+	lede="Cloudflare's meters, priced on raw AWS."
+	link={{ label: 'Cloudflare pricing', href: COST.source.durableObjects }}
+>
+	<dl slot="aside" class="mt-8 grid grid-cols-3 gap-4">
+		{stats.map((s) => (
+			<div class="flex flex-col-reverse">
+				<dt class="caption mt-1.5">{s.label}</dt>
+				<dd class="text-[1.75rem] font-medium leading-none tracking-[-0.03em] text-orange-deep md:text-[2rem]">{s.value}</dd>
+			</div>
+		))}
+	</dl>
+
+	<div class="receipt-wrap relative mx-auto max-w-[460px]" data-receipt-wrap>
+		<div class="receipt theme-light absolute inset-x-2 top-2 z-20 -rotate-1 bg-[#fffdf8] px-4 pb-6 pt-7 font-mono text-[12px] sm:px-6 sm:text-[12.5px] uppercase leading-relaxed text-ink" data-receipt>
+			<div class="text-center">
+				<p class="text-[15px] font-semibold tracking-[0.2em]">OpenOrange</p>
+				<p class="text-ink-faint">Same work. Less bill.</p>
+				<p class="mt-1 text-[11px] text-ink-faint">
+					<Tip tip={`AWS on-demand Graviton (ARM) prices in us-east-1, provisioned 40% above use for autoscaling. Reserved pricing, spot and credits are lower. Cloudflare and AWS list prices checked ${SITE.verified}.`}>AWS Graviton · us-east-1</Tip>
+				</p>
+			</div>
+
+			<div class="rule-dash mt-4"></div>
+			<div class="grid grid-cols-[minmax(0,1fr)_3.75rem_4rem_2.75rem] gap-1.5 sm:grid-cols-[minmax(0,1fr)_4rem_4.25rem_3rem] sm:gap-2 py-2 text-[11px] text-ink-faint">
+				<span>Item</span><span class="text-right">Cloudflare</span><span class="text-right text-ink">You pay</span><span></span>
+			</div>
+
+			<ul>{shown.map((l) => <Line l={l} />)}</ul>
+
+			<!-- The rest of the receipt, rolled up. Hovering unrolls it over the page. -->
+			<div class="more grid" id="receipt-more" data-more>
+				<div class="min-h-0 overflow-hidden" data-more-inner>
+					<div>
+						<ul>{more.map((l) => <Line l={l} />)}</ul>
+						<div class="rule-dash mt-2"></div>
+						<ul class="py-2">
+							<li class="flex justify-between gap-4"><Tip tip={egress.body} align="start">Egress tax</Tip><span class="font-semibold">$0.00 <span class="text-orange-deep">Free</span></span></li>
+							<li class="flex justify-between gap-4"><Tip tip={credits.body} align="start">Cloud credits</Tip><span class="font-semibold">Accepted</span></li>
+						</ul>
+						<div class="rule-dash"></div>
+						<div class="barcode mx-auto mt-5 h-9 w-48" aria-hidden="true"></div>
+						<p class="mt-2 text-center text-[11px] tracking-[0.12em] text-ink-faint">Keep this for your CFO</p>
+					</div>
+				</div>
+			</div>
+			<button type="button" class="roll absolute -bottom-[15px] -left-1 -right-1 block text-center text-[10.5px] font-semibold tracking-[0.14em] text-ink-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange" aria-expanded="false" aria-controls="receipt-more" data-more-toggle>
+				<span class="roll-label">{more.length} more lines ↓</span>
+			</button>
+		</div>
+	</div>
+</Argument>
+
+<style>
+	/* Paper: a hairline outline so the torn edges read on the page, and a soft
+	   shadow below. */
+	.receipt {
+		filter: drop-shadow(0 0 0.6px rgb(26 25 24 / 0.28)) drop-shadow(0 1px 1px rgb(26 25 24 / 0.06)) drop-shadow(0 10px 18px rgb(26 25 24 / 0.1));
+	}
+	/* On a dark page the paper reads by itself; it needs a deeper shadow. */
+	:global(.dark) .receipt {
+		filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35)) drop-shadow(0 12px 22px rgb(0 0 0 / 0.5));
+	}
+	/* Torn top edge, always; torn bottom edge once the receipt is unrolled. */
+	.receipt::before,
+	.receipt::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		height: 10px;
+	}
+	.receipt::before {
+		bottom: 100%;
+		background:
+			linear-gradient(45deg, #fffdf8 50%, transparent 50%) 0 100% / 14px 10px repeat-x,
+			linear-gradient(-45deg, #fffdf8 50%, transparent 50%) 0 100% / 14px 10px repeat-x;
+	}
+	.receipt::after {
+		top: 100%;
+		background:
+			linear-gradient(135deg, #fffdf8 50%, transparent 50%) 0 0 / 14px 10px repeat-x,
+			linear-gradient(-135deg, #fffdf8 50%, transparent 50%) 0 0 / 14px 10px repeat-x;
+		opacity: 0;
+		transition: opacity 0.12s;
+	}
+	.rule-dash {
+		border-top: 1.5px dashed color-mix(in srgb, var(--color-ink) 22%, transparent);
+	}
+	.barcode {
+		background: repeating-linear-gradient(90deg, #1a1918 0 2px, transparent 2px 4px, #1a1918 4px 5px, transparent 5px 8px, #1a1918 8px 11px, transparent 11px 12px, #1a1918 12px 13px, transparent 13px 17px);
+	}
+
+	/* Unrolling. The printed lines stay where they are; the paper feeds out of
+	   the roll, so the receipt grows from the bottom. The roll rides the
+	   paper's bottom edge at a constant size and spins while it feeds. Once the
+	   paper is all out, the roll gives way to the torn edge. Rolling back up is
+	   the same in reverse. */
+	.more {
+		grid-template-rows: 0fr;
+		transition: grid-template-rows 0.8s cubic-bezier(0.45, 0, 0.2, 1);
+	}
+	.roll {
+		height: 30px;
+		border-radius: 10px / 15px;
+		background:
+			repeating-linear-gradient(180deg, rgb(26 25 24 / 0.045) 0 1px, transparent 1px 6px) 0 var(--spin, 0px) / 100% 36px,
+			linear-gradient(180deg, #d6d0c4 0%, #fffdf8 28%, #faf7f0 50%, #e6e0d4 76%, #b9b2a3 100%);
+		box-shadow:
+			0 7px 10px -5px rgb(26 25 24 / 0.38),
+			inset 7px 0 7px -5px rgb(26 25 24 / 0.2),
+			inset -7px 0 7px -5px rgb(26 25 24 / 0.2);
+		transition: opacity 0.12s;
+	}
+	/* The paper curls into the roll: a shadow on the paper just above it. */
+	.roll::before {
+		content: '';
+		position: absolute;
+		inset: auto 4px 100% 4px;
+		height: 14px;
+		background: linear-gradient(to bottom, transparent, rgb(26 25 24 / 0.08));
+		pointer-events: none;
+	}
+	.roll-label {
+		transition: opacity 0.15s;
+	}
+	.roll[data-rolling='out'] {
+		animation: spin-out 0.8s cubic-bezier(0.45, 0, 0.2, 1) both;
+	}
+	.roll[data-rolling='in'] {
+		animation: spin-in 0.8s cubic-bezier(0.45, 0, 0.2, 1) both;
+	}
+	@keyframes spin-out {
+		from { background-position: 0 0, 0 0; }
+		to { background-position: 0 72px, 0 0; }
+	}
+	@keyframes spin-in {
+		from { background-position: 0 72px, 0 0; }
+		to { background-position: 0 0, 0 0; }
+	}
+
+	/* Open: hover (with a mouse), keyboard focus inside, or a tap. */
+	.more[data-open],
+	.receipt-wrap:focus-within .more {
+		grid-template-rows: 1fr;
+	}
+	.receipt:has(.more[data-open]) .roll-label,
+	.receipt-wrap:focus-within .roll-label {
+		opacity: 0;
+	}
+	.receipt:has(.more[data-open]) .roll,
+	.receipt-wrap:focus-within .roll {
+		opacity: 0;
+		transition: opacity 0.22s 0.72s;
+	}
+	.receipt:has(.more[data-open])::after,
+	.receipt-wrap:focus-within .receipt::after {
+		opacity: 1;
+		transition: opacity 0.22s 0.72s;
+	}
+	@media (hover: hover) {
+		.receipt-wrap:hover .more {
+			grid-template-rows: 1fr;
+		}
+		.receipt-wrap:hover .roll-label {
+			opacity: 0;
+		}
+		.receipt-wrap:hover .roll {
+			opacity: 0;
+			transition: opacity 0.22s 0.72s;
+		}
+		.receipt-wrap:hover .receipt::after {
+			opacity: 1;
+			transition: opacity 0.22s 0.72s;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.more,
+		.roll,
+		.receipt::after {
+			transition: none !important;
+		}
+		.roll[data-rolling] {
+			animation: none;
+		}
+	}
+</style>
+
+<script>
+	for (const wrap of document.querySelectorAll<HTMLElement>('[data-receipt-wrap]')) {
+		const receipt = wrap.querySelector<HTMLElement>('[data-receipt]')!;
+		const toggle = receipt.querySelector<HTMLButtonElement>('[data-more-toggle]')!;
+		const more = receipt.querySelector<HTMLElement>('[data-more]')!;
+		const list = more.querySelector<HTMLElement>('[data-more-inner]')!;
+		const isOpen = () => getComputedStyle(more).gridTemplateRows !== '0px';
+		// The receipt floats over the page; the wrapper keeps its folded height
+		// so the rest prints over the next section instead of pushing it down.
+		const fit = () => { if (!isOpen()) wrap.style.height = `${receipt.offsetHeight + 24}px`; };
+		fit();
+		new ResizeObserver(fit).observe(wrap);
+		// Rows clip while they feed out; once out, let their hover tips overflow.
+		more.addEventListener('transitionend', () => (list.style.overflow = isOpen() ? 'visible' : ''));
+		wrap.addEventListener('mouseleave', () => (list.style.overflow = ''));
+		// Spin the roll while the paper feeds out or back in.
+		let spinTimer = 0;
+		const spin = (dir: 'out' | 'in') => {
+			toggle.dataset.rolling = dir;
+			clearTimeout(spinTimer);
+			spinTimer = window.setTimeout(() => delete toggle.dataset.rolling, 820);
+		};
+		if (matchMedia('(hover: hover)').matches) {
+			wrap.addEventListener('mouseenter', () => spin('out'));
+			wrap.addEventListener('mouseleave', () => spin('in'));
+		}
+		toggle.addEventListener('click', () => {
+			spin(more.hasAttribute('data-open') ? 'in' : 'out');
+			const open = !more.hasAttribute('data-open');
+			list.style.overflow = '';
+			more.toggleAttribute('data-open', open);
+			toggle.setAttribute('aria-expanded', String(open));
+		});
+	}
+</script>

@@ -1,0 +1,20 @@
+{
+	"name": "worker-a",
+	"main": "worker.js",
+	"compatibility_date": "2025-09-01",
+	"services": [
+		{ "binding": "B", "service": "worker-b" },
+		{ "binding": "ADMIN", "service": "worker-b", "entrypoint": "Admin" },
+		{ "binding": "GONE", "service": "worker-gone" }
+	],
+	"workflows": [
+		{ "binding": "GREET", "name": "greet", "class_name": "Greet", "script_name": "worker-b" },
+		{ "binding": "GONE_FLOW", "name": "gone", "class_name": "Gone", "script_name": "worker-gone" }
+	],
+	"durable_objects": {
+		"bindings": [
+			{ "name": "COUNTER", "class_name": "Counter", "script_name": "worker-b" },
+			{ "name": "GONE_COUNTER", "class_name": "Counter", "script_name": "worker-gone" }
+		]
+	}
+}

@@ -1,0 +1,65 @@
+---
+import { FAQ } from '@/data/site';
+
+const jsonLd = {
+	'@context': 'https://schema.org',
+	'@type': 'FAQPage',
+	mainEntity: FAQ.map((item) => ({
+		'@type': 'Question',
+		name: item.q,
+		acceptedAnswer: { '@type': 'Answer', text: item.a },
+	})),
+};
+---
+
+<section id="faq" class="rule">
+	<div class="container-x section grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:gap-20">
+		<h2 class="h-section">Questions.</h2>
+		<div class="divide-y divide-line border-y border-line">
+			{FAQ.map((item, i) => (
+				<details class="faq group" open={i === 0}>
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-[17px] font-medium [&::-webkit-details-marker]:hidden">
+						{item.q}
+						<span class="text-xl leading-none text-ink-faint transition-transform duration-200 group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
+					</summary>
+					<div class="faq-body overflow-hidden">
+						<p class="body-copy max-w-2xl pb-6 text-ink-soft">{item.a}</p>
+					</div>
+				</details>
+			))}
+		</div>
+	</div>
+	<script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+	<script>
+		// Slide the answer open and closed. `details` snaps by default, so the
+		// click is intercepted: opening sets `open` then grows the body from 0;
+		// closing shrinks it first and clears `open` when the animation ends.
+		const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+		for (const d of document.querySelectorAll<HTMLDetailsElement>('details.faq')) {
+			const summary = d.querySelector('summary')!;
+			const body = d.querySelector<HTMLElement>('.faq-body')!;
+			let running: Animation | null = null;
+			let closing = false;
+			summary.addEventListener('click', (e) => {
+				if (reduce.matches) return;
+				e.preventDefault();
+				// A closed body still reports its laid-out height, so it only
+				// counts while the item is open. Measured before cancelling so a
+				// second click mid-animation continues from where it is.
+				const from = d.open ? body.getBoundingClientRect().height : 0;
+				running?.cancel();
+				const open = !d.open || closing;
+				closing = !open;
+				if (open) {
+					d.open = true;
+					const to = body.scrollHeight;
+					running = body.animate([{ height: `${from}px`, opacity: 0 }, { height: `${to}px`, opacity: 1 }], { duration: 260, easing: 'ease-out' });
+					running.onfinish = () => { running = null; };
+				} else {
+					running = body.animate([{ height: `${from}px`, opacity: 1 }, { height: '0px', opacity: 0 }], { duration: 220, easing: 'ease-out' });
+					running.onfinish = () => { d.open = false; closing = false; running = null; };
+				}
+			});
+		}
+	</script>
+</section>

@@ -1,0 +1,24 @@
+{
+	"id": "stub-bindings",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"local": true,
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "",
+	"durableObjects": {
+		"classes": [
+			"Empty"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"none: this probe checks other bindings"
+		]
+	},
+	"changes": []
+}

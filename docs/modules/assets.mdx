@@ -1,0 +1,70 @@
+---
+title: Static assets
+description: Serve a Worker's static assets with OpenOrange, routed like Cloudflare's asset and router Workers.
+---
+
+# Static assets
+
+**Status:** Partial
+
+## Configuration
+
+OpenOrange reads Wrangler's `assets` configuration:
+
+```jsonc
+{
+  "main": "./src/worker.ts",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "!/api/docs/*"]
+  }
+}
+```
+
+`directory` resolves against the configuration file. A project without `main`
+is an assets-only Worker. A `.assetsignore` file in the directory excludes files
+with `.gitignore` syntax.
+
+## How it works
+
+`orange dev` routes each request like Cloudflare's router Worker:
+
+1. A negated `run_worker_first` pattern (`!/...`) sends the request to assets.
+2. A `run_worker_first` pattern, or `run_worker_first: true`, sends it to the
+   Worker.
+3. If an asset matches, assets serve it. Otherwise the Worker handles it. An
+   assets-only Worker always serves from assets.
+
+The asset handler is a port of Cloudflare's asset Worker: the four
+`html_handling` modes with their 307 redirects, `not_found_handling` with
+`404.html` lookup in parent directories or the `index.html` fallback, `ETag`
+with `If-None-Match` 304 responses, `Cache-Control`, and 405 for methods other
+than GET and HEAD. Without `run_worker_first` patterns, `not_found_handling`
+applies to a missing path only for a browser navigation, as with the
+`assets_navigation_prefers_asset_serving` compatibility flag from 2025-04-01.
+
+`env.ASSETS.fetch()` runs the same handler with `not_found_handling` always on,
+and follows redirects like any Fetcher.
+
+OpenOrange reads the directory on each request, so added and changed files are
+served without a restart. Like `wrangler dev`, an asset's `ETag` comes from its
+path and modification time.
+
+## Conformance
+
+An end-to-end `orange dev` test covers headers and 304 responses, the HTML
+redirects, `run_worker_first` patterns, the SPA fallback for navigations,
+`404.html` pages, `.assetsignore`, the `ASSETS` binding, assets-only projects,
+and a missing directory. The asset and router Worker tests from workers-sdk are
+not part of the conformance corpus.
+
+## Limits and deviations
+
+- `_headers` and `_redirects` files are not applied. `orange dev` warns when
+  the directory has one.
+- OpenOrange does not enforce the 25 MiB asset size or the 100,000 file limit.
+- The router's `/_next/image` and `/_image` content-type checks are not applied.
+- `CF-Cache-Status` is always `HIT`, as it is for local reads in `wrangler dev`.

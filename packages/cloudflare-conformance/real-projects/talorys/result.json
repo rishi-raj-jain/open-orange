@@ -1,0 +1,98 @@
+{
+	"schemaVersion": 1,
+	"id": "talorys",
+	"repo": "rociiu/talorys",
+	"commit": "420005a3ce1b432eb1c46112289fa84d2a2271e4",
+	"stars": 1435,
+	"origin": "search",
+	"directory": "apps/agent",
+	"ranAt": "2026-11-05T02:40:44.282Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 9,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 5,
+		"command": "npm --prefix ../.. run build -w @talorys/web"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "the web app is served, and the owner signs in",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "tasks, notes, and memories are written and read back",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a chat turn streams through the object, and its tool writes a task",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a reminder fires from an alarm while the object sleeps",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 184.8
+		},
+		{
+			"name": "the data survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.2
+		},
+		{
+			"name": "the data and the session survive a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 8.2
+		},
+		{
+			"name": "a reminder set before a restart still fires after it",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 161.7
+		},
+		{
+			"name": "a chat turn with real Workers AI",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"OPENROUTER_API_KEY"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"TalorysAgent"
+		],
+		"file": "apps/agent/src/agent/talorys-agent.ts",
+		"uses": [
+			"agents Agent",
+			"storage.sql",
+			"this.schedule (alarms)",
+			"onRequest"
+		]
+	}
+}

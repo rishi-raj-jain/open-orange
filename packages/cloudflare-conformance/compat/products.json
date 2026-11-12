@@ -1,0 +1,228 @@
+{
+	"schemaVersion": 1,
+	"products": [
+		{
+			"product": "Workers",
+			"orange": "Node.js runtime with workerd-shaped globals, cloudflare:* and node:* modules",
+			"status": "drop-in",
+			"note": "fetch, scheduled, and queue handlers run unchanged. Compatibility dates and flags are not applied.",
+			"evidence": ["docs/modules/fetch-events.mdx", "docs/modules/globals.mdx"]
+		},
+		{
+			"product": "Durable Objects",
+			"orange": "Rivet Actors with SQLite storage and alarms",
+			"status": "partial",
+			"note": "WebSocket hibernation is emulated. After 10 idle seconds, Orange drops the object's instance and keeps the actor and its accepted WebSockets open. The next event builds a new instance, and an auto-response frame is answered without one. The actor sleeps only when it has no open accepted WebSocket. A class from another Worker (script_name) runs when that Worker is in the same orange dev session. Rivet's _rivet_ tables are reserved in the object's SQLite.",
+			"evidence": ["docs/modules/durable-objects.mdx", "docs/modules/multi-worker.mdx", "packages/runtime-node/src/bindings/durable-objects/accepted-websocket-host.ts", "packages/runtime-node/src/bindings/durable-objects/registry.ts", "packages/runtime-node/src/bindings/durable-objects/hibernation-lifecycle.ts"]
+		},
+		{
+			"product": "KV",
+			"orange": "Internal Rivet Actor per namespace",
+			"status": "drop-in",
+			"note": "Strongly consistent, so reads never see stale values. cacheStatus is always null.",
+			"evidence": ["docs/modules/kv.mdx"]
+		},
+		{
+			"product": "D1",
+			"orange": "Internal Rivet Actor per database, on the Durable Object SQL bridge",
+			"status": "drop-in",
+			"note": "meta.rows_read counts returned rows, not scanned rows, and meta.rows_written misses index and trigger writes.",
+			"evidence": ["docs/modules/d1.mdx"]
+		},
+		{
+			"product": "R2",
+			"orange": "Actor SQLite by default, or any S3-compatible store per bucket",
+			"status": "pluggable",
+			"note": "Pick the backend with ORANGE_R2_<BUCKET>_S3_* variables. On the default backend, one Rivet Actor stores each bucket, so Rivet's storage limit for one actor bounds the bucket. SSE-C keys throw.",
+			"evidence": ["docs/modules/r2.mdx", "packages/runtime-node/src/bindings/r2/storage.ts", "packages/runtime-node/src/bindings/r2/s3-backend.ts"],
+			"configure": [
+				{ "variable": "ORANGE_R2_<BUCKET>_S3_ENDPOINT", "purpose": "S3-compatible endpoint. Setting it moves the bucket off actor SQLite. <BUCKET> is bucket_name in upper case." },
+				{ "variable": "ORANGE_R2_<BUCKET>_S3_ACCESS_KEY_ID", "purpose": "Falls back to AWS_ACCESS_KEY_ID." },
+				{ "variable": "ORANGE_R2_<BUCKET>_S3_SECRET_ACCESS_KEY", "purpose": "Falls back to AWS_SECRET_ACCESS_KEY." },
+				{ "variable": "ORANGE_R2_<BUCKET>_S3_BUCKET", "purpose": "Optional. The default is bucket_name." },
+				{ "variable": "ORANGE_R2_<BUCKET>_S3_REGION", "purpose": "Optional. The default is AWS_REGION, then auto." }
+			]
+		},
+		{
+			"product": "Queues",
+			"orange": "Internal Rivet Actor per queue, delivered to the Worker's queue() handler",
+			"status": "drop-in",
+			"note": "Queues are shared by name across an orange dev session, so a consumer in another Worker receives the messages. One batch at a time per queue.",
+			"evidence": ["docs/modules/queues.mdx", "docs/modules/multi-worker.mdx"]
+		},
+		{
+			"product": "Workflows",
+			"orange": "Cloudflare's own Workflows engine, copied from @cloudflare/workflows-shared 0.15.1, with one Rivet Actor per instance",
+			"status": "partial",
+			"note": "create, get, status, sendEvent, steps, terminate, pause, resume, restart, and delete work, also with script_name across Workers in one session. terminate cannot stop a step callback that is already running.",
+			"evidence": ["docs/modules/workflows.mdx", "docs/modules/multi-worker.mdx", "packages/runtime-node/src/bindings/workflows/binding.ts", "packages/runtime-node/src/bindings/workflows/engine/LICENSE"]
+		},
+		{
+			"product": "Cron Triggers",
+			"orange": "Internal Rivet Actor that evaluates the full Cloudflare cron syntax",
+			"status": "drop-in",
+			"note": "Crons fire in orange dev, unlike wrangler dev. An overlapping run is skipped. A run has no 15 minute wall time limit.",
+			"evidence": ["docs/modules/cron-triggers.mdx", "packages/runtime-node/src/internal-actors/cron.ts"]
+		},
+		{
+			"product": "Rate Limiting",
+			"orange": "Internal Rivet Actor per namespace_id with an exact fixed-window counter",
+			"status": "drop-in",
+			"note": "Counts are exact per window, while Cloudflare counts per location. Each limit() call is one actor round trip.",
+			"evidence": ["docs/modules/rate-limiting.mdx"]
+		},
+		{
+			"product": "Workers AI + AI Gateway",
+			"orange": "Any OpenAI-compatible provider (OpenRouter by default, or ORANGE_AI_BASE_URL)",
+			"status": "pluggable",
+			"note": "Text generation and embeddings run. The gateway option is accepted, but env.AI.gateway(), streaming inputs, and toMarkdown throw.",
+			"evidence": ["docs/modules/workers-ai.mdx", "packages/runtime-node/src/bindings/ai/ai.ts"],
+			"configure": [
+				{ "variable": "ORANGE_AI_API_KEY", "purpose": "Provider API key. OPENROUTER_API_KEY also works." },
+				{ "variable": "ORANGE_AI_BASE_URL", "purpose": "OpenAI-compatible base URL. The default is OpenRouter." },
+				{ "variable": "ORANGE_AI_MODELS", "purpose": "JSON map from @cf/ models to provider models, over the built-in map." }
+			]
+		},
+		{
+			"product": "Cache API",
+			"orange": "Internal Rivet Actor per cache name, with Miniflare's freshness rules",
+			"status": "partial",
+			"note": "Entries persist locally. Vary is ignored, and several ranges return the whole body. ORANGE_CACHE=off gives the workers.dev no-op.",
+			"evidence": ["docs/modules/cache.mdx"],
+			"configure": [
+				{ "variable": "ORANGE_CACHE=off", "purpose": "Makes the Cache API the workers.dev no-op." }
+			]
+		},
+		{
+			"product": "Durable Object Facets",
+			"orange": "A child Rivet Actor per facet",
+			"status": "partial",
+			"note": "get, abort, delete, clone, and string IDs work, which covers the agents SDK.",
+			"evidence": ["packages/runtime-node/src/bindings/durable-objects/facets.ts", "docs/modules/durable-objects.mdx"]
+		},
+		{
+			"product": "Worker Loader",
+			"orange": "One Node.js process per dynamic Worker in an agentOS VM, never on the host, Workers RPC over Cap'n Web",
+			"status": "partial",
+			"note": "get, load, fetch, and RPC work. getDurableObjectClass(), Python modules, and compiled Wasm modules throw.",
+			"evidence": ["docs/modules/worker-loader.mdx"]
+		},
+		{
+			"product": "Service bindings to other Workers",
+			"orange": "One runtime process per Worker in one orange dev session (orange dev -c a.jsonc -c b.jsonc), with fetch() and RPC over loopback HTTP",
+			"status": "partial",
+			"note": "fetch(), JS RPC, and named entrypoints work. connect() to another Worker works; WebSocket upgrades to another Worker throw. Workers in separate orange dev processes do not find each other.",
+			"evidence": ["docs/modules/multi-worker.mdx", "src/runtime/multi-worker.test.ts"]
+		},
+		{
+			"product": "Workers for Platforms (dispatch namespaces)",
+			"orange": "env.DISPATCHER.get(name) finds the user Worker by name among the Workers of the orange dev session",
+			"status": "partial",
+			"note": "Pass user Workers with more -c options. args, limits, and outbound Workers are ignored, and namespace membership is not checked.",
+			"evidence": ["docs/modules/multi-worker.mdx", "src/config/load-wrangler.ts"]
+		},
+		{
+			"product": "Sandboxes",
+			"orange": "@cloudflare/sandbox on the ORANGE_SANDBOX_PROVIDER backend: a local host directory (default), an embedded agentOS VM through @rivet-dev/agentos-core, or E2B, Daytona, or Freestyle through @rivet-dev/sandbox-adapter",
+			"status": "pluggable",
+			"note": "exec, files, processes, and preview URLs work. The image is ignored, and the local provider is not isolated. Sessions and the code interpreter throw, preview URLs need the local or agentOS provider, and agentOS VMs do not survive an orange dev restart.",
+			"evidence": ["docs/modules/sandbox.mdx", "packages/runtime-node/src/modules/cloudflare-sandbox/providers.ts"],
+			"configure": [
+				{ "variable": "ORANGE_SANDBOX_PROVIDER", "purpose": "local (default), agentos, e2b, daytona, or freestyle." },
+				{ "variable": "E2B_API_KEY, DAYTONA_API_KEY, FREESTYLE_API_KEY", "purpose": "Key for the chosen remote provider." },
+				{ "variable": "ORANGE_SANDBOX_DIR", "purpose": "Optional. Where the local provider keeps sandbox directories." }
+			]
+		},
+		{
+			"product": "Containers",
+			"orange": "No container runtime. A class listed under containers gets a ctx.container that runs one sandbox per object on ORANGE_SANDBOX_PROVIDER",
+			"status": "partial",
+			"note": "Images are not built or run, and start() takes only a Cloudflare Sandbox image (cloudflare/sandbox). start(), exec(), monitor(), destroy(), signal(), and getTcpPort().fetch() work. start({ entrypoint }), exec({ pty }), exec({ stdin }), the outbound HTTP intercepts, snapshotContainer(), and inspect() throw. ctx.container throws NotSupportedError in a class that containers does not list.",
+			"evidence": ["src/config/load-wrangler.ts", "packages/runtime-node/src/bindings/durable-objects/state.ts", "packages/runtime-node/src/modules/cloudflare-sandbox/container.ts", "src/runtime/sandbox.test.ts", "docs/modules/sandbox.mdx"]
+		},
+		{
+			"product": "Vectorize",
+			"orange": "Stub binding",
+			"status": "stub",
+			"note": "Calls throw. Use a vector database over fetch(), or SQLite with cosine similarity for small sets.",
+			"evidence": ["packages/runtime-node/src/bindings/unsupported.ts"]
+		},
+		{
+			"product": "Browser Rendering",
+			"orange": "Your own headless Chrome or a hosted browser, through its DevTools Protocol endpoint",
+			"status": "pluggable",
+			"note": "@cloudflare/puppeteer 1.x runs unchanged. With a browser you run, all sessions share it and its cookies; Browserbase starts a separate browser per session. browser.close() closes only the session's pages. keep_alive, location, and recording are ignored.",
+			"evidence": ["docs/modules/browser-rendering.mdx", "packages/runtime-node/src/bindings/browser/browser.ts"],
+			"configure": [
+				{ "variable": "ORANGE_BROWSER_CDP_URL", "purpose": "The browser's DevTools endpoint, such as http://127.0.0.1:9222. Without it, calls throw an error that names it." }
+			]
+		},
+		{
+			"product": "Images, Media, Stream",
+			"orange": "Stub bindings",
+			"status": "stub",
+			"note": "Calls throw. Use an image service such as imgproxy over fetch().",
+			"evidence": ["packages/runtime-node/src/bindings/unsupported.ts"]
+		},
+		{
+			"product": "Send Email",
+			"orange": "Your SMTP server, with inbound email on /cdn-cgi/handler/email",
+			"status": "pluggable",
+			"note": "send() takes an EmailMessage or a message object, with Cc, Bcc, and attachments, and enforces the address limits. A message POSTed to /cdn-cgi/handler/email runs email(), and forward() and reply() send over SMTP. Email Routing itself is Cloudflare-only, and Orange does not check sender domains.",
+			"evidence": ["docs/modules/email.mdx", "packages/runtime-node/src/bindings/email/send-email.ts", "packages/runtime-node/src/events/email.ts"],
+			"configure": [
+				{ "variable": "ORANGE_EMAIL_SMTP_URL", "purpose": "smtp:// (STARTTLS when offered) or smtps:// URL with the user name and password. Without it, send(), forward(), and reply() throw." },
+				{ "variable": "ORANGE_EMAIL_INBOUND_SECRET", "purpose": "Bearer token or Basic auth password for the inbound route. orange serve needs it; orange dev checks it when it is set." }
+			]
+		},
+		{
+			"product": "Hyperdrive",
+			"orange": "Direct connection to the database in the connection string",
+			"status": "drop-in",
+			"note": "Connects directly; no pooling or query cache",
+			"evidence": ["packages/runtime-node/src/bindings/hyperdrive.ts", "docs/modules/hyperdrive.mdx"]
+		},
+		{
+			"product": "Pipelines",
+			"orange": "Stub binding",
+			"status": "stub",
+			"note": "Calls throw.",
+			"evidence": ["packages/runtime-node/src/bindings/unsupported.ts"]
+		},
+		{
+			"product": "AI Search",
+			"orange": "Stub binding",
+			"status": "stub",
+			"note": "ai_search and ai_search_namespaces bindings, env.AI.autorag(), and env.AI.aiSearch() throw.",
+			"evidence": ["packages/runtime-node/src/bindings/unsupported.ts", "packages/runtime-node/src/bindings/ai/ai.ts"]
+		},
+		{
+			"product": "Analytics Engine",
+			"orange": "A dataset that drops every data point, as Miniflare does",
+			"status": "partial",
+			"note": "writeDataPoint() succeeds and stores nothing. There is no SQL API to query.",
+			"evidence": ["packages/runtime-node/src/bindings/analytics-engine.ts"]
+		},
+		{
+			"product": "mTLS certificates",
+			"orange": "Stub binding",
+			"status": "stub",
+			"note": "Calls throw.",
+			"evidence": ["packages/runtime-node/src/bindings/unsupported.ts"]
+		},
+		{
+			"product": "VPC",
+			"orange": "Stub bindings",
+			"status": "stub",
+			"note": "vpc_network and vpc_service calls throw. The host network is reachable with fetch() directly.",
+			"evidence": ["packages/runtime-node/src/bindings/unsupported.ts"]
+		},
+		{
+			"product": "Legacy blobs",
+			"orange": "Stub bindings",
+			"status": "stub",
+			"note": "text_blobs, data_blobs, and wasm_modules throw. Import the file from the Worker source instead.",
+			"evidence": ["packages/runtime-node/src/bindings/unsupported.ts"]
+		}
+	]
+}

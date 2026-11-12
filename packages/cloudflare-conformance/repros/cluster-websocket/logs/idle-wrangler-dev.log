@@ -1,0 +1,11 @@
+05:20:48 opened std-idle standard idle
+05:20:48 opened std-ping standard ping
+05:20:48 opened acc-ping accepted ping
+05:20:48 opened acc-idle2 accepted idle
+05:26:48 STILL OPEN std-idle after 360s pongs=0 sent=0 replies=0
+05:26:48 CLOSED std-idle after 360s code=1000 "done" pongs=0 sent=0 replies=0
+05:26:48 STILL OPEN std-ping after 360s pongs=11 sent=0 replies=0
+05:26:48 STILL OPEN acc-ping after 360s pongs=11 sent=0 replies=0
+05:26:48 CLOSED std-ping after 360s code=1000 "done" pongs=11 sent=0 replies=0
+05:26:48 STILL OPEN acc-idle2 after 360s pongs=0 sent=0 replies=0
+BDONE

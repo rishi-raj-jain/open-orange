@@ -1,0 +1,12 @@
+{
+	"name": "d1-migrations",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "comments",
+			"database_id": "d1-migrations-comments"
+		}
+	]
+}

@@ -1,0 +1,4858 @@
+{
+	"schemaVersion": 1,
+	"sources": {
+		"conformance": {
+			"date": "2026-11-10",
+			"orange": "ea40348",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+			"pass": 1670,
+			"total": 1851
+		},
+		"probes": {
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+			"ranAt": "2026-11-10T02:18:11.237Z"
+		},
+		"realProjects": {
+			"orange": [
+				"09b4d1d",
+				"96efb7b",
+				"cb1ffb0",
+				"e4c405f"
+			],
+			"rivetkit": [
+				"0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+			],
+			"ranAt": "2026-11-06T22:23:15.359Z"
+		},
+		"examples": {
+			"orange": "e4c405f",
+			"ranAt": "2026-11-05T02:59:45.716Z"
+		}
+	},
+	"emulatedHibernation": {
+		"note": "Orange emulates hibernation. When an object with open accepted WebSockets is idle, Orange drops the object and keeps its sockets open, and the next message or alarm builds the object again. The Rivet actor stays running the whole time, so the memory and the cost of each connected object remain. This is not Cloudflare's hibernation, where a hibernated object uses no memory and is not billed for duration. An emulated result shows what a step does when the sleep check also accepts this state as asleep. It never changes the status of a step or a claim. A project that fails only hibernation steps, and passes them all this way, shows as works, with emulated hibernation, and is counted apart from the projects that work.",
+		"steps": {
+			"pass": 25,
+			"ran": 26,
+			"total": 26
+		},
+		"projects": 23,
+		"orange": [
+			"ee0b731"
+		],
+		"rivetkit": [
+			"0.0.0-sqlite-sync-3-0-6-final.cf8679c"
+		],
+		"ranAt": "2026-11-10T02:16:54.992Z"
+	},
+	"summary": {
+		"claims": {
+			"works": 46,
+			"partial": 12,
+			"does-not-work": 5,
+			"not-run": 3
+		},
+		"projects": {
+			"works": 9,
+			"works-emulated": 19,
+			"partial": 8,
+			"fails": 0,
+			"needs-secrets": 14,
+			"not-run": 0
+		},
+		"unmodified": 38,
+		"failedSteps": [
+			{
+				"owner": "hibernation-not-available",
+				"label": "WebSocket hibernation not available on Rivet 3",
+				"steps": 26
+			},
+			{
+				"owner": "project",
+				"label": "The project's own code",
+				"steps": 2
+			},
+			{
+				"owner": "environment",
+				"label": "Test environment",
+				"steps": 1
+			}
+		]
+	},
+	"notices": [
+		{
+			"id": "websocket-hibernation",
+			"title": "WebSocket hibernation",
+			"availability": "coming-soon",
+			"cloudflare": "A socket stays open while the object sleeps, and a message wakes the object.",
+			"orange": "Orange emulates hibernation, and real hibernation is coming soon. When an object with an open accepted WebSocket is idle, Orange drops the object and its in-memory state and keeps the socket open. The next message builds a new instance of the object. The Rivet actor stays running the whole time, and it sleeps once the last socket closes. A client stays connected, but the actor does not sleep while it does.",
+			"why": "Rivet 3 has paused WebSocket hibernation, so an actor cannot sleep with a socket open. Orange hibernates the object inside the running actor instead.",
+			"action": "Have clients reconnect on any close, and don't depend on one close code. Keep anything that must survive hibernation or a restart in storage. Close sockets you no longer need, so the actor can sleep.",
+			"drawbacks": [
+				"An object with an open socket is always a running actor and does not scale to zero: the actor, its sockets, and their state stay in memory. Before the emulation, an idle awake object cost about 1.1 MB in total, in Orange and the Engine, and each idle socket on one object cost about 0.2 MB. About half of an object's cost stayed after it slept. Measured through `orange serve` on one machine, with 1,000 idle objects or 1,000 idle sockets on one object, and not measured again with the emulation. It is not a limit.",
+				"A deploy closes open sockets. On one cluster, each client reconnected on the first try: `1012` on 4 sockets and `1011` on 1. The object is a new instance, and storage survives. In-memory state and the old sockets do not. Whether the object gets `webSocketClose` during a rollout is not measured.",
+				"Old and new runners overlap for about 100 s during a rollout, and the Engine can place new objects on the old runner then. Those clients get cut off soon after opening.",
+				"Under `orange dev`, a restart closes open sockets with `1012` and a crash with `1006`. In both cases a reconnect works and storage survives.",
+				"Orange pings every network socket every 30 s, because Cloudflare closes idle sockets on pool URLs at 125 s with `1006`. With pings, idle sockets stayed open until a rollout closed them at 695 s. A Worker and its objects never see the pings. `wrangler dev` kept idle sockets open for 360 s with no pings. Real Cloudflare is not measured: its docs say idle sockets get closed and recommend a heartbeat.",
+				"A client whose connection is cut gives the object `webSocketClose` with `1006` within about 1 s. A client that stays connected but stops answering pings is closed with `1006` at about 90 s. The object sleeps after both.",
+				"`webSocketClose` gets `1001 \"gateway disconnected\"` where a client closed cleanly with `1000`. `wrangler dev` passes the client's code.",
+				"The object hibernates, but its actor does not sleep with a socket open. Real projects' steps that wait for every actor to sleep fail with `Some actor was still awake`. The real-project results show each of those steps again under a sleep check that also accepts the emulation."
+			],
+			"status": "partial",
+			"evidence": [
+				{
+					"source": {
+						"kind": "test-file",
+						"file": "synthetic--do-websocket-hibernation-test"
+					},
+					"label": "synthetic--do-websocket-hibernation-test",
+					"orange": "partial",
+					"counts": {
+						"pass": 2,
+						"total": 3
+					},
+					"error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal: | + actual - expected |"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "lifecycle",
+						"step": "hibernation: a socket stays open through the object's sleep, and a message wakes it"
+					},
+					"label": "lifecycle: hibernation: a socket stays open through the object's sleep, and a message wakes it",
+					"orange": "fail",
+					"workerd": "pass",
+					"error": "Some actor was still awake 45000ms after the last client activity"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "lifecycle",
+						"step": "open socket: an idle socket stays open past the sleep timeout"
+					},
+					"label": "lifecycle: open socket: an idle socket stays open past the sleep timeout",
+					"orange": "pass",
+					"workerd": "pass"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "lifecycle",
+						"step": "open socket: an idle object drops its in-memory state while its socket stays open"
+					},
+					"label": "lifecycle: open socket: an idle object drops its in-memory state while its socket stays open",
+					"orange": "pass",
+					"workerd": "pass"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "lifecycle",
+						"step": "open socket: the object sleeps after its last socket closes"
+					},
+					"label": "lifecycle: open socket: the object sleeps after its last socket closes",
+					"orange": "pass",
+					"workerd": "pass"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "lifecycle",
+						"step": "open socket: webSocketClose gets the client's close code"
+					},
+					"label": "lifecycle: open socket: webSocketClose gets the client's close code",
+					"orange": "fail",
+					"workerd": "pass",
+					"error": "/closed?room=k4 did not reach the expected state: {\"code\":1001}"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "lifecycle",
+						"step": "open socket: a restart closes it with 1012, and a reconnect finds storage"
+					},
+					"label": "lifecycle: open socket: a restart closes it with 1012, and a reconnect finds storage",
+					"orange": "pass",
+					"workerd": "fail"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "lifecycle",
+						"step": "open socket: a crash closes it with 1006, and a reconnect finds storage"
+					},
+					"label": "lifecycle: open socket: a crash closes it with 1006, and a reconnect finds storage",
+					"orange": "pass",
+					"workerd": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "an idle socket on a pool URL, with no pings, closes at 125 s with 1006"
+					},
+					"label": "cluster-websocket: an idle socket on a pool URL, with no pings, closes at 125 s with 1006",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "with pings, idle sockets stay open until a rollout closes them at 695 s"
+					},
+					"label": "cluster-websocket: with pings, idle sockets stay open until a rollout closes them at 695 s",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "a rollout closes sockets with 1012, and each client reconnects on the first try"
+					},
+					"label": "cluster-websocket: a rollout closes sockets with 1012, and each client reconnects on the first try",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "a socket can also close with 1011 when its object's generation ends"
+					},
+					"label": "cluster-websocket: a socket can also close with 1011 when its object's generation ends",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "after a rollout the object is a new instance, and an accepted socket's storage is kept"
+					},
+					"label": "cluster-websocket: after a rollout the object is a new instance, and an accepted socket's storage is kept",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "a cut client gives the object webSocketClose 1006 within about 1 s, and the object sleeps"
+					},
+					"label": "cluster-websocket: a cut client gives the object webSocketClose 1006 within about 1 s, and the object sleeps",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "a client that stops answering pings is closed with 1006 at about 90 s, and the object sleeps"
+					},
+					"label": "cluster-websocket: a client that stops answering pings is closed with 1006 at about 90 s, and the object sleeps",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "cluster-websocket",
+						"step": "wrangler dev keeps idle sockets open for 360 s with no pings"
+					},
+					"label": "cluster-websocket: wrangler dev keeps idle sockets open for 360 s with no pings",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "keep-awake-memory",
+						"step": "1,000 objects with one idle socket each cost about 1.1 MB per object"
+					},
+					"label": "keep-awake-memory: 1,000 objects with one idle socket each cost about 1.1 MB per object",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "keep-awake-memory",
+						"step": "1,000 idle sockets on one object cost about 0.2 MB per socket after a long hold"
+					},
+					"label": "keep-awake-memory: 1,000 idle sockets on one object cost about 0.2 MB per socket after a long hold",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "repro",
+						"repro": "keep-awake-memory",
+						"step": "about half of an object's cost stays after it sleeps"
+					},
+					"label": "keep-awake-memory: about half of an object's cost stays after it sleeps",
+					"orange": "pass"
+				}
+			]
+		}
+	],
+	"areas": [
+		{
+			"id": "sqlite",
+			"title": "SQLite",
+			"summary": "Durable Object SQL and D1 run on RivetKit's SQLite 3.46. It is a different build from workerd's, so most SQL runs the same and a known set does not. Each row says what to write instead.",
+			"claims": [
+				{
+					"id": "sqlite-features",
+					"title": "JSON, FTS5, RETURNING, UPSERT, window functions, CTEs, STRICT, generated columns, foreign keys",
+					"cloudflare": "Available.",
+					"orange": "Same.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "JSON: json_extract and ->> run"
+							},
+							"label": "sqlite-surface: JSON: json_extract and ->> run",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "JSON: json_each runs"
+							},
+							"label": "sqlite-surface: JSON: json_each runs",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "FTS5: a full-text table can be created and searched"
+							},
+							"label": "sqlite-surface: FTS5: a full-text table can be created and searched",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "RETURNING and UPSERT run"
+							},
+							"label": "sqlite-surface: RETURNING and UPSERT run",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "window functions, CTEs, STRICT, and generated columns run"
+							},
+							"label": "sqlite-surface: window functions, CTEs, STRICT, and generated columns run",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "foreign keys are enforced by default"
+							},
+							"label": "sqlite-surface: foreign keys are enforced by default",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "math: abs() and round() run (core SQLite)"
+							},
+							"label": "sqlite-surface: math: abs() and round() run (core SQLite)",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "sqlite-durability",
+					"title": "Rows across sleep and restart",
+					"cloudflare": "Rows are durable.",
+					"orange": "Same. Rows survive the object's sleep and an orange dev and Engine restart.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "rows survive the object's sleep"
+							},
+							"label": "sqlite-surface: rows survive the object's sleep",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "rows survive a restart"
+							},
+							"label": "sqlite-surface: rows survive a restart",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "sqlite-math",
+					"title": "Math functions: cos, sin, sqrt, pow, floor, ceil, and the rest",
+					"cloudflare": "Available.",
+					"orange": "Fails with `no such function: cos`, in Durable Object SQL and in D1.",
+					"why": "RivetKit's SQLite is built without the optional math function set.",
+					"action": "Compute in JavaScript after you read the row, or store the computed value in a column. `abs()` and `round()` are core SQLite and run.",
+					"status": "does-not-work",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--sql-test > main"
+							},
+							"label": "api-tests--sql-test > main",
+							"orange": "fail",
+							"error": "Error: no such function: cos at offset 7: SQLITE_ERROR"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "math: cos() runs"
+							},
+							"label": "sqlite-surface: math: cos() runs",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "no such function: cos at offset 7: SQLITE_ERROR"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "math: sqrt() and pow() run"
+							},
+							"label": "sqlite-surface: math: sqrt() and pow() run",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "no such function: sqrt at offset 7: SQLITE_ERROR"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "math: floor() and ceil() run"
+							},
+							"label": "sqlite-surface: math: floor() and ceil() run",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "no such function: floor at offset 7: SQLITE_ERROR"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "D1: cos() runs"
+							},
+							"label": "sqlite-surface: D1: cos() runs",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "D1_ERROR: no such function: cos at offset 7: SQLITE_ERROR"
+						}
+					]
+				},
+				{
+					"id": "sqlite-delete-limit",
+					"title": "`DELETE ... LIMIT` and `UPDATE ... LIMIT`",
+					"cloudflare": "Available.",
+					"orange": "Fails with `near \"LIMIT\": syntax error`, in Durable Object SQL and in D1.",
+					"why": "RivetKit's SQLite is built without that optional grammar.",
+					"action": "Write `DELETE FROM t WHERE rowid IN (SELECT rowid FROM t WHERE ... ORDER BY ... LIMIT n)`. The same form works for `UPDATE`, and it runs on Cloudflare too.",
+					"status": "does-not-work",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > deleteWithLimit"
+							},
+							"label": "synthetic--do-sql-test > deleteWithLimit",
+							"orange": "fail",
+							"error": "Error: near \"LIMIT\": syntax error at offset 19: SQLITE_ERROR"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "DELETE ... LIMIT runs"
+							},
+							"label": "sqlite-surface: DELETE ... LIMIT runs",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "near \"LIMIT\": syntax error at offset 35: SQLITE_ERROR"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "UPDATE ... LIMIT runs"
+							},
+							"label": "sqlite-surface: UPDATE ... LIMIT runs",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "near \"LIMIT\": syntax error at offset 45: SQLITE_ERROR"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "D1: DELETE ... LIMIT runs"
+							},
+							"label": "sqlite-surface: D1: DELETE ... LIMIT runs",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "D1_ERROR: near \"LIMIT\": syntax error at offset 26: SQLITE_ERROR"
+						}
+					]
+				},
+				{
+					"id": "sqlite-delete-limit-workaround",
+					"title": "The portable form of `DELETE ... LIMIT`",
+					"cloudflare": "Available.",
+					"orange": "Same. `WHERE rowid IN (SELECT rowid ... LIMIT n)` deletes n rows.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "workaround: DELETE WHERE rowid IN (SELECT ... LIMIT n) deletes n rows"
+							},
+							"label": "sqlite-surface: workaround: DELETE WHERE rowid IN (SELECT ... LIMIT n) deletes n rows",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "sqlite-rows-read",
+					"title": "`cursor.rowsRead` and D1 `meta.rows_read`",
+					"cloudflare": "Counts rows the query scanned. Cloudflare bills on it.",
+					"orange": "Counts rows the query returned. A query that scans 5 rows and returns 1 reports 1.",
+					"why": "RivetKit returns finished results and has no scan counters. Orange has no per-row billing to match.",
+					"action": "Do not build cost limits or query-plan checks on this number. To check that a query uses an index, run `EXPLAIN QUERY PLAN`.",
+					"status": "does-not-work",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > readRowCounters"
+							},
+							"label": "synthetic--do-sql-test > readRowCounters",
+							"orange": "fail",
+							"error": "AssertionError: 0 == 1"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > largeRowCounters"
+							},
+							"label": "synthetic--do-sql-test > largeRowCounters",
+							"orange": "fail",
+							"error": "AssertionError: 0 == 1"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "counters: rowsRead counts scanned rows, not returned rows"
+							},
+							"label": "sqlite-surface: counters: rowsRead counts scanned rows, not returned rows",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "Expected values to be strictly equal:\n\n1 !== 5\n"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "D1: meta.rows_read counts scanned rows"
+							},
+							"label": "sqlite-surface: D1: meta.rows_read counts scanned rows",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "Expected values to be strictly equal:\n\n1 !== 3\n"
+						}
+					]
+				},
+				{
+					"id": "sqlite-rows-written",
+					"title": "`cursor.rowsWritten`",
+					"cloudflare": "Counts every row written, including index and trigger writes. Cloudflare bills on it.",
+					"orange": "Counts changed rows from SQLite's change count. Plain inserts match. Index and trigger writes are not counted.",
+					"why": "It comes from `sqlite3_changes()`, which does not see those writes.",
+					"action": "Use it to learn how many rows a statement changed. Do not use it as a billing estimate.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "counters: rowsWritten counts a plain insert"
+							},
+							"label": "sqlite-surface: counters: rowsWritten counts a plain insert",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "counters: rowsWritten counts index writes"
+							},
+							"label": "sqlite-surface: counters: rowsWritten counts index writes",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "Expected values to be strictly equal:\n\n1 !== 2\n"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > writeRowCounters"
+							},
+							"label": "synthetic--do-sql-test > writeRowCounters",
+							"orange": "fail",
+							"error": "AssertionError: Expected values to be loosely deep-equal: |  | {"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > triggerRowCounters"
+							},
+							"label": "synthetic--do-sql-test > triggerRowCounters",
+							"orange": "fail",
+							"error": "AssertionError: 1 == 2"
+						}
+					]
+				},
+				{
+					"id": "sqlite-authorizer",
+					"title": "SQL that Cloudflare's authorizer blocks",
+					"cloudflare": "Rejects `ATTACH`, most `PRAGMA`s, and internal functions, also inside `DEFAULT` expressions.",
+					"orange": "They run, against the object's own database. Orange blocks only reserved table names and transaction control.",
+					"why": "RivetKit's SQLite has no authorizer hook. An object's code is trusted app code and each object has its own database, so this does not cross a boundary.",
+					"action": "Code that runs on Cloudflare runs the same here. If you may go back to Cloudflare, keep to its allow-list, because Orange will not stop you.",
+					"status": "does-not-work",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > authorizerDefaultExpressions"
+							},
+							"label": "synthetic--do-sql-test > authorizerDefaultExpressions",
+							"orange": "fail",
+							"error": "AssertionError: Missing expected exception."
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > internalFunctionsBlocked"
+							},
+							"label": "synthetic--do-sql-test > internalFunctionsBlocked",
+							"orange": "fail",
+							"error": "AssertionError: Missing expected exception."
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "authorizer: PRAGMA journal_mode = DELETE is rejected"
+							},
+							"label": "sqlite-surface: authorizer: PRAGMA journal_mode = DELETE is rejected",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "Missing expected rejection."
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "authorizer: ATTACH is rejected"
+							},
+							"label": "sqlite-surface: authorizer: ATTACH is rejected",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "Missing expected rejection."
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "authorizer: sqlite_compileoption_used() is rejected"
+							},
+							"label": "sqlite-surface: authorizer: sqlite_compileoption_used() is rejected",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "Missing expected rejection."
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "authorizer: blocked function in a DEFAULT expression is rejected"
+							},
+							"label": "sqlite-surface: authorizer: blocked function in a DEFAULT expression is rejected",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "Missing expected rejection."
+						}
+					]
+				},
+				{
+					"id": "sqlite-reserved-names",
+					"title": "Reserved `_cf_` tables, such as `_cf_KV`",
+					"cloudflare": "Reading them fails with `access to _cf_KV.key is prohibited`.",
+					"orange": "Reading them also fails, with `not authorized`.",
+					"why": "Orange blocks the names with a text check, not a SQLite authorizer, so the message cannot name the column.",
+					"action": "Treat any error here as a refusal. Do not match on its text.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "reserved names: reading _cf_KV is rejected"
+							},
+							"label": "sqlite-surface: reserved names: reading _cf_KV is rejected",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "reserved names: the _cf_KV error names the column"
+							},
+							"label": "sqlite-surface: reserved names: the _cf_KV error names the column",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "The input did not match the regular expression /access to _cf_KV\\.key is prohibited/. Input:\n\n'Error: not authorized'\n"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "synthetic--do-sql-test > regulatorReservedNames"
+							},
+							"label": "synthetic--do-sql-test > regulatorReservedNames",
+							"orange": "fail",
+							"error": "AssertionError: The input did not match the regular expression /access to _cf_KV\\.key is prohibited/. Input: |  | 'Error: not authorized'"
+						}
+					]
+				},
+				{
+					"id": "sqlite-rivet-tables",
+					"title": "Rivet's `_rivet_` tables in `sqlite_master`",
+					"cloudflare": "No such tables. Code can dump every table it finds, apart from `_cf_`.",
+					"orange": "Orange leaves RivetKit's `_rivet_` tables out of `sqlite_master`, `sqlite_schema`, and `PRAGMA table_list`, so code that walks every table and dumps it works. A query that renames the `name` and `tbl_name` columns, or only counts or aggregates rows, still sees them, and reading one fails with `not authorized`.",
+					"why": "RivetKit keeps its internal tables in the object's own database.",
+					"action": "Do not name your tables `_rivet_*`. If you count or aggregate over `sqlite_master`, skip names that start with `_rivet_` as well as `_cf_`.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "reserved names: sqlite_master lists no _rivet_ table"
+							},
+							"label": "sqlite-surface: reserved names: sqlite_master lists no _rivet_ table",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "dump: every table sqlite_master lists can be read"
+							},
+							"label": "sqlite-surface: dump: every table sqlite_master lists can be read",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "sqlite-multi-statement",
+					"title": "Multi-statement `exec()`",
+					"cloudflare": "Bindings apply to the last statement. Only its rows return.",
+					"orange": "Unbound scripts run and return the last statement's rows. Bindings on a script throw `OpenOrange does not yet support bindings on multi-statement SQL`.",
+					"why": "RivetKit's script call takes no bindings.",
+					"action": "Send a bound statement on its own. For several together, wrap them in `ctx.storage.transactionSync()`.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "multi-statement: only the last statement's rows return"
+							},
+							"label": "sqlite-surface: multi-statement: only the last statement's rows return",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "multi-statement: bindings apply to the last statement"
+							},
+							"label": "sqlite-surface: multi-statement: bindings apply to the last statement",
+							"orange": "fail",
+							"workerd": "pass",
+							"error": "OpenOrange does not yet support bindings on multi-statement SQL"
+						}
+					]
+				},
+				{
+					"id": "sqlite-transactions-in-sql",
+					"title": "`BEGIN` and `COMMIT` in SQL, empty-result `columnNames`",
+					"cloudflare": "`BEGIN` is rejected, and an empty result keeps its columns.",
+					"orange": "Same.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "BEGIN in SQL is rejected, as on Cloudflare"
+							},
+							"label": "sqlite-surface: BEGIN in SQL is rejected, as on Cloudflare",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "empty result keeps columnNames"
+							},
+							"label": "sqlite-surface: empty result keeps columnNames",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "sqlite-workerd-suite",
+					"title": "workerd's own SQL tests",
+					"orange": "`api-tests--sql-test` and the do-sql tests ported from workerd's C++ tests. What fails is listed in the rows above.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "synthetic--do-sql-test"
+							},
+							"label": "synthetic--do-sql-test",
+							"orange": "partial",
+							"counts": {
+								"pass": 7,
+								"total": 15
+							},
+							"error": "AssertionError: Missing expected exception."
+						},
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "api-tests--sql-test"
+							},
+							"label": "api-tests--sql-test",
+							"orange": "partial",
+							"counts": {
+								"pass": 8,
+								"total": 9
+							},
+							"error": "Error: no such function: cos at offset 7: SQLITE_ERROR"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "durable-objects",
+			"title": "Durable Objects",
+			"summary": "Each object is one Rivet Actor. Storage, alarms, RPC, and WebSockets follow workerd's behaviour, checked against workerd's own tests.",
+			"claims": [
+				{
+					"id": "do-storage",
+					"title": "Storage API: get, put, list, delete, transaction, sync KV",
+					"cloudflare": "Available.",
+					"orange": "Same, stored in the object's SQLite.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "synthetic--do-storage-test"
+							},
+							"label": "synthetic--do-storage-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 24,
+								"total": 24
+							}
+						},
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "api-tests--actor-kv-test"
+							},
+							"label": "api-tests--actor-kv-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 1,
+								"total": 1
+							}
+						},
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "api-tests--sync-kv-test"
+							},
+							"label": "api-tests--sync-kv-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 1,
+								"total": 1
+							}
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "storage: a value survives the object's sleep"
+							},
+							"label": "lifecycle: storage: a value survives the object's sleep",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "do-kv-backed",
+					"title": "KV-backed classes (`new_classes`)",
+					"cloudflare": "A separate storage backend with no SQL.",
+					"orange": "Accepted, and stored in SQLite like every other class, so the class can also use SQL. There is no import of data from a Cloudflare KV-backed object.",
+					"action": "New code runs unchanged. To move a live object off Cloudflare, read its data out through its own API.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "KV-backed class: the storage API keeps a value"
+							},
+							"label": "lifecycle: KV-backed class: the storage API keeps a value",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "KV-backed class: SQL is available"
+							},
+							"label": "lifecycle: KV-backed class: SQL is available",
+							"orange": "pass",
+							"workerd": "fail"
+						}
+					]
+				},
+				{
+					"id": "do-ids-gates",
+					"title": "Object ids and input gates",
+					"cloudflare": "Available.",
+					"orange": "Same.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "synthetic--do-id-test"
+							},
+							"label": "synthetic--do-id-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 2,
+								"total": 2
+							}
+						},
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "synthetic--do-input-gate-test"
+							},
+							"label": "synthetic--do-input-gate-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 5,
+								"total": 5
+							}
+						},
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "api-tests--actor-block-concurrency-depth-test"
+							},
+							"label": "api-tests--actor-block-concurrency-depth-test",
+							"orange": "not-run"
+						}
+					]
+				},
+				{
+					"id": "do-alarms",
+					"title": "Alarms",
+					"cloudflare": "An alarm fires on time, wakes a sleeping object, and survives a restart.",
+					"orange": "Same, when the process is up at the alarm's time.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "synthetic--do-alarm-test"
+							},
+							"label": "synthetic--do-alarm-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 17,
+								"total": 17
+							}
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "alarm: fires on time"
+							},
+							"label": "lifecycle: alarm: fires on time",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "alarm: wakes a sleeping object with no request"
+							},
+							"label": "lifecycle: alarm: wakes a sleeping object with no request",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "alarm: a future alarm survives a restart"
+							},
+							"label": "lifecycle: alarm: a future alarm survives a restart",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "do-alarm-overdue",
+					"title": "An alarm due while the process is down",
+					"cloudflare": "Fires when the runtime comes back.",
+					"orange": "Same. It fires after a restart, with no request.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "alarm: an alarm due while the process is down fires after a restart, with no request"
+							},
+							"label": "lifecycle: alarm: an alarm due while the process is down fires after a restart, with no request",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "do-rpc",
+					"title": "RPC and entrypoints",
+					"cloudflare": "Available.",
+					"orange": "Stubs, `WorkerEntrypoint`, `RpcTarget`, and streams work. Calls from one process to one object keep the order they were made in, whichever stub made them, as in workerd. Other failing tests are in the report.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "area",
+								"area": "RPC + entrypoints"
+							},
+							"label": "workerd tests: RPC + entrypoints",
+							"orange": "partial",
+							"counts": {
+								"pass": 154,
+								"total": 179
+							}
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--request-signal-enabled > abortIfClientAbandonsRequest"
+							},
+							"label": "api-tests--request-signal-enabled > abortIfClientAbandonsRequest",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--request-signal-enabled > abortedRequestDoesNotAbortSubrequest"
+							},
+							"label": "api-tests--request-signal-enabled > abortedRequestDoesNotAbortSubrequest",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "do-websockets",
+					"title": "WebSockets through an object",
+					"cloudflare": "Available.",
+					"orange": "Same, while the object stays awake.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "synthetic--do-websocket-test"
+							},
+							"label": "synthetic--do-websocket-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 11,
+								"total": 11
+							}
+						},
+						{
+							"source": {
+								"kind": "project",
+								"project": "workers-chat-demo",
+								"step": "two clients chat in a room, and history is kept"
+							},
+							"label": "workers-chat-demo: two clients chat in a room, and history is kept",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "do-self-close",
+					"title": "An object that closes its own socket can still sleep",
+					"cloudflare": "Available.",
+					"orange": "Same.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "hibernation: an object that closes its own socket still sleeps"
+							},
+							"label": "lifecycle: hibernation: an object that closes its own socket still sleeps",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "do-facets",
+					"title": "Durable Object facets",
+					"cloudflare": "Available.",
+					"orange": "A child Rivet Actor per facet, with abort, class swap, and delete.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "facets-loader"
+							},
+							"label": "example: facets-loader",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "do-runner-half-open",
+					"title": "A runner whose Engine connection goes half-open",
+					"cloudflare": "Not applicable: Cloudflare has no runner to reconnect.",
+					"orange": "A closed socket reconnects. A socket that stays open and stops carrying data never does: the node leaves the pool, the runner logs nothing, and Durable Object calls return 500 after 45 s. Reproduced locally with a TCP proxy. Not proven on a cluster: one cluster outage had matching symptoms.",
+					"why": "A RivetKit bug: the envoy client's read loop has no deadline, so nothing notices silence while connected.",
+					"action": "Until the fix ships, watch the node count in `/pools/{pool}/nodes` and restart a runner that has no node.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "repro",
+								"repro": "runner-half-open",
+								"step": "a runner reconnects after its Engine socket closes"
+							},
+							"label": "runner-half-open: a runner reconnects after its Engine socket closes",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "repro",
+								"repro": "runner-half-open",
+								"step": "a runner reconnects after its Engine socket stops carrying data"
+							},
+							"label": "runner-half-open: a runner reconnects after its Engine socket stops carrying data",
+							"orange": "fail",
+							"error": "75 s after the fault: 0 nodes, object call 500 in 45013ms"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "bindings",
+			"title": "Bindings",
+			"summary": "Each binding runs on Rivet Actors unless noted. The scaling table below says how each one grows.",
+			"claims": [
+				{
+					"id": "binding-kv",
+					"title": "KV",
+					"cloudflare": "Eventually consistent, with a global edge cache.",
+					"orange": "Strongly consistent. Reads never see stale values, and `cacheStatus` is always null.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "kv"
+							},
+							"label": "example: kv",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-d1",
+					"title": "D1",
+					"cloudflare": "Available.",
+					"orange": "`prepare`, `batch`, and migrations work, on the SQLite build above. Everything in the SQLite section applies.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "d1-migrations"
+							},
+							"label": "example: d1-migrations",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "sqlite-surface",
+								"step": "D1: batch() runs statements in order"
+							},
+							"label": "sqlite-surface: D1: batch() runs statements in order",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-r2",
+					"title": "R2",
+					"cloudflare": "Available.",
+					"orange": "On an S3-compatible store per bucket, or in actor SQLite when none is set. In actor SQLite, Rivet's storage limit for one actor bounds a bucket. SSE-C keys throw.",
+					"action": "In production, set `ORANGE_R2_<BUCKET>_S3_*`.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "r2"
+							},
+							"label": "example: r2",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-queues",
+					"title": "Queues",
+					"cloudflare": "Available.",
+					"orange": "Delays, retries, dead letter queues, and batches work. One batch at a time per queue.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "queues"
+							},
+							"label": "example: queues",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-workflows",
+					"title": "Workflows",
+					"cloudflare": "Available.",
+					"orange": "Steps, retries, sleeps, events, `terminate`, `pause`, `resume`, and `restart` work. `terminate` cannot stop a step callback that is already running.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "workflows"
+							},
+							"label": "example: workflows",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "Workflows: create, step, status, complete"
+							},
+							"label": "lifecycle: Workflows: create, step, status, complete",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "Workflows: sendEvent releases a waiting instance"
+							},
+							"label": "lifecycle: Workflows: sendEvent releases a waiting instance",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "Workflows: terminate() ends a waiting instance"
+							},
+							"label": "lifecycle: Workflows: terminate() ends a waiting instance",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "Workflows: pause() and resume()"
+							},
+							"label": "lifecycle: Workflows: pause() and resume()",
+							"orange": "pass",
+							"workerd": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "lifecycle",
+								"step": "Workflows: restart() runs a finished instance again"
+							},
+							"label": "lifecycle: Workflows: restart() runs a finished instance again",
+							"orange": "pass",
+							"workerd": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-rate-limiting",
+					"title": "Rate Limiting",
+					"cloudflare": "Local to each edge location, and approximate.",
+					"orange": "One exact counter per namespace.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "rate-limiting"
+							},
+							"label": "example: rate-limiting",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-cache",
+					"title": "Cache API",
+					"cloudflare": "Available.",
+					"orange": "`caches.default` and named caches work, on Miniflare's freshness rules. Set `ORANGE_CACHE=off` to turn it off.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "cache-api"
+							},
+							"label": "example: cache-api",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-cron",
+					"title": "Cron Triggers",
+					"cloudflare": "Available.",
+					"orange": "Full Cloudflare cron syntax, including `LW` and `#`.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "cron"
+							},
+							"label": "example: cron",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-ai",
+					"title": "Workers AI",
+					"cloudflare": "Models on Cloudflare's network.",
+					"orange": "Any OpenAI-compatible provider. It needs your key, and `@cf/` model names need a mapping in `ORANGE_AI_MODELS`.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "workers-ai"
+							},
+							"label": "example: workers-ai",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-sandbox",
+					"title": "Sandboxes",
+					"cloudflare": "On Cloudflare Containers.",
+					"orange": "`@cloudflare/sandbox` on your choice of provider, set by `ORANGE_SANDBOX_PROVIDER`.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "sandbox"
+							},
+							"label": "example: sandbox",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "example",
+								"example": "sandbox-v1"
+							},
+							"label": "example: sandbox-v1",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-services",
+					"title": "Service bindings and dispatch namespaces",
+					"cloudflare": "Available.",
+					"orange": "Across the Workers of one `orange dev` session. `orange deploy` ships one Worker at a time, so a binding to another Worker has nothing to reach on a pool.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "example",
+								"example": "multi-worker"
+							},
+							"label": "example: multi-worker",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "example",
+								"example": "rpc-entrypoints"
+							},
+							"label": "example: rpc-entrypoints",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-services-connect",
+					"title": "`connect()` through a service binding to another Worker",
+					"cloudflare": "Available.",
+					"orange": "A call reaches the `connect()` handler in another Worker of the `orange dev` session.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--connect-handler-test > localAddressViaServiceBinding"
+							},
+							"label": "api-tests--connect-handler-test > localAddressViaServiceBinding",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-services-events",
+					"title": "`queue()` and `scheduled()` on a service binding",
+					"cloudflare": "Available.",
+					"orange": "Both run the handler and report its outcome. `queue()` reads workerd's `serializedBody` format, and a crafted payload fails the event. A `serializedBody` holding a stream, stub, or abort signal also fails the event. A decoded `Headers` isn't immutable, because Orange has no `Headers` guard. Unlike `connect()`, both calls reject when the binding points at another Worker of an `orange dev` session.",
+					"action": "In `orange dev`, call `queue()` and `scheduled()` on a binding to the same Worker. Send plain values in `serializedBody`.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test-file",
+								"file": "api-tests--deserialize-hardening-test"
+							},
+							"label": "api-tests--deserialize-hardening-test",
+							"orange": "pass",
+							"counts": {
+								"pass": 6,
+								"total": 6
+							}
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--queue-metadata-test > queue-metadata-test"
+							},
+							"label": "api-tests--queue-metadata-test > queue-metadata-test",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-send-email",
+					"title": "Send Email (`send_email`)",
+					"cloudflare": "Sends mail from a Worker. `destination_address` and the allow lists limit who it can reach.",
+					"orange": "Sends through the SMTP server in `ORANGE_EMAIL_SMTP_URL`. Both an `EmailMessage` and the message object work, with Cc, Bcc, and attachments. A recipient outside the address limits is refused before anything is sent. Without the variable, `send()` throws an error that names it.",
+					"action": "Set `ORANGE_EMAIL_SMTP_URL` to your mail provider's SMTP endpoint.",
+					"drawbacks": [
+						"You bring the SMTP provider. Orange does not check sender domains or verified destinations. Your provider does its own checks."
+					],
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "email",
+								"step": "Send Email: an EmailMessage with its own MIME arrives over SMTP"
+							},
+							"label": "email: Send Email: an EmailMessage with its own MIME arrives over SMTP",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "email",
+								"step": "Send Email: a message object arrives with its Cc, Bcc, and attachment"
+							},
+							"label": "email: Send Email: a message object arrives with its Cc, Bcc, and attachment",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "email",
+								"step": "Send Email: a recipient outside allowed_destination_addresses is refused, and nothing is sent"
+							},
+							"label": "email: Send Email: a recipient outside allowed_destination_addresses is refused, and nothing is sent",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "project",
+								"project": "agentic-inbox",
+								"step": "a sent email and a threaded reply are delivered over SMTP through the send_email binding"
+							},
+							"label": "agentic-inbox: a sent email and a threaded reply are delivered over SMTP through the send_email binding",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-email",
+					"title": "Inbound email: `email()`, `forward()`, and `reply()`",
+					"cloudflare": "Email Routing delivers mail to the `email()` handler, and `message.forward()` and `message.reply()` send it on.",
+					"orange": "A message POSTed to `/cdn-cgi/handler/email` runs `email()`: raw MIME, or a SendGrid or Mailgun inbound webhook. `forward()` and `reply()` send through `ORANGE_EMAIL_SMTP_URL`, and `setReject()` answers 400. With `ORANGE_EMAIL_INBOUND_SECRET` set, a wrong secret gets 401 and `email()` does not run. `orange serve` serves the route only when the secret is set. The evidence here runs on `orange dev`.",
+					"why": "Email Routing itself, Cloudflare's MX and routing rules, is Cloudflare-only. Orange has no mail server, so something else must receive the mail and POST it.",
+					"action": "Point your mail provider's inbound webhook at `/cdn-cgi/handler/email`, with the secret.",
+					"drawbacks": [
+						"Email Routing is Cloudflare-only. A provider such as SendGrid or Mailgun must receive the mail."
+					],
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "email",
+								"step": "Inbound email: a POSTed message runs email(), and forward() sends it on over SMTP"
+							},
+							"label": "email: Inbound email: a POSTed message runs email(), and forward() sends it on over SMTP",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "email",
+								"step": "Inbound email: reply() sends the Worker's reply, with In-Reply-To"
+							},
+							"label": "email: Inbound email: reply() sends the Worker's reply, with In-Reply-To",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "email",
+								"step": "Inbound email: setReject() answers 400"
+							},
+							"label": "email: Inbound email: setReject() answers 400",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "email",
+								"step": "Inbound email: a wrong secret gets 401, and email() does not run"
+							},
+							"label": "email: Inbound email: a wrong secret gets 401, and email() does not run",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "project",
+								"project": "vmail",
+								"step": "an inbound email goes through email() into the mailbox, and the mailbox lists it"
+							},
+							"label": "vmail: an inbound email goes through email() into the mailbox, and the mailbox lists it",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "project",
+								"project": "vmail",
+								"step": "an email to a mailbox that was never created is rejected"
+							},
+							"label": "vmail: an email to a mailbox that was never created is rejected",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "project",
+								"project": "agentic-inbox",
+								"step": "an inbound email goes through the Worker's email() handler into the inbox"
+							},
+							"label": "agentic-inbox: an inbound email goes through the Worker's email() handler into the inbox",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-browser",
+					"title": "Browser Rendering (`browser`)",
+					"cloudflare": "`@cloudflare/puppeteer` drives a browser that Cloudflare runs.",
+					"orange": "`@cloudflare/puppeteer` 1.x works unchanged against the Chrome in `ORANGE_BROWSER_CDP_URL`: pages, screenshots, and sessions, with requests at once each in their own page. `browser.close()` closes only that session's pages. Without the variable, `fetch()` throws an error that names it.",
+					"action": "Run a headless Chrome that the runner can reach, and set `ORANGE_BROWSER_CDP_URL` to it.",
+					"drawbacks": [
+						"You run the browser. All sessions share it, so they share cookies and storage.",
+						"A session ends with its WebSocket, so `connect()` cannot rejoin a session after `disconnect()`.",
+						"`keep_alive`, `location`, and recording are accepted and ignored."
+					],
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "browser-rendering",
+								"step": "launch() opens a page in the configured browser, reads it, and takes a PNG screenshot"
+							},
+							"label": "browser-rendering: launch() opens a page in the configured browser, reads it, and takes a PNG screenshot",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "browser-rendering",
+								"step": "two requests at once each read their own page"
+							},
+							"label": "browser-rendering: two requests at once each read their own page",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "browser-rendering",
+								"step": "browser.close() ends the session, and the next launch still works"
+							},
+							"label": "browser-rendering: browser.close() ends the session, and the next launch still works",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "browser-rendering",
+								"step": "connect() to a session that is in use is refused"
+							},
+							"label": "browser-rendering: connect() to a session that is in use is refused",
+							"orange": "pass"
+						}
+					]
+				},
+				{
+					"id": "binding-stubs",
+					"title": "Vectorize, Images, Pipelines, mTLS",
+					"cloudflare": "Available.",
+					"orange": "Not implemented. Config loads, and a call throws a clear error that names the binding.",
+					"action": "Call your provider's HTTP API with `fetch()`.",
+					"status": "does-not-work",
+					"evidence": [
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "stub-bindings",
+								"step": "Vectorize: query() runs"
+							},
+							"label": "stub-bindings: Vectorize: query() runs",
+							"orange": "fail",
+							"error": "Vectorize binding \"VECTORIZE\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "stub-bindings",
+								"step": "Images: info() runs"
+							},
+							"label": "stub-bindings: Images: info() runs",
+							"orange": "fail",
+							"error": "Images binding \"IMAGES\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "stub-bindings",
+								"step": "Pipelines: send() runs"
+							},
+							"label": "stub-bindings: Pipelines: send() runs",
+							"orange": "fail",
+							"error": "Pipelines binding \"PIPELINE\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+						},
+						{
+							"source": {
+								"kind": "probe",
+								"probe": "stub-bindings",
+								"step": "mTLS certificates: fetch() runs"
+							},
+							"label": "stub-bindings: mTLS certificates: fetch() runs",
+							"orange": "fail",
+							"error": "mTLS certificate binding \"CERT\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+						}
+					]
+				},
+				{
+					"id": "binding-containers",
+					"title": "Containers",
+					"cloudflare": "Available.",
+					"orange": "No container runtime. The config loads with a warning. A class listed under `containers` gets a `ctx.container` that runs only Cloudflare Sandbox images, on `ORANGE_SANDBOX_PROVIDER`. Not run here.",
+					"status": "not-run",
+					"evidence": []
+				}
+			]
+		},
+		{
+			"id": "runtime",
+			"title": "Runtime",
+			"summary": "Workers run on Node.js with workerd-shaped globals. These counts are workerd's own test suite, scored only where workerd itself passes.",
+			"claims": [
+				{
+					"id": "runtime-node",
+					"title": "Node.js compatibility",
+					"orange": "Stock Node.js built-ins. Tests that only pass because of a workerd stub do not count.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "area",
+								"area": "Node.js compat"
+							},
+							"label": "workerd tests: Node.js compat",
+							"orange": "partial",
+							"counts": {
+								"pass": 758,
+								"total": 771
+							}
+						}
+					]
+				},
+				{
+					"id": "runtime-web",
+					"title": "Web platform",
+					"orange": "The report groups the failures by cause.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "area",
+								"area": "Web platform"
+							},
+							"label": "workerd tests: Web platform",
+							"orange": "partial",
+							"counts": {
+								"pass": 307,
+								"total": 427
+							}
+						}
+					]
+				},
+				{
+					"id": "runtime-streams",
+					"title": "Streams",
+					"orange": "See the report for the failing tests.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "area",
+								"area": "Streams"
+							},
+							"label": "workerd tests: Streams",
+							"orange": "partial",
+							"counts": {
+								"pass": 247,
+								"total": 254
+							}
+						}
+					]
+				},
+				{
+					"id": "runtime-fetch",
+					"title": "Fetch, HTTP, sockets",
+					"orange": "See the report for the failing tests.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "area",
+								"area": "Fetch, HTTP, sockets"
+							},
+							"label": "workerd tests: Fetch, HTTP, sockets",
+							"orange": "partial",
+							"counts": {
+								"pass": 103,
+								"total": 107
+							}
+						}
+					]
+				},
+				{
+					"id": "runtime-crypto",
+					"title": "Crypto",
+					"orange": "All scored tests pass.",
+					"status": "works",
+					"evidence": [
+						{
+							"source": {
+								"kind": "area",
+								"area": "Crypto"
+							},
+							"label": "workerd tests: Crypto",
+							"orange": "pass",
+							"counts": {
+								"pass": 14,
+								"total": 14
+							}
+						}
+					]
+				},
+				{
+					"id": "runtime-flags",
+					"title": "Compatibility flags",
+					"cloudflare": "A Worker's flags and date select its behaviour.",
+					"orange": "Orange applies `request_signal_passthrough` and the assets navigation flags. The rest of the profile stays fixed, and `orange dev` warns about a flag it ignores. Tests that need a different flag value fail.",
+					"action": "Read the warning from `orange dev`, and don't depend on a flag it names.",
+					"status": "partial",
+					"evidence": [
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--request-signal-passthrough > requestPassedOverRpcIncludesSignal"
+							},
+							"label": "api-tests--request-signal-passthrough > requestPassedOverRpcIncludesSignal",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--request-signal-enabled > requestPassedOverRpcDoesNotIncludeSignal"
+							},
+							"label": "api-tests--request-signal-enabled > requestPassedOverRpcDoesNotIncludeSignal",
+							"orange": "pass"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--http-test > cacheMode"
+							},
+							"label": "api-tests--http-test > cacheMode",
+							"orange": "fail",
+							"error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: |  | true !== false"
+						},
+						{
+							"source": {
+								"kind": "test",
+								"test": "api-tests--js-rpc-test > sendStubOverRpc"
+							},
+							"label": "api-tests--js-rpc-test > sendStubOverRpc",
+							"orange": "fail",
+							"error": "AssertionError [ERR_ASSERTION]: Missing expected rejection (Error)."
+						}
+					]
+				}
+			]
+		}
+	],
+	"beyond": [
+		{
+			"id": "beyond-cpu",
+			"title": "CPU time per request",
+			"cloudflare": "10 ms on Free. 30 s by default on Paid, up to 5 minutes.",
+			"orange": "No limit. An object ran 35 s of CPU in one request.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-limits",
+						"step": "a Durable Object runs 35 s of CPU in one request"
+					},
+					"label": "beyond-limits: a Durable Object runs 35 s of CPU in one request",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"id": "beyond-memory",
+			"title": "Memory",
+			"cloudflare": "128 MB per isolate.",
+			"orange": "The container's memory. An object held 512 MiB between requests.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-limits",
+						"step": "a Durable Object holds 512 MiB between requests"
+					},
+					"label": "beyond-limits: a Durable Object holds 512 MiB between requests",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"id": "beyond-subrequests",
+			"title": "Subrequests per request",
+			"cloudflare": "50 on Free. A configurable limit on Paid.",
+			"orange": "No limit. One request made 2,000.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-limits",
+						"step": "one request makes 2,000 subrequests"
+					},
+					"label": "beyond-limits: one request makes 2,000 subrequests",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"id": "beyond-request-body",
+			"title": "Request body size",
+			"cloudflare": "100 MB on Free and Pro, up to 500 MB on Enterprise.",
+			"orange": "No limit. A 600 MiB body streamed through.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-limits",
+						"step": "a 600 MiB request body streams through"
+					},
+					"label": "beyond-limits: a 600 MiB request body streams through",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"id": "beyond-startup",
+			"title": "Global scope time",
+			"cloudflare": "1 s, or the deploy fails.",
+			"orange": "No limit. A Worker with a 1.5 s global scope started.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-limits",
+						"step": "a Worker whose global scope runs for 1.5 s starts"
+					},
+					"label": "beyond-limits: a Worker whose global scope runs for 1.5 s starts",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"id": "beyond-sqlite-limits",
+			"title": "SQLite size limits",
+			"cloudflare": "2 MB per value, 100 KB per statement, 100 bound parameters, 100 columns.",
+			"orange": "SQLite's own limits. A 5 MiB BLOB, a 300 KB statement, 200 parameters, and 200 columns all ran. workerd refuses each one.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-surface",
+						"step": "SQLite: a 5 MiB BLOB"
+					},
+					"label": "beyond-surface: SQLite: a 5 MiB BLOB",
+					"orange": "pass",
+					"workerd": "fail"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-surface",
+						"step": "SQLite: a 300 KB statement"
+					},
+					"label": "beyond-surface: SQLite: a 300 KB statement",
+					"orange": "pass",
+					"workerd": "fail"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-surface",
+						"step": "SQLite: 200 bound parameters"
+					},
+					"label": "beyond-surface: SQLite: 200 bound parameters",
+					"orange": "pass",
+					"workerd": "fail"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-surface",
+						"step": "SQLite: a table with 200 columns"
+					},
+					"label": "beyond-surface: SQLite: a table with 200 columns",
+					"orange": "pass",
+					"workerd": "fail"
+				}
+			]
+		},
+		{
+			"id": "beyond-sqlite-functions",
+			"title": "`sqlite_version()`",
+			"cloudflare": "Rejected: `not authorized to use function`.",
+			"orange": "Runs.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "sqlite-surface",
+						"step": "sqlite_version() runs"
+					},
+					"label": "sqlite-surface: sqlite_version() runs",
+					"orange": "pass",
+					"workerd": "fail"
+				}
+			]
+		},
+		{
+			"id": "beyond-node",
+			"title": "Real Node.js APIs",
+			"cloudflare": "`node:child_process` throws `not implemented`, and `node:net` cannot listen.",
+			"orange": "Stock Node.js. A Worker ran a host command and listened on a port. The container is the isolation boundary, as for any Rivet Actor.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-surface",
+						"step": "node:child_process runs a host command"
+					},
+					"label": "beyond-surface: node:child_process runs a host command",
+					"orange": "pass",
+					"workerd": "fail"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-surface",
+						"step": "node:fs writes and reads a real file"
+					},
+					"label": "beyond-surface: node:fs writes and reads a real file",
+					"orange": "pass",
+					"workerd": "pass"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "beyond-surface",
+						"step": "node:net listens on a port"
+					},
+					"label": "beyond-surface: node:net listens on a port",
+					"orange": "pass",
+					"workerd": "fail"
+				}
+			]
+		},
+		{
+			"id": "beyond-storage",
+			"title": "Storage per object",
+			"cloudflare": "10 GB.",
+			"orange": "No Orange limit. Not run at this size.",
+			"status": "not-run",
+			"evidence": []
+		}
+	],
+	"scaling": [
+		{
+			"binding": "Durable Objects",
+			"scalesBy": "Object ID",
+			"detail": "One actor per object id. Add ids to add capacity.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "Durable Objects: one actor per object id"
+					},
+					"label": "scale-units: Durable Objects: one actor per object id",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "Workflows",
+			"scalesBy": "Instance",
+			"detail": "One actor per instance.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "Workflows: one actor per instance"
+					},
+					"label": "scale-units: Workflows: one actor per instance",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "D1",
+			"scalesBy": "Database",
+			"detail": "One actor per database. A busy database is one actor, so split by tenant for more.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "D1: one actor per database"
+					},
+					"label": "scale-units: D1: one actor per database",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "KV",
+			"scalesBy": "Namespace",
+			"detail": "One actor per namespace, so one namespace does not fan out across actors. Split namespaces for more.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "KV: one actor per namespace"
+					},
+					"label": "scale-units: KV: one actor per namespace",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "Queues",
+			"scalesBy": "Queue",
+			"detail": "One actor per queue, delivering one batch at a time.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "Queues: one actor per queue"
+					},
+					"label": "scale-units: Queues: one actor per queue",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "Rate Limiting",
+			"scalesBy": "Namespace",
+			"detail": "One actor per namespace_id, which holds every key's counter.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "Rate Limiting: one actor per namespace"
+					},
+					"label": "scale-units: Rate Limiting: one actor per namespace",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "Cache",
+			"scalesBy": "Cache name",
+			"detail": "One actor per cache name. `caches.default` is one actor, so busy traffic should use named caches.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "Cache: one actor per cache name"
+					},
+					"label": "scale-units: Cache: one actor per cache name",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "Cache: caches.default is one actor"
+					},
+					"label": "scale-units: Cache: caches.default is one actor",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "R2",
+			"scalesBy": "S3 or bucket",
+			"detail": "With S3 set, as far as your S3 store goes. Without it, one actor per bucket.",
+			"status": "works",
+			"evidence": [
+				{
+					"source": {
+						"kind": "probe",
+						"probe": "scale-units",
+						"step": "R2: one actor per bucket without S3"
+					},
+					"label": "scale-units: R2: one actor per bucket without S3",
+					"orange": "pass"
+				},
+				{
+					"source": {
+						"kind": "example",
+						"example": "r2"
+					},
+					"label": "example: r2",
+					"orange": "pass"
+				}
+			]
+		},
+		{
+			"binding": "Workers",
+			"scalesBy": "Runner count",
+			"detail": "Stateless requests go to any runner in the pool. Not measured across runners here.",
+			"status": "not-run",
+			"evidence": []
+		}
+	],
+	"projects": [
+		{
+			"id": "tldraw",
+			"repo": "tldraw/tldraw",
+			"url": "https://github.com/tldraw/tldraw/tree/aae1c5d6d099817a76ddeb6eb5e71e2014d42d7b",
+			"commit": "aae1c5d6d099817a76ddeb6eb5e71e2014d42d7b",
+			"stars": 51216,
+			"origin": "search",
+			"directory": "apps/bemo-worker",
+			"status": "works",
+			"steps": {
+				"pass": 6,
+				"total": 6
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "Adds a top-level BEMO_BUCKET r2_buckets entry to apps/bemo-worker/wrangler.toml",
+					"why": "The project declares the bucket only under [env.*], and its dev script selects `--env dev`. `orange dev` runs the top-level config."
+				}
+			],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"BemoDO"
+				],
+				"file": "apps/bemo-worker/src/BemoDO.ts",
+				"uses": [
+					"blockConcurrencyWhile",
+					"storage.get",
+					"storage.put",
+					"storage.getAlarm",
+					"storage.setAlarm",
+					"alarm",
+					"WebSocketPair"
+				]
+			},
+			"ranAt": "2026-11-05T02:38:19.246Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "reactive-resume",
+			"repo": "reactive-resume/reactive-resume",
+			"url": "https://github.com/reactive-resume/reactive-resume/tree/f7b0eee784820650c6066a0814abc2d191a1192a",
+			"commit": "f7b0eee784820650c6066a0814abc2d191a1192a",
+			"stars": 45283,
+			"origin": "search",
+			"directory": ".",
+			"status": "partial",
+			"steps": {
+				"pass": 4,
+				"total": 5
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "an account signs up and gets a session from PostgreSQL through Hyperdrive",
+					"kind": "binding",
+					"error": "Expected values to be strictly equal:\n\n500 !== 200\n",
+					"ownerLabel": "Test environment",
+					"owner": "environment",
+					"note": "It needs PostgreSQL, which this machine does not have. With postgres:16-alpine, its 67 migrations, and the connection string in this project.json, the step passed in a separate run."
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"Coordination"
+				],
+				"file": "apps/server/src/cloudflare/coordination.ts",
+				"uses": [
+					"storage.kv",
+					"storage.transactionSync",
+					"storage.setAlarm",
+					"storage.deleteAll",
+					"alarm",
+					"acceptWebSocket",
+					"getWebSockets"
+				]
+			},
+			"ranAt": "2026-11-05T02:32:10.790Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "supermemory",
+			"repo": "supermemoryai/supermemory",
+			"url": "https://github.com/supermemoryai/supermemory/tree/16ed414e0e0c61c946b7687ec813b2064fe75dd4",
+			"commit": "16ed414e0e0c61c946b7687ec813b2064fe75dd4",
+			"stars": 31518,
+			"origin": "search",
+			"directory": "apps/mcp",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 3,
+				"total": 4
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"SUPERMEMORY_OAUTH_ACCESS_TOKEN"
+			],
+			"durableObjects": {
+				"classes": [
+					"SpaceState"
+				],
+				"file": "apps/mcp/src/server/space-state.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.delete",
+					"storage.transaction",
+					"storage.setAlarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:38:19.246Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "cloudflare-os",
+			"repo": "cloudflare/cloudflare-os",
+			"url": "https://github.com/cloudflare/cloudflare-os/tree/b533f8aa1a64ecfce29e43d29f1d925b9d57c10c",
+			"commit": "b533f8aa1a64ecfce29e43d29f1d925b9d57c10c",
+			"stars": 11666,
+			"origin": "official",
+			"directory": "packages/workshop-backend",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 8,
+				"total": 9
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"AI provider API key"
+			],
+			"durableObjects": {
+				"classes": [
+					"UserDurableObject",
+					"OverseerDurableObject",
+					"AdminSettings",
+					"PendingLogin",
+					"UserDirectoryDurableObject"
+				],
+				"file": "packages/workshop-backend/src/user.ts",
+				"uses": [
+					"storage.sql",
+					"RPC",
+					"ctx.exports",
+					"getByName",
+					"RPC callbacks"
+				]
+			},
+			"ranAt": "2026-11-05T14:40:57.702Z",
+			"orange": "96efb7b",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "computer",
+			"repo": "cloudflare/computer",
+			"url": "https://github.com/cloudflare/computer/tree/b995d86503eab22793ba1feb07c3c67818e6f6b9",
+			"commit": "b995d86503eab22793ba1feb07c3c67818e6f6b9",
+			"stars": 9786,
+			"origin": "official",
+			"directory": "examples/worker-shell",
+			"status": "works",
+			"steps": {
+				"pass": 6,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"ContainerExample"
+				],
+				"file": "examples/worker-shell/src/index.ts",
+				"uses": [
+					"storage.sql",
+					"rpc",
+					"ctx.exports",
+					"worker_loaders"
+				]
+			},
+			"ranAt": "2026-11-05T02:19:28.364Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "agentic-inbox",
+			"repo": "cloudflare/agentic-inbox",
+			"url": "https://github.com/cloudflare/agentic-inbox/tree/48039bb6785af34e592c2966f87cde2b255c4c80",
+			"commit": "48039bb6785af34e592c2966f87cde2b255c4c80",
+			"stars": 8589,
+			"origin": "search",
+			"directory": ".",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 9,
+				"total": 10
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "Sets POLICY_AUD and TEAM_DOMAIN in wrangler.jsonc vars, with TEAM_DOMAIN pointing at a local JWKS server that the scenario runs",
+					"why": "The production build refuses every request without Cloudflare Access settings. The scenario signs real Access JWTs, and the Worker verifies them through its own jose code. The Vite build writes build/server/wrangler.json, so .dev.vars written after the build cannot reach it."
+				},
+				{
+					"kind": "config",
+					"what": "A build step removes \"legacy_env\":true from the generated build/server/wrangler.json",
+					"why": "Orange's wrangler 4.129.0 refuses the field that the project's Vite plugin 1.29.0 writes, and orange dev exits at boot. Removing it shows what lies behind that error. Repro: repros/generated-legacy-env."
+				}
+			],
+			"failures": [],
+			"secrets": [
+				"OPENROUTER_API_KEY"
+			],
+			"durableObjects": {
+				"classes": [
+					"MailboxDO",
+					"EmailAgent",
+					"EmailMCP"
+				],
+				"file": "workers/durableObject/index.ts",
+				"uses": [
+					"storage.sql",
+					"RPC methods",
+					"agents Agent",
+					"McpAgent",
+					"AIChatAgent",
+					"WebSocket"
+				]
+			},
+			"ranAt": "2026-11-06T22:23:15.359Z",
+			"orange": "09b4d1d",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "togetherjs",
+			"repo": "jsfiddle/togetherjs",
+			"url": "https://github.com/jsfiddle/togetherjs/tree/77eada2994aec51174f9f06fd925025bb2faac3b",
+			"commit": "77eada2994aec51174f9f06fd925025bb2faac3b",
+			"stars": 6997,
+			"origin": "search",
+			"directory": "hub-worker",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "two sockets stay open while a room hibernates, and a message wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 60 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				},
+				{
+					"step": "the registry still knows a room after every object sleeps",
+					"kind": "sleep",
+					"error": "Some actor was still awake 60 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"Room",
+					"Registry"
+				],
+				"file": "hub-worker/src/room.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment",
+					"storage.get",
+					"storage.put",
+					"rpc"
+				]
+			},
+			"ranAt": "2026-11-05T02:38:19.246Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "coucou",
+			"repo": "Louis-CFM/coucou",
+			"url": "https://github.com/Louis-CFM/coucou/tree/74363634b037108393e450428e5f207515c2c29b",
+			"commit": "74363634b037108393e450428e5f207515c2c29b",
+			"stars": 6926,
+			"origin": "search",
+			"directory": "android/relay",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "an idle room hibernates, and the next frame still reaches the peer",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"Room"
+				],
+				"file": "android/relay/src/room.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment",
+					"setWebSocketAutoResponse"
+				]
+			},
+			"ranAt": "2026-11-05T02:19:28.364Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "tablecn",
+			"repo": "sadmann7/tablecn",
+			"url": "https://github.com/sadmann7/tablecn/tree/2d74ac5827aa7abf60e334759e38cf7cdcb24d54",
+			"commit": "2d74ac5827aa7abf60e334759e38cf7cdcb24d54",
+			"stars": 6371,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a client stays connected while the room hibernates, and its next edit is acknowledged",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"SkaterRoom"
+				],
+				"file": "party/index.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.delete",
+					"storage.deleteAll",
+					"storage.setAlarm",
+					"storage.deleteAlarm",
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment"
+				]
+			},
+			"ranAt": "2026-11-05T02:38:54.543Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "tubatools",
+			"repo": "luolangaga/tubatools",
+			"url": "https://github.com/luolangaga/tubatools/tree/15dcb42c095c496e5dd68820faa6a0434475c411",
+			"commit": "15dcb42c095c496e5dd68820faa6a0434475c411",
+			"stars": 6035,
+			"origin": "search",
+			"directory": "cloudflare-worker",
+			"status": "partial",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "an SDP offer sent on one device's socket reaches the other device",
+					"kind": "websocket",
+					"error": "No WebSocket message within 20000ms",
+					"ownerLabel": "The project's own code",
+					"owner": "project",
+					"note": "GroupRoom accepts with acceptWebSocket but listens with addEventListener and defines no webSocketMessage, so the frame is never relayed. Read from the code and the hibernation API contract, not run on Cloudflare."
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"GroupRoom"
+				],
+				"file": "cloudflare-worker/src/index.ts",
+				"uses": [
+					"storage.list",
+					"storage.put",
+					"storage.deleteAll",
+					"acceptWebSocket",
+					"WebSocket.addEventListener"
+				]
+			},
+			"ranAt": "2026-11-05T02:39:36.438Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "agents",
+			"repo": "cloudflare/agents",
+			"url": "https://github.com/cloudflare/agents/tree/455b47ec93f99f306f644ac06bc8b72b0627c1fc",
+			"commit": "455b47ec93f99f306f644ac06bc8b72b0627c1fc",
+			"stars": 5942,
+			"origin": "official",
+			"directory": "examples/playground",
+			"status": "partial",
+			"steps": {
+				"pass": 6,
+				"total": 8
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a client socket stays open while the agent hibernates, and a call wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [
+				"Workers AI (remote AI binding)"
+			],
+			"durableObjects": {
+				"classes": [
+					"StateAgent",
+					"ScheduleAgent",
+					"SqlAgent",
+					"SupervisorAgent",
+					"ChildAgent"
+				],
+				"file": "examples/playground/src/server.ts",
+				"uses": [
+					"storage.sql",
+					"setAlarm",
+					"acceptWebSocket",
+					"serializeAttachment",
+					"rpc"
+				]
+			},
+			"ranAt": "2026-11-05T02:14:52.200Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "vibesdk",
+			"repo": "cloudflare/vibesdk",
+			"url": "https://github.com/cloudflare/vibesdk/tree/32c9e429cd2712ea5959a89f65ae434162b89229",
+			"commit": "32c9e429cd2712ea5959a89f65ae434162b89229",
+			"stars": 5451,
+			"origin": "official",
+			"directory": ".",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [
+				{
+					"kind": "code",
+					"what": "Two imports in worker/api/controllers/artifacts/controller.ts use the relative path that the wrangler.jsonc alias names",
+					"why": "Orange ignores the Wrangler alias field, and orange dev exits with: No such module \"artifacts-viewer\". The patch shows what lies behind that error. Repro: repros/wrangler-alias-field."
+				}
+			],
+			"failures": [],
+			"secrets": [
+				"ANTHROPIC_API_KEY",
+				"CLOUDFLARE_AI_GATEWAY_TOKEN"
+			],
+			"durableObjects": {
+				"classes": [
+					"DORateLimitStore",
+					"ThinkAgent",
+					"SpaceDO",
+					"CodeGeneratorAgent",
+					"UserAppSandboxService",
+					"UserSecretsStore"
+				],
+				"file": "worker/services/rate-limit/DORateLimitStore.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"RPC methods",
+					"agents Agent"
+				]
+			},
+			"ranAt": "2026-11-05T02:47:19.412Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "epicenter",
+			"repo": "EpicenterHQ/epicenter",
+			"url": "https://github.com/EpicenterHQ/epicenter/tree/7cc869b4a1295e2566b61e1a4d5967a89f413b9b",
+			"commit": "7cc869b4a1295e2566b61e1a4d5967a89f413b9b",
+			"stars": 4840,
+			"origin": "search",
+			"directory": "apps/sync-lab",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "two sockets stay open while the authority hibernates, and a push wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 60 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"SyncLabAuthority"
+				],
+				"file": "apps/sync-lab/worker/index.ts",
+				"uses": [
+					"storage.sql.exec",
+					"storage.transactionSync",
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment",
+					"rpc"
+				]
+			},
+			"ranAt": "2026-11-05T02:22:52.458Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "mcp-server-cloudflare",
+			"repo": "cloudflare/mcp-server-cloudflare",
+			"url": "https://github.com/cloudflare/mcp-server-cloudflare/tree/a21972e219289337731a066befb5c66886b9ce7b",
+			"commit": "a21972e219289337731a066befb5c66886b9ce7b",
+			"stars": 4441,
+			"origin": "search",
+			"directory": "apps/dex-analysis",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 4,
+				"total": 5
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"CLOUDFLARE_CLIENT_ID",
+				"CLOUDFLARE_CLIENT_SECRET"
+			],
+			"durableObjects": {
+				"classes": [
+					"WarpDiagReader"
+				],
+				"file": "apps/dex-analysis/src/warp_diag_reader.ts",
+				"uses": [
+					"RPC methods on a stub",
+					"instance memory as a per-capture cache"
+				]
+			},
+			"ranAt": "2026-11-05T02:32:10.790Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "nodewarden",
+			"repo": "shuaiplus/nodewarden",
+			"url": "https://github.com/shuaiplus/nodewarden/tree/fbc0e65df8f405c3120887569e939d615ab68229",
+			"commit": "fbc0e65df8f405c3120887569e939d615ab68229",
+			"stars": 4093,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a client stays connected while the hub hibernates, and the next notification reaches it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"NotificationsHub",
+					"BackupTransferRunner"
+				],
+				"file": "src/durable/notifications-hub.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment",
+					"setWebSocketAutoResponse",
+					"storage.put",
+					"storage.get",
+					"storage.delete",
+					"storage.list",
+					"storage.transaction",
+					"storage.setAlarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:32:10.790Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "background-agents",
+			"repo": "open-inspect/background-agents",
+			"url": "https://github.com/open-inspect/background-agents/tree/cd63f81c9bd6e7992fa61abda9b595e1c0138f8a",
+			"commit": "cd63f81c9bd6e7992fa61abda9b595e1c0138f8a",
+			"stars": 3450,
+			"origin": "search",
+			"directory": "packages/control-plane",
+			"status": "partial",
+			"steps": {
+				"pass": 5,
+				"total": 7
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "packages/control-plane/wrangler.jsonc: adds migrations_dir for the DB binding, pointing at terraform/d1/migrations",
+					"why": "Production is deployed with Terraform, which applies these migrations. The repository's Wrangler config is the one its Worker tests use, and it has no migrations_dir."
+				}
+			],
+			"failures": [
+				{
+					"step": "a subscribed client stays connected while the session hibernates",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [
+				"ANTHROPIC_API_KEY",
+				"MODAL_TOKEN_ID",
+				"MODAL_TOKEN_SECRET"
+			],
+			"durableObjects": {
+				"classes": [
+					"SessionDO"
+				],
+				"file": "packages/control-plane/src/cloudflare/durable-object.ts",
+				"uses": [
+					"storage.sql",
+					"acceptWebSocket",
+					"getWebSockets",
+					"setAlarm",
+					"alarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:14:52.200Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "dashi-taskboard",
+			"repo": "chuspeeism/dashi-taskboard",
+			"url": "https://github.com/chuspeeism/dashi-taskboard/tree/9aa1f4e7936d841748ed4e0fc7781b57ae6ae6cc",
+			"commit": "9aa1f4e7936d841748ed4e0fc7781b57ae6ae6cc",
+			"stars": 3441,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a board socket stays open while the hub hibernates, and a later write reaches it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"RealtimeHub"
+				],
+				"file": "cloud/src/index.mjs",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"storage.list",
+					"storage.put",
+					"storage.delete"
+				]
+			},
+			"ranAt": "2026-11-05T02:20:44.282Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "loopy",
+			"repo": "Forward-Future/loopy",
+			"url": "https://github.com/Forward-Future/loopy/tree/75966cbd572a4185064971c9fe5e9c52e8f8456d",
+			"commit": "75966cbd572a4185064971c9fe5e9c52e8f8456d",
+			"stars": 3216,
+			"origin": "search",
+			"directory": "loop-library/worker",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 5,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"GITHUB_OAUTH_CLIENT_ID",
+				"GITHUB_OAUTH_CLIENT_SECRET",
+				"HERENOW_API_KEY",
+				"TURNSTILE_SECRET_KEY"
+			],
+			"durableObjects": {
+				"classes": [
+					"LoopCatalog",
+					"VoteStore",
+					"FormGuard"
+				],
+				"file": "loop-library/worker/src/catalog-store.js",
+				"uses": [
+					"storage.sql.exec",
+					"storage.transactionSync",
+					"storage.get",
+					"storage.put",
+					"storage.setAlarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:22:52.458Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "ethercalc",
+			"repo": "audreyt/ethercalc",
+			"url": "https://github.com/audreyt/ethercalc/tree/e989429d011a8e79706272103a63ed94ac8526bc",
+			"commit": "e989429d011a8e79706272103a63ed94ac8526bc",
+			"stars": 3062,
+			"origin": "search",
+			"directory": "packages/worker",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "two sockets stay open while the room hibernates, and an edit wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 60 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"RoomDO",
+					"AuthDO"
+				],
+				"file": "packages/worker/src/room.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment",
+					"storage.get",
+					"storage.put",
+					"storage.setAlarm",
+					"alarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:22:52.458Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "cf-server-monitor",
+			"repo": "huilang-me/CF-Server-Monitor",
+			"url": "https://github.com/huilang-me/CF-Server-Monitor/tree/609cc0b0998793510453be8eadced2064b28ad7d",
+			"commit": "609cc0b0998793510453be8eadced2064b28ad7d",
+			"stars": 2907,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a browser stays subscribed while the broadcaster hibernates",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"MetricsBroadcaster"
+				],
+				"file": "src/durable/MetricsBroadcaster.js",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"setWebSocketAutoResponse",
+					"storage.get",
+					"storage.put",
+					"storage.setAlarm",
+					"alarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:16:25.798Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "figma-console-mcp",
+			"repo": "southleft/figma-console-mcp",
+			"url": "https://github.com/southleft/figma-console-mcp/tree/5ef4df3791606b8e1f877557ec0dde4796250b44",
+			"commit": "5ef4df3791606b8e1f877557ec0dde4796250b44",
+			"stars": 2660,
+			"origin": "search",
+			"directory": ".",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 4,
+				"total": 5
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"FIGMA_OAUTH_CLIENT_ID",
+				"FIGMA_OAUTH_CLIENT_SECRET"
+			],
+			"durableObjects": {
+				"classes": [
+					"FigmaConsoleMCPv3",
+					"PluginRelayDO"
+				],
+				"file": "src/index.ts",
+				"uses": [
+					"McpAgent",
+					"acceptWebSocket",
+					"getWebSockets",
+					"storage.get",
+					"storage.put",
+					"storage.delete"
+				]
+			},
+			"ranAt": "2026-11-05T02:23:28.239Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "meet",
+			"repo": "cloudflare/meet",
+			"url": "https://github.com/cloudflare/meet/tree/314d42405e4d2b0fbdc8c7dafeca999e431a50ce",
+			"commit": "314d42405e4d2b0fbdc8c7dafeca999e431a50ce",
+			"stars": 2317,
+			"origin": "search",
+			"directory": ".",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 7,
+				"total": 8
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "wrangler.toml: [site] bucket becomes [assets] directory",
+					"why": "Orange rejects Workers Sites at config load: `Unsupported Wrangler configuration: site` (repros/workers-sites-unsupported)."
+				},
+				{
+					"kind": "code",
+					"what": "server.ts: removes the __STATIC_CONTENT_MANIFEST import and the Workers Sites asset handler",
+					"why": "With no [site], that module does not exist. Static files are served by the assets directory instead."
+				}
+			],
+			"failures": [],
+			"secrets": [
+				"CALLS_APP_ID",
+				"CALLS_APP_SECRET"
+			],
+			"durableObjects": {
+				"classes": [
+					"ChatRoom"
+				],
+				"file": "app/durableObjects/ChatRoom.server.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.list",
+					"storage.delete",
+					"storage.deleteAll",
+					"setAlarm",
+					"getAlarm",
+					"alarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:32:48.044Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "templates",
+			"repo": "cloudflare/templates",
+			"url": "https://github.com/cloudflare/templates/tree/dc4e76ba206abf7f06e8ac0e7a81cc10ea707c67",
+			"commit": "dc4e76ba206abf7f06e8ac0e7a81cc10ea707c67",
+			"stars": 2163,
+			"origin": "search",
+			"directory": "durable-chat-template",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a socket stays open while the room hibernates, and a message wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"Chat"
+				],
+				"file": "durable-chat-template/src/server/index.ts",
+				"uses": [
+					"storage.sql",
+					"partyserver.Server",
+					"hibernate",
+					"broadcast"
+				]
+			},
+			"ranAt": "2026-11-05T02:40:27.722Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "elatoai",
+			"repo": "akdeb/ElatoAI",
+			"url": "https://github.com/akdeb/ElatoAI/tree/c0153a2bafeac673440501480c925115871266a9",
+			"commit": "c0153a2bafeac673440501480c925115871266a9",
+			"stars": 2105,
+			"origin": "search",
+			"directory": "server/cloudflare",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 3,
+				"total": 4
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"OPENAI_API_KEY",
+				"Workers AI"
+			],
+			"durableObjects": {
+				"classes": [
+					"ElatoVoiceSession"
+				],
+				"file": "server/cloudflare/models/session.ts",
+				"uses": [
+					"newUniqueId",
+					"WebSocketPair",
+					"blockConcurrencyWhile"
+				]
+			},
+			"ranAt": "2026-11-05T02:20:45.616Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "clawsweeper",
+			"repo": "openclaw/clawsweeper",
+			"url": "https://github.com/openclaw/clawsweeper/tree/1265122ec07d137740c688d90d5bf9538aa03a78",
+			"commit": "1265122ec07d137740c688d90d5bf9538aa03a78",
+			"stars": 2005,
+			"origin": "search",
+			"directory": "dashboard",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"GITHUB_TOKEN"
+			],
+			"durableObjects": {
+				"classes": [
+					"StatusStore",
+					"ExactReviewQueue",
+					"GithubEtagCache"
+				],
+				"file": "dashboard/worker.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.delete",
+					"storage.list",
+					"storage.kv",
+					"storage.transactionSync",
+					"storage.setAlarm",
+					"storage.getAlarm",
+					"storage.deleteAlarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:17:10.551Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "infinite-mac",
+			"repo": "mihaip/infinite-mac",
+			"url": "https://github.com/mihaip/infinite-mac/tree/7f123638b0a8ceb23651dee426da25570b86025f",
+			"commit": "7f123638b0a8ceb23651dee426da25570b86025f",
+			"stars": 1652,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "wrangler.jsonc: removes observability.issues",
+					"why": "Orange refuses the field at config load: `Unknown Wrangler configuration fields: observability.issues` (repros/observability-issues-field). It has no effect on the Worker's behaviour."
+				},
+				{
+					"kind": "code",
+					"what": "worker/index.ts: removes the SSR import and call for the home page",
+					"why": "worker/ssr.ts imports src/Data/CD-ROMs.json and *.dsk.json, generated by `npm run import-disks` with uv, submodules, and native tools that this machine does not have. Unmodified `npm run build` ends with `Build failed with 90 errors: [UNLOADABLE_DEPENDENCY] Could not load src/Data/CD-ROMs.json`."
+				},
+				{
+					"kind": "code",
+					"what": "build/index.html: adds a one-line page, and the `npm run build` step is not run",
+					"why": "The assets directory ./build is the output of the same build, which cannot run here."
+				}
+			],
+			"failures": [
+				{
+					"step": "machines stay on the network across the zone's hibernation, and a packet wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"EthernetZone"
+				],
+				"file": "worker/ethernet-zone.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment"
+				]
+			},
+			"ranAt": "2026-11-05T02:23:54.046Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "vmail",
+			"repo": "oiov/vmail",
+			"url": "https://github.com/oiov/vmail/tree/0213e65cc555f7ef8ea38b34712afd6e20aa3eaa",
+			"commit": "0213e65cc555f7ef8ea38b34712afd6e20aa3eaa",
+			"stars": 1498,
+			"origin": "search",
+			"directory": ".",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 8,
+				"total": 9
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"GITHUB_CLIENT_ID",
+				"GITHUB_CLIENT_SECRET",
+				"GOOGLE_CLIENT_ID",
+				"GOOGLE_CLIENT_SECRET"
+			],
+			"durableObjects": {
+				"classes": [
+					"AccessLedger"
+				],
+				"file": "worker/src/access-ledger.ts",
+				"uses": [
+					"getByName",
+					"rpc",
+					"storage.sql",
+					"storage.kv",
+					"transactionSync",
+					"setAlarm"
+				]
+			},
+			"ranAt": "2026-11-06T22:23:15.359Z",
+			"orange": "09b4d1d",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "talorys",
+			"repo": "rociiu/talorys",
+			"url": "https://github.com/rociiu/talorys/tree/420005a3ce1b432eb1c46112289fa84d2a2271e4",
+			"commit": "420005a3ce1b432eb1c46112289fa84d2a2271e4",
+			"stars": 1435,
+			"origin": "search",
+			"directory": "apps/agent",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 7,
+				"total": 8
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"OPENROUTER_API_KEY"
+			],
+			"durableObjects": {
+				"classes": [
+					"TalorysAgent"
+				],
+				"file": "apps/agent/src/agent/talorys-agent.ts",
+				"uses": [
+					"agents Agent",
+					"storage.sql",
+					"this.schedule (alarms)",
+					"onRequest"
+				]
+			},
+			"ranAt": "2026-11-05T02:40:44.282Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "edgechat",
+			"repo": "aozorae/Edgechat",
+			"url": "https://github.com/aozorae/Edgechat/tree/1288c66997d5e2f9eefc515cf60b2072f8d655be",
+			"commit": "1288c66997d5e2f9eefc515cf60b2072f8d655be",
+			"stars": 1395,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "Sets migrations_dir in wrangler.example.toml to a new directory with worker/schema.sql (a symlink) and one admin row",
+					"why": "The project creates its D1 schema and first admin through GitHub Actions and `wrangler d1 execute`. The row is what `npm run admin:bootstrap` generates, with a local-only password."
+				}
+			],
+			"failures": [
+				{
+					"step": "two sockets stay open while the room hibernates, and a message wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 60 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"ChannelRoom",
+					"UserInbox",
+					"Scheduler",
+					"InstanceBridge",
+					"VoiceCall",
+					"TelegramNotifications"
+				],
+				"file": "worker/src/do/ChannelRoom.js",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment",
+					"storage.setAlarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:20:50.379Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "chidori",
+			"repo": "ThousandBirdsInc/chidori",
+			"url": "https://github.com/ThousandBirdsInc/chidori/tree/0a0aba5ce0d8b65e5924bf749b9e4cbba4199d2e",
+			"commit": "0a0aba5ce0d8b65e5924bf749b9e4cbba4199d2e",
+			"stars": 1372,
+			"origin": "search",
+			"directory": "integrations/cloudflare-durable-objects",
+			"status": "partial",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "of many writers racing for one lease, exactly one wins",
+					"kind": "do-state",
+					"error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    200,\n+   200,\n+   200,\n+   200,\n+   200,\n+   200,\n+   200,\n    412,\n-   412,\n-   412,\n-   412,\n-   412,\n-   412,\n-   412\n  ]\n",
+					"ownerLabel": "The project's own code",
+					"owner": "project",
+					"note": "src/index.ts:172 awaits request.arrayBuffer() between its check and its insert, and workerd does not hold other requests across that await. Measured on wrangler dev and Orange, 10 trials each: 8 winners in every trial, on both. The README claim that writes cannot interleave does not hold on workerd either."
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"ChidoriRun"
+				],
+				"file": "integrations/cloudflare-durable-objects/src/index.ts",
+				"uses": [
+					"storage.sql.exec",
+					"cursor.toArray",
+					"cursor.one"
+				]
+			},
+			"ranAt": "2026-11-05T02:17:44.905Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "agents-starter",
+			"repo": "cloudflare/agents-starter",
+			"url": "https://github.com/cloudflare/agents-starter/tree/4ea6a72cbabe2b62a66294214361ac106b4a247e",
+			"commit": "4ea6a72cbabe2b62a66294214361ac106b4a247e",
+			"stars": 1350,
+			"origin": "search",
+			"directory": ".",
+			"status": "partial",
+			"steps": {
+				"pass": 5,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a client stays connected while the agent hibernates, and its next call is answered",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [
+				"CLOUDFLARE_API_TOKEN"
+			],
+			"durableObjects": {
+				"classes": [
+					"ChatAgent"
+				],
+				"file": "src/server.ts",
+				"uses": [
+					"storage.sql",
+					"storage.setAlarm",
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment"
+				]
+			},
+			"ranAt": "2026-11-05T02:17:45.075Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "partykit",
+			"repo": "cloudflare/partykit",
+			"url": "https://github.com/cloudflare/partykit/tree/f0a2e97d233f24545b2648aec2ed6a191e11074e",
+			"commit": "f0a2e97d233f24545b2648aec2ed6a191e11074e",
+			"stars": 1306,
+			"origin": "official",
+			"directory": "fixtures/tiptap-yjs",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "editors stay connected across the room's hibernation, and an edit wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"Document"
+				],
+				"file": "fixtures/tiptap-yjs/src/server.ts",
+				"uses": [
+					"storage.sql",
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"getByName"
+				]
+			},
+			"ranAt": "2026-11-05T02:33:55.689Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "free4chat",
+			"repo": "i365dev/free4chat",
+			"url": "https://github.com/i365dev/free4chat/tree/28f7f77fecc623bec4afc58d84d49b81c729cfac",
+			"commit": "28f7f77fecc623bec4afc58d84d49b81c729cfac",
+			"stars": 1225,
+			"origin": "search",
+			"directory": "app",
+			"status": "partial",
+			"steps": {
+				"pass": 6,
+				"total": 8
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a resident Agent's event socket stays open while the Room hibernates, and a message wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [
+				"SFU_APP_ID",
+				"SFU_APP_SECRET"
+			],
+			"durableObjects": {
+				"classes": [
+					"RoomSession"
+				],
+				"file": "app/src/do/RoomSession.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"setAlarm",
+					"alarm",
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment"
+				]
+			},
+			"ranAt": "2026-11-05T02:24:28.460Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "ai",
+			"repo": "cloudflare/ai",
+			"url": "https://github.com/cloudflare/ai/tree/34a8f4c00c0871883215a7114e9a7f3e7747ee1b",
+			"commit": "34a8f4c00c0871883215a7114e9a7f3e7747ee1b",
+			"stars": 1212,
+			"origin": "search",
+			"directory": "demos/mcp-client",
+			"status": "works",
+			"steps": {
+				"pass": 5,
+				"total": 5
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"MyAgent"
+				],
+				"file": "demos/mcp-client/src/server.ts",
+				"uses": [
+					"agents Agent",
+					"addMcpServer",
+					"storage.sql",
+					"WebSocket broadcast"
+				]
+			},
+			"ranAt": "2026-11-05T02:17:48.571Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "starbasedb",
+			"repo": "outerbase/starbasedb",
+			"url": "https://github.com/outerbase/starbasedb/tree/bb227352135051a0dd50190d67c3e82b03f8e485",
+			"commit": "bb227352135051a0dd50190d67c3e82b03f8e485",
+			"stars": 1169,
+			"origin": "named",
+			"directory": ".",
+			"status": "works",
+			"steps": {
+				"pass": 8,
+				"total": 8
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"StarbaseDBDurableObject"
+				],
+				"file": "src/do.ts",
+				"uses": [
+					"storage.sql.exec",
+					"storage.setAlarm",
+					"storage.getAlarm",
+					"alarm",
+					"rpc"
+				]
+			},
+			"ranAt": "2026-11-05T02:34:43.158Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "inkstone",
+			"repo": "shuaiplus/inkstone",
+			"url": "https://github.com/shuaiplus/inkstone/tree/f59087f66e8c524c465eb7a7ec9ab7883057af02",
+			"commit": "f59087f66e8c524c465eb7a7ec9ab7883057af02",
+			"stars": 1163,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "Replaces the [exports.SyncHub] and [exports.CredentialVault] tables in wrangler.toml with one migration that creates both SQLite classes.",
+					"why": "Unmodified, orange dev exits with: Unsupported Wrangler configuration: exports. The build copies that field into dist/inkstone/wrangler.json, the config that npm run deploy uses. The patch shows what lies behind that Orange bug."
+				}
+			],
+			"failures": [
+				{
+					"step": "a socket stays connected while SyncHub hibernates",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"SyncHub",
+					"CredentialVault"
+				],
+				"file": "src/worker/durable/credential-vault.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"blockConcurrencyWhile",
+					"storage.get",
+					"storage.put"
+				]
+			},
+			"ranAt": "2026-11-05T02:24:39.210Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "workers-chat-demo",
+			"repo": "cloudflare/workers-chat-demo",
+			"url": "https://github.com/cloudflare/workers-chat-demo/tree/dd32ce87617a9df6c614004d2fc2fb0628698121",
+			"commit": "dd32ce87617a9df6c614004d2fc2fb0628698121",
+			"stars": 1123,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 4,
+				"total": 5
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a socket stays open while the room hibernates, and a message wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"ChatRoom",
+					"RateLimiter"
+				],
+				"file": "src/chat.mjs",
+				"uses": [
+					"storage.list",
+					"storage.put",
+					"acceptWebSocket",
+					"serializeAttachment"
+				]
+			},
+			"ranAt": "2026-11-05T02:47:19.412Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "company-brain",
+			"repo": "supermemoryai/company-brain",
+			"url": "https://github.com/supermemoryai/company-brain/tree/ef8a45ef3aed97b32599c7d8007edefab6d14e9a",
+			"commit": "ef8a45ef3aed97b32599c7d8007edefab6d14e9a",
+			"stars": 1081,
+			"origin": "search",
+			"directory": ".",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 4,
+				"total": 5
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"MODEL_API_KEY",
+				"SLACK_CLIENT_ID",
+				"SLACK_CLIENT_SECRET",
+				"SLACK_SIGNING_SECRET",
+				"SUPERMEMORY_API_KEY"
+			],
+			"durableObjects": {
+				"classes": [
+					"CompanyBrainAgent"
+				],
+				"file": "src/brain/turn/agent.ts",
+				"uses": [
+					"Agent",
+					"storage.sql",
+					"storage.setAlarm"
+				]
+			},
+			"ranAt": "2026-11-05T02:21:11.331Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "pastebin-worker",
+			"repo": "SharzyL/pastebin-worker",
+			"url": "https://github.com/SharzyL/pastebin-worker/tree/aae764cb29d94a5680a9140831820f09879ad29d",
+			"commit": "aae764cb29d94a5680a9140831820f09879ad29d",
+			"stars": 1070,
+			"origin": "search",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "peers stay connected across the channel's hibernation, and a frame wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"LiveChannel"
+				],
+				"file": "worker/live.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"setWebSocketAutoResponse"
+				]
+			},
+			"ranAt": "2026-11-05T02:35:25.054Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "unifi-mcp",
+			"repo": "sirkirby/unifi-mcp",
+			"url": "https://github.com/sirkirby/unifi-mcp/tree/f595762ba75031665458bbeb8c5701d896f7e269",
+			"commit": "f595762ba75031665458bbeb8c5701d896f7e269",
+			"stars": 994,
+			"origin": "search",
+			"directory": "apps/worker/worker",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a relay stays connected while the object hibernates, and a tool call wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"RelayObject"
+				],
+				"file": "apps/worker/worker/src/relay-object.ts",
+				"uses": [
+					"blockConcurrencyWhile",
+					"storage.sql.exec",
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment"
+				]
+			},
+			"ranAt": "2026-11-05T02:41:04.791Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "kody",
+			"repo": "kody-hq/kody",
+			"url": "https://github.com/kody-hq/kody/tree/762a7397cf31f7a0dad7262342fd93f0b6a7894c",
+			"commit": "762a7397cf31f7a0dad7262342fd93f0b6a7894c",
+			"stars": 903,
+			"origin": "named",
+			"directory": "packages/status",
+			"status": "needs-secrets",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [
+				"CLOUDFLARE_API_TOKEN"
+			],
+			"durableObjects": {
+				"classes": [
+					"StatusStore"
+				],
+				"file": "packages/status/status-store.ts",
+				"uses": [
+					"storage.sql.exec",
+					"blockConcurrencyWhile",
+					"RPC methods",
+					"scheduled() into the object"
+				]
+			},
+			"ranAt": "2026-11-05T02:26:04.108Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "nodecrypt",
+			"repo": "shuaiplus/nodecrypt",
+			"url": "https://github.com/shuaiplus/nodecrypt/tree/54ed04903182799895e98af365cf4172f7b2f3f3",
+			"commit": "54ed04903182799895e98af365cf4172f7b2f3f3",
+			"stars": 897,
+			"origin": "search",
+			"directory": ".",
+			"status": "works",
+			"steps": {
+				"pass": 6,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"ChatRoom"
+				],
+				"file": "worker/index.js",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.delete",
+					"WebSocketPair",
+					"WebSocket.accept",
+					"crypto.subtle"
+				]
+			},
+			"ranAt": "2026-11-05T03:37:23.966Z",
+			"orange": "cb1ffb0",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "radish",
+			"repo": "Dhravya/radish",
+			"url": "https://github.com/Dhravya/radish/tree/98768e8124ca24ec3f76211daa45290392f6eefa",
+			"commit": "98768e8124ca24ec3f76211daa45290392f6eefa",
+			"stars": 535,
+			"origin": "named",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 7,
+				"total": 8
+			},
+			"changes": [
+				{
+					"kind": "config",
+					"what": "Adds wrangler.jsonc with the REDIS Durable Object and the ColdTier R2 bucket",
+					"why": "The project configures its Worker only in Alchemy's alchemy.run.ts."
+				},
+				{
+					"kind": "code",
+					"what": "Adds src/orange-entry.ts: src/do.ts and src/worker.ts rewritten as a plain Durable Object class and Worker, using the project's Store and SessionExecutor unchanged",
+					"why": "src/do.ts and src/worker.ts export Alchemy Effect layers. Only Alchemy's bundler turns them into a Worker, and `alchemy dev` needs a Cloudflare account."
+				}
+			],
+			"failures": [
+				{
+					"step": "a connection keeps its name while the object hibernates",
+					"kind": "sleep",
+					"error": "Some actor was still awake 60 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"RedisDO"
+				],
+				"file": "src/do.ts",
+				"uses": [
+					"storage.sql.exec",
+					"storage.transactionSync",
+					"storage.setAlarm",
+					"alarm",
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment"
+				]
+			},
+			"ranAt": "2026-11-05T02:36:25.264Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "y-durableobjects",
+			"repo": "napolab/y-durableobjects",
+			"url": "https://github.com/napolab/y-durableobjects/tree/e6d6d0615c7051ddc43222c16d8078070ee64d32",
+			"commit": "e6d6d0615c7051ddc43222c16d8078070ee64d32",
+			"stars": 256,
+			"origin": "named",
+			"directory": "example/apps/workers",
+			"status": "partial",
+			"steps": {
+				"pass": 6,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "two open editors keep syncing across a hibernation",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake. Under the emulated sleep gate it also fails: the room does not hibernate while the two editors are connected.",
+					"emulated": "fail"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"YDurableObjects"
+				],
+				"file": "src/yjs/index.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"storage.get",
+					"storage.list",
+					"storage.put",
+					"storage.delete",
+					"storage.transaction",
+					"blockConcurrencyWhile"
+				]
+			},
+			"ranAt": "2026-11-05T02:48:33.598Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "tldraw-sync-cloudflare",
+			"repo": "tldraw/tldraw-sync-cloudflare",
+			"url": "https://github.com/tldraw/tldraw-sync-cloudflare/tree/1a4243e3aefd6c2a72f821b6b6c7a85af6577405",
+			"commit": "1a4243e3aefd6c2a72f821b6b6c7a85af6577405",
+			"stars": 153,
+			"origin": "named",
+			"directory": ".",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 7,
+				"total": 9
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "the room hibernates while a connected client pings every 5 s",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				},
+				{
+					"step": "a client stays connected while the room hibernates, and its next push commits",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45 s after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"TldrawDurableObject"
+				],
+				"file": "worker/TldrawDurableObject.ts",
+				"uses": [
+					"acceptWebSocket",
+					"getWebSockets",
+					"serializeAttachment",
+					"deserializeAttachment",
+					"setWebSocketAutoResponse",
+					"storage.sql"
+				]
+			},
+			"ranAt": "2026-11-05T02:41:48.060Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "userdo",
+			"repo": "acoyfellow/UserDO",
+			"url": "https://github.com/acoyfellow/UserDO/tree/f2a1040343728d4e041679ed124699fbd4281921",
+			"commit": "f2a1040343728d4e041679ed124699fbd4281921",
+			"stars": 138,
+			"origin": "named",
+			"directory": "examples/hono",
+			"status": "works-emulated",
+			"steps": {
+				"pass": 5,
+				"total": 6
+			},
+			"changes": [],
+			"failures": [
+				{
+					"step": "a socket stays open while the user's object hibernates, and a message wakes it",
+					"kind": "sleep",
+					"error": "Some actor was still awake 45000ms after the last client activity",
+					"ownerLabel": "WebSocket hibernation not available on Rivet 3",
+					"owner": "hibernation-not-available",
+					"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake.",
+					"emulated": "pass"
+				}
+			],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"MyAppDO",
+					"UserDO"
+				],
+				"file": "examples/hono/index.tsx",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.sql",
+					"acceptWebSocket",
+					"getWebSockets",
+					"RPC"
+				]
+			},
+			"ranAt": "2026-11-05T02:48:43.369Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "durable-effect",
+			"repo": "backpine/durable-effect",
+			"url": "https://github.com/backpine/durable-effect/tree/e93ed103efce4205d469b890be93a6fed7bf881e",
+			"commit": "e93ed103efce4205d469b890be93a6fed7bf881e",
+			"stars": 97,
+			"origin": "named",
+			"directory": "examples/effect-worker-api",
+			"status": "works",
+			"steps": {
+				"pass": 7,
+				"total": 7
+			},
+			"changes": [],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"CounterDO",
+					"OnboardingDO",
+					"BillingDO"
+				],
+				"file": "packages/task-group/src/cloudflare/runtime.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.delete",
+					"setAlarm",
+					"getAlarm",
+					"deleteAlarm",
+					"alarm",
+					"rpc"
+				]
+			},
+			"ranAt": "2026-11-05T02:21:32.114Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "durable-utils",
+			"repo": "lambrospetrou/durable-utils",
+			"url": "https://github.com/lambrospetrou/durable-utils/tree/038d378b06f320e66539d3284eff5e1dfbb95b84",
+			"commit": "038d378b06f320e66539d3284eff5e1dfbb95b84",
+			"stars": 97,
+			"origin": "named",
+			"directory": "test",
+			"status": "works",
+			"steps": {
+				"pass": 7,
+				"total": 7
+			},
+			"changes": [
+				{
+					"kind": "code",
+					"what": "Adds the README's TenantDO class to the test fixture Worker (test/workers-test.ts), routes that use SQLSchemaMigrations, StaticShardedDO, stubByName, and tryN, and its binding and migration in test/wrangler.toml.",
+					"why": "library: no deployable Worker in the repository. The fixture Worker and the region-placer example serve only the region placer routes, and do not reach the library's state API."
+				}
+			],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"TenantDO",
+					"RegionPlacerDO",
+					"SQLiteDO",
+					"CASPaxosDO"
+				],
+				"file": "src/sql-migrations.ts",
+				"uses": [
+					"storage.sql.exec",
+					"storage.kv",
+					"storage.transactionSync",
+					"RPC",
+					"WorkerEntrypoint",
+					"RpcTarget"
+				]
+			},
+			"ranAt": "2026-11-05T02:22:14.360Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "hyper-durable",
+			"repo": "ticket-bridge/hyper-durable",
+			"url": "https://github.com/ticket-bridge/hyper-durable/tree/ad65a62464f914b88e5b5d93b380ab389f578e45",
+			"commit": "ad65a62464f914b88e5b5d93b380ab389f578e45",
+			"stars": 64,
+			"origin": "named",
+			"directory": "consumer",
+			"status": "works",
+			"steps": {
+				"pass": 7,
+				"total": 7
+			},
+			"changes": [
+				{
+					"kind": "code",
+					"what": "Adds consumer/: the README's RubberDuck class, its proxyHyperDurables Worker with routes, and a Wrangler config.",
+					"why": "library: no deployable Worker in the repository. The test fixture exports only the Counter class, and has no fetch handler."
+				}
+			],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"RubberDuck"
+				],
+				"file": "src/HyperDurable.ts",
+				"uses": [
+					"storage.get",
+					"storage.put",
+					"storage.deleteAll",
+					"stub.fetch",
+					"Proxy returned from the constructor"
+				]
+			},
+			"ranAt": "2026-11-05T02:26:47.535Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		},
+		{
+			"id": "browsable-durable-object",
+			"repo": "outerbase/browsable-durable-object",
+			"url": "https://github.com/outerbase/browsable-durable-object/tree/1299aa4e99f09a51a7d6a48970c4a3f49e9db90f",
+			"commit": "1299aa4e99f09a51a7d6a48970c4a3f49e9db90f",
+			"stars": 44,
+			"origin": "awesome-list",
+			"directory": "consumer",
+			"status": "works",
+			"steps": {
+				"pass": 8,
+				"total": 8
+			},
+			"changes": [
+				{
+					"kind": "code",
+					"what": "Adds consumer/: the README's @Browsable() class and studio() Worker, importing the committed dist/index.js, with a Wrangler config and a tsconfig.json with target es2024.",
+					"why": "library: no deployable Worker in the repository. The consumer needs its own tsconfig.json because the library's (target ES2020) makes the decorated class throw 'Must call super constructor' when it has a class field, on wrangler dev too."
+				}
+			],
+			"failures": [],
+			"secrets": [],
+			"durableObjects": {
+				"classes": [
+					"MyDurableObject"
+				],
+				"file": "src/index.ts",
+				"uses": [
+					"storage.sql.exec",
+					"storage.transactionSync",
+					"RPC"
+				]
+			},
+			"ranAt": "2026-11-05T02:18:12.649Z",
+			"orange": "e4c405f",
+			"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f"
+		}
+	],
+	"cloud": {
+		"notes": [
+			"Six projects also ran on Rivet Cloud, one run each on a Free cluster. These results are separate from the local ones above.",
+			"Each scenario ran on one shared Free cluster, recorded as Engine 3.0.0 when it was created, the day before these runs. That version comes from the creation record, and was not read during the runs. Each project then got its own Free cluster, where one real request proved it. Those clusters report Engine 3.0.0.",
+			"Only `starbasedb` used `orange deploy`'s upload and rollout. The others used the image `orange deploy --dry-run` writes, uploaded and rolled out with the Rivet CLI.",
+			"Sleep isn't proven on a pool. The Engine API's actor timestamps are null, and these images log no lifecycle lines, so sleep steps wait past the idle window and read state afterward. A restart step is a real rollout to a newly built image.",
+			"A deploy reports done before the new build serves, so each scenario waited for the old node to leave and a project-specific request to succeed.",
+			"The Orange under test was a local merge of the CLI and Durable Object branches, before they landed."
+		],
+		"projects": [
+			{
+				"project": "starbasedb",
+				"what": "A SQL database over HTTP and WebSocket, built on a Durable Object's SQLite.",
+				"ran": "The API refused a request with no token. A client created a table, inserted rows, ran a transaction, used the REST API and JSON export, and queried over a WebSocket. The table survived an idle wait and a real rollout.",
+				"shortfalls": [
+					"The cron callback step did not apply: it calls a local server, which a pool can't reach.",
+					"The recorded run is the third attempt. The first was stopped because the old build might still have been serving. The second failed on rows the first had left and on a wrong sleep check in the test runner.",
+					"The API needs a token, and there is no page to open in a browser."
+				],
+				"repo": "outerbase/starbasedb",
+				"commit": "bb227352135051a0dd50190d67c3e82b03f8e485",
+				"directory": ".",
+				"ranAt": "2026-11-05T10:55:48.139Z",
+				"plan": "Free",
+				"deployedWith": "orange deploy",
+				"steps": [
+					{
+						"name": "a request without a token gets 401",
+						"kind": "http",
+						"status": "pass"
+					},
+					{
+						"name": "a client creates a table, inserts rows, and reads them back",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "the README's $1 query and transaction return their rows",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "the REST API writes a row, and the JSON export sees it",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "a WebSocket client queries the same database",
+						"kind": "websocket",
+						"status": "pass"
+					},
+					{
+						"name": "a cron task's alarm calls the task's callback host",
+						"kind": "alarm",
+						"status": "not-applicable",
+						"note": "The callback host is a local HTTP server, which a pool cannot reach"
+					},
+					{
+						"name": "the table survives the object's sleep",
+						"kind": "sleep",
+						"status": "pass",
+						"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+					},
+					{
+						"name": "the table survives an orange dev and engine restart",
+						"kind": "restart",
+						"status": "pass"
+					}
+				],
+				"counts": {
+					"pass": 7,
+					"fail": 0,
+					"notApplicable": 1,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "tldraw",
+				"what": "The sync backend of tldraw's multiplayer whiteboard, with one Durable Object per room and assets in R2.",
+				"ran": "Assets uploaded to and read from R2 on a Google Cloud Storage bucket, through Orange's S3 settings. Two clients synced pages over WebSockets, a late joiner got them, and a page survived the room emptying and a real rollout.",
+				"shortfalls": [
+					"This is the backend only, with no editor to open.",
+					"The image needed the Worker bundled by hand first, because the Orange it ran on could not install `workspace:` packages inside the image.",
+					"Only the object reads and writes the project uses ran against Cloud Storage."
+				],
+				"repo": "tldraw/tldraw",
+				"commit": "aae1c5d6d099817a76ddeb6eb5e71e2014d42d7b",
+				"directory": "apps/bemo-worker",
+				"ranAt": "2026-11-05T11:13:18.712Z",
+				"plan": "Free",
+				"deployedWith": "rivet deploy",
+				"steps": [
+					{
+						"name": "an uploaded asset is stored once in R2 and comes back",
+						"kind": "binding",
+						"status": "pass"
+					},
+					{
+						"name": "a page pushed by one client reaches the other client in the room",
+						"kind": "websocket",
+						"status": "pass"
+					},
+					{
+						"name": "a client that joins while the room is live gets the page in its hydration",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "a connected client keeps the room alive through an idle period, and its next push commits",
+						"kind": "websocket",
+						"status": "pass"
+					},
+					{
+						"name": "when everyone leaves the room saves to R2 and sleeps, and the page comes back from R2",
+						"kind": "sleep",
+						"status": "pass",
+						"note": "Waited about 16 s after the sockets closed, past the 10 s sleep timeout. Sleep itself is not proven on a pool."
+					},
+					{
+						"name": "a page pushed before an orange dev and engine restart is there after it",
+						"kind": "restart",
+						"status": "pass"
+					}
+				],
+				"counts": {
+					"pass": 6,
+					"fail": 0,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "computer",
+				"what": "A workspace in a Durable Object, with a filesystem and a shell that runs in a Dynamic Worker. This was the first Dynamic Worker on a cluster.",
+				"ran": "Files written through the object read back, each workspace stayed separate, and a shell in a Dynamic Worker read and wrote the same files. A bundled skill mounted read-only. Files survived an idle wait and a real rollout.",
+				"shortfalls": [
+					"The image needed the Worker bundled by hand first, because the project's package comes from its monorepo.",
+					"The scenario does not touch the R2 mount. A separate check read and listed a Cloud Storage object through it. The project's mount is read-only."
+				],
+				"repo": "cloudflare/computer",
+				"commit": "b995d86503eab22793ba1feb07c3c67818e6f6b9",
+				"directory": "examples/worker-shell",
+				"ranAt": "2026-11-05T11:29:47.883Z",
+				"plan": "Free",
+				"deployedWith": "rivet deploy",
+				"steps": [
+					{
+						"name": "the Worker lists its routes, and refuses paths outside the workspace",
+						"kind": "http",
+						"status": "pass"
+					},
+					{
+						"name": "a file written through the Durable Object reads back, and each workspace is separate",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "a shell in a Dynamic Worker reads and writes the Durable Object's filesystem",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "the skill bundled with the Worker is mounted read-only",
+						"kind": "binding",
+						"status": "pass"
+					},
+					{
+						"name": "files survive the Durable Object's sleep, and the shell still runs",
+						"kind": "sleep",
+						"status": "pass",
+						"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+					},
+					{
+						"name": "files survive a restart, and the shell still runs",
+						"kind": "restart",
+						"status": "pass"
+					}
+				],
+				"counts": {
+					"pass": 6,
+					"fail": 0,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "kody",
+				"what": "A status page for the Kody app, where a one-minute cron probes components and a Durable Object stores incidents.",
+				"ran": "The page and its JSON read from the store. The real cron fired on the pool, and three failing passes opened an incident, which survived an idle wait and a real rollout.",
+				"shortfalls": [
+					"Its origin points at a host that never answers, so the pool doesn't probe the project's real site. So every component reads down, and that outage comes from this setup.",
+					"Two steps did not apply, because they need an origin that answers or recovers.",
+					"Operator alert email needs a real credential.",
+					"A binding to the project's jobs Worker points at a Worker that isn't deployed. No step called it."
+				],
+				"repo": "kody-hq/kody",
+				"commit": "762a7397cf31f7a0dad7262342fd93f0b6a7894c",
+				"directory": "packages/status",
+				"ranAt": "2026-11-05T11:46:05.334Z",
+				"plan": "Free",
+				"deployedWith": "rivet deploy",
+				"steps": [
+					{
+						"name": "the status page and its JSON read from the store",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "the one-minute cron runs a probe pass into the object",
+						"kind": "alarm",
+						"status": "not-applicable",
+						"note": "It asserts a healthy origin. The local scenario serves one on 127.0.0.1, which a pool can't reach, so the origin here is a host that never answers"
+					},
+					{
+						"name": "three failing passes open an incident, and the page shows it",
+						"kind": "alarm",
+						"status": "pass"
+					},
+					{
+						"name": "the open incident survives the object's sleep",
+						"kind": "sleep",
+						"status": "pass",
+						"note": "Waited 30 s idle with no socket open, and the cron wakes this object each minute. Sleep itself is not proven on a pool."
+					},
+					{
+						"name": "the open incident survives a restart",
+						"kind": "restart",
+						"status": "pass"
+					},
+					{
+						"name": "after the restart, the cron runs again, and two good passes resolve the incident",
+						"kind": "alarm",
+						"status": "not-applicable",
+						"note": "It needs an origin that recovers, which a pool can't reach"
+					},
+					{
+						"name": "an operator alert email goes out through the Cloudflare Email API",
+						"kind": "http",
+						"status": "needs-secrets",
+						"secrets": [
+							"CLOUDFLARE_API_TOKEN"
+						]
+					}
+				],
+				"counts": {
+					"pass": 4,
+					"fail": 0,
+					"notApplicable": 2,
+					"needsSecrets": 1
+				}
+			},
+			{
+				"project": "partykit",
+				"what": "A collaborative text editor fixture on PartyServer, with Yjs documents in Durable Objects.",
+				"ran": "Two editors synced edits both ways over WebSockets, and a custom message reached the others. A document was saved when its room emptied, came back after an idle wait, stayed separate from another room's, and survived a real rollout.",
+				"shortfalls": [
+					"Editors staying connected across a room's hibernation failed, as expected: WebSocket hibernation is not available on Rivet 3, so open sockets keep the object awake.",
+					"The editor client isn't in the deployed assets, so there is nothing to open in a browser."
+				],
+				"repo": "cloudflare/partykit",
+				"commit": "f0a2e97d233f24545b2648aec2ed6a191e11074e",
+				"directory": "fixtures/tiptap-yjs",
+				"ranAt": "2026-11-05T12:10:50.602Z",
+				"plan": "Free",
+				"deployedWith": "rivet deploy",
+				"steps": [
+					{
+						"name": "editors stay connected across the room's hibernation, and an edit wakes it",
+						"kind": "sleep",
+						"status": "fail",
+						"error": "A client socket stayed open or a request ran within the idle window for 90000ms, so the object could not sleep"
+					},
+					{
+						"name": "two editors sync edits in both directions",
+						"kind": "websocket",
+						"status": "pass",
+						"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+					},
+					{
+						"name": "a custom ping answers the sender and notifies the others",
+						"kind": "websocket",
+						"status": "pass"
+					},
+					{
+						"name": "the document is saved when the room empties, and comes back after a sleep",
+						"kind": "sleep",
+						"status": "pass",
+						"note": "Waited 30 s idle with no socket open. Sleep itself is not proven on a pool."
+					},
+					{
+						"name": "a room's document is separate from another room's",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "the document survives an orange dev and engine restart",
+						"kind": "restart",
+						"status": "pass"
+					}
+				],
+				"counts": {
+					"pass": 5,
+					"fail": 1,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "supermemory",
+				"what": "Supermemory's MCP server, which gives AI clients a memory, with a Durable Object for each user's active space and for upload sessions.",
+				"ran": "The server described itself and its OAuth metadata, refused a client with no token, and refused an unknown upload token. With a real Supermemory sign-in, a token was accepted on the pool, an upload session worked once and refused a second use, and the active space carried across connections.",
+				"shortfalls": [
+					"Uploads don't work for a real client on a pool URL. The Worker builds its upload URL from `MCP_RESOURCE`, which stays on Supermemory's production host so that tokens match, so a client following it gets a 401 from production. The passing step posted the same path to the pool by hand.",
+					"The image needed `build.command` removed after running it by hand, because the Orange it ran on refused a custom build.",
+					"The sign-in step ran by a separate script, after two attempts stopped on that script's own checks."
+				],
+				"repo": "supermemoryai/supermemory",
+				"commit": "16ed414e0e0c61c946b7687ec813b2064fe75dd4",
+				"directory": "apps/mcp",
+				"ranAt": "2026-11-05T14:08:23.371Z",
+				"plan": "Free",
+				"deployedWith": "rivet deploy",
+				"steps": [
+					{
+						"name": "serves the server description and the OAuth resource metadata",
+						"kind": "http",
+						"status": "pass"
+					},
+					{
+						"name": "an MCP client without a token gets 401 with the resource metadata",
+						"kind": "http",
+						"status": "pass"
+					},
+					{
+						"name": "SpaceState refuses an upload token with no session",
+						"kind": "do-state",
+						"status": "pass"
+					},
+					{
+						"name": "the active space is stored in SpaceState and an upload session is consumed once",
+						"kind": "do-state",
+						"status": "pass",
+						"note": "Ran once with a real Supermemory sign-in, by a separate script through the project's public MCP API. The upload went to the pool by hand, because the Worker advertises Supermemory's production host for uploads."
+					}
+				],
+				"counts": {
+					"pass": 4,
+					"fail": 0,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			}
+		]
+	},
+	"excluded": [
+		{
+			"repo": "cloudflare/actors",
+			"stars": 443,
+			"reason": "Left out on purpose: not useful with Rivet Actors."
+		},
+		{
+			"repo": "cloudflare/wildebeest",
+			"stars": 2116,
+			"reason": "Its README says it is archived and unmaintained, and its DO config binds no object."
+		},
+		{
+			"repo": "supermemoryai/markdowner",
+			"stars": 2030,
+			"reason": "No commit since 2024-07-20. package.json lacks a dependency the code imports. Its DO only holds a Browser Rendering session."
+		},
+		{
+			"repo": "transitive-bullshit/agentic",
+			"stars": 18086,
+			"reason": "Archived."
+		},
+		{
+			"repo": "getsentry/sentry-javascript",
+			"stars": 8771,
+			"reason": "Its Wrangler configs are test fixtures for the SDK."
+		},
+		{
+			"repo": "denoland/celld",
+			"stars": 6223,
+			"reason": "A Durable Object runtime, with fixtures. Not an app on Cloudflare."
+		},
+		{
+			"repo": "cloudflare/workers-sdk",
+			"stars": 4702,
+			"reason": "Wrangler itself. Its Durable Objects are test fixtures."
+		},
+		{
+			"repo": "cloudflare/miniflare",
+			"stars": 3925,
+			"reason": "A local simulator, archived."
+		},
+		{
+			"repo": "rohanprasadofficial/localflare",
+			"stars": 1562,
+			"reason": "A local Cloudflare tool, not an app."
+		},
+		{
+			"repo": "secondsky/claude-skills",
+			"stars": 244,
+			"reason": "Skill templates, not a deployed project."
+		},
+		{
+			"repo": "syumai/workers-go",
+			"stars": 1181,
+			"reason": "A Go library. Its Durable Objects are examples."
+		}
+	]
+}

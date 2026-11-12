@@ -1,0 +1,83 @@
+{
+	"schemaVersion": 1,
+	"id": "computer",
+	"repo": "cloudflare/computer",
+	"commit": "b995d86503eab22793ba1feb07c3c67818e6f6b9",
+	"stars": 9786,
+	"origin": "official",
+	"directory": "examples/worker-shell",
+	"ranAt": "2026-11-05T02:19:28.364Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 35,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 7,
+		"command": "npm run build --workspace @cloudflare/computer"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "the Worker lists its routes, and refuses paths outside the workspace",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a file written through the Durable Object reads back, and each workspace is separate",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a shell in a Dynamic Worker reads and writes the Durable Object's filesystem",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 2.8
+		},
+		{
+			"name": "the skill bundled with the Worker is mounted read-only",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "files survive the Durable Object's sleep, and the shell still runs",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "files survive a restart, and the shell still runs",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 11.1
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"ContainerExample"
+		],
+		"file": "examples/worker-shell/src/index.ts",
+		"uses": [
+			"storage.sql",
+			"rpc",
+			"ctx.exports",
+			"worker_loaders"
+		]
+	}
+}

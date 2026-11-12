@@ -1,0 +1,6 @@
+{
+  "name": "orange-test-worker-node-url",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"]
+}

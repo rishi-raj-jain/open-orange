@@ -1,0 +1,184 @@
+---
+title: R2
+description: Use R2 bucket bindings with OpenOrange, backed by a local Rivet Actor or by an S3-compatible store.
+---
+
+# R2
+
+**Status:** Supported. Runs on one Rivet Actor for each bucket, or on your S3-compatible store.
+
+## Configuration
+
+OpenOrange reads the standard Wrangler R2 binding. No extra setup is needed:
+
+```jsonc
+{
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "uploads" }]
+}
+```
+
+Like `wrangler dev`, OpenOrange names a local bucket by `preview_bucket_name`
+when it is set, then by `bucket_name`. Bindings with the same bucket name share
+data. OpenOrange ignores `jurisdiction`.
+
+### Store a bucket in S3 instead
+
+By default, a Rivet Actor stores the bucket: on your machine under
+`orange dev`, and on your Rivet cluster after `orange deploy`. To keep a bucket
+in an S3-compatible store, set environment variables before you run
+`orange dev`. The variable names contain the bucket name from above in
+uppercase, with each character other than `A`-`Z` and `0`-`9` changed to `_`.
+For `bucket_name: "uploads"`:
+
+| Variable | Required | Value |
+| --- | --- | --- |
+| `ORANGE_R2_UPLOADS_S3_ENDPOINT` | Yes | The S3 endpoint URL. See [Choose a provider](#choose-a-provider). Setting it turns on S3 for this bucket. |
+| `ORANGE_R2_UPLOADS_S3_ACCESS_KEY_ID` | Yes | The access key. Falls back to `AWS_ACCESS_KEY_ID`. |
+| `ORANGE_R2_UPLOADS_S3_SECRET_ACCESS_KEY` | Yes | The secret key. Falls back to `AWS_SECRET_ACCESS_KEY`. |
+| `ORANGE_R2_UPLOADS_S3_BUCKET` | No | The S3 bucket name. Defaults to `bucket_name`. |
+| `ORANGE_R2_UPLOADS_S3_REGION` | No | The S3 region. Falls back to `AWS_REGION`, then `auto`. |
+
+```sh
+# .dev.vars
+ORANGE_R2_UPLOADS_S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
+ORANGE_R2_UPLOADS_S3_REGION=us-east-1
+ORANGE_R2_UPLOADS_S3_ACCESS_KEY_ID=<access key ID>
+ORANGE_R2_UPLOADS_S3_SECRET_ACCESS_KEY=<secret access key>
+```
+
+OpenOrange reads these variables from the shell environment, `.dev.vars`, or
+`.env`. A value from the shell wins. The S3 bucket must already exist. If the endpoint is set
+but a key is missing, the Worker does not start, and the error names the key
+variables to set.
+
+#### Choose a provider
+
+| Provider | `..._S3_ENDPOINT` | `..._S3_REGION` | Keys |
+| --- | --- | --- | --- |
+| [Amazon S3](https://docs.aws.amazon.com/general/latest/gr/s3.html) | `https://s3.<region>.amazonaws.com` | The bucket's region, such as `us-east-1` | An IAM access key ID and secret access key |
+| [Cloudflare R2](https://developers.cloudflare.com/r2/api/s3/api/) | `https://<account ID>.r2.cloudflarestorage.com` | `auto` (the default) | The access key ID and secret access key of an R2 API token |
+| [Google Cloud Storage](https://docs.cloud.google.com/storage/docs/aws-simple-migration) | `https://storage.googleapis.com` | `auto` (the default) | An [HMAC key](https://docs.cloud.google.com/storage/docs/authentication/hmackeys): the access ID, which starts with `GOOG`, and the secret |
+| [Backblaze B2](https://www.backblaze.com/docs/cloud-storage-call-the-s3-compatible-api) | `https://s3.<region>.backblazeb2.com` | The region in the endpoint, such as `us-west-004` | An application key ID and application key |
+| MinIO that you run | `http://127.0.0.1:9000` | `auto` (the default) | The MinIO user and password. See [Run MinIO locally](#run-minio-locally). |
+
+OpenOrange sends path-style requests, such as `<endpoint>/<bucket>/<key>`. A store
+that accepts only virtual-hosted requests does not work. For example,
+[Tigris](https://www.tigrisdata.com/blog/virtual-hosted-urls/) buckets created after
+February 19, 2025 accept only virtual-hosted requests.
+
+#### Run MinIO locally
+
+```sh
+export ORANGE_R2_UPLOADS_S3_ENDPOINT=http://127.0.0.1:9000
+export ORANGE_R2_UPLOADS_S3_ACCESS_KEY_ID=minioadmin
+export ORANGE_R2_UPLOADS_S3_SECRET_ACCESS_KEY=minioadmin
+orange dev
+```
+
+## How it works
+
+The binding implements the R2 Workers API on top of one of two storage
+backends:
+
+- `head()`, `get()`, `put()`, `delete()` with one key or an array, and `list()`
+  with `prefix`, `delimiter`, `cursor`, `startAfter`, `limit`, and `include`.
+- `onlyIf` as an object or as `Headers`, and `range` as an object or as
+  `Headers`. A failed condition makes `get()` return the object without a body
+  and `put()` return `null`.
+- `httpMetadata`, `customMetadata`, and one of `md5`, `sha1`, `sha256`,
+  `sha384`, or `sha512` on `put()`. A checksum that does not match fails the
+  put and keeps the stored object.
+- `createMultipartUpload()`, `resumeMultipartUpload()`, and `uploadPart()`,
+  `abort()`, and `complete()` on the upload.
+- `R2Object.writeHttpMetadata()`, and `arrayBuffer()`, `bytes()`, `text()`,
+  `json()`, and `blob()` on a body.
+
+Argument checks, limits, and error messages follow workerd and the local R2
+backend of `wrangler dev`. For example, a key longer than 1024 bytes rejects
+with `put: The specified object name is not valid. (10020)`.
+
+### Default backend: a Rivet Actor per bucket
+
+Each bucket is one internal Durable Object, which runs as a Rivet Actor with
+SQLite storage. Data persists across `orange dev` restarts in the project's
+`.open-orange` directory. The bucket is the actor `openorange:r2-bucket` with
+the bucket name as its key, and the `objects` table lists the objects.
+
+- A put cuts the body into 512 KiB chunks and writes each chunk with its own
+  request. The object becomes visible only when a final request commits it, so
+  a reader never sees a partial or mixed object.
+- If the upload stops, for example because `orange dev` restarts, the previous
+  object stays visible.
+- Chunks of overwritten, deleted, and abandoned objects are deleted 5 minutes
+  later by an alarm.
+
+### S3 backend
+
+Each call becomes one or more S3 requests. OpenOrange evaluates `onlyIf` and
+ranges with the same rules as the default backend. A conditional put reads the
+current object first, then writes with `If-Match` or `If-None-Match` so that a
+concurrent write makes the put return `null`. A put from a stream first writes
+the body to a temporary file, because S3 needs the length before the upload
+starts.
+
+## Conformance
+
+An end-to-end `orange dev` test runs the same cases against both backends. The
+S3 run uses a real MinIO server. The cases cover:
+
+- Byte-equal round trips for 0 B, 1 B, 512 KiB ± 1 B, and 30 MiB, with MD5
+  ETags.
+- Failed `onlyIf` on `get()` and `put()`, as an object and as `Headers`.
+- Ranges that cross a chunk boundary, and an unsatisfiable range.
+- Two concurrent puts on one key while reads run.
+- Checksum mismatches, metadata, listing, and multipart uploads.
+- Invalid keys and `ssecKey`.
+
+The default backend also has a restart test. The S3 backend also has a test for
+an S3 endpoint that is down. The upstream workerd R2 tests use a mock R2
+server that the conformance runner does not configure.
+
+## Limits and deviations
+
+These apply to both backends:
+
+- `ssecKey` is not supported yet. Calls with it reject with a
+  `NotSupportedError`.
+- A put accepts a `ReadableStream` of any length. Cloudflare requires a known
+  length.
+- `list()` always honors `include`, as with the `r2_list_honor_include`
+  compatibility flag.
+- `storageClass` is stored as given and not checked.
+- There is no `orange r2` command to manage objects from the CLI.
+
+The default backend also has these limits:
+
+- One Rivet Actor stores each bucket, so Rivet's storage limit for one actor
+  bounds the bucket. Cloudflare buckets have no size limit.
+- Large objects are slow. On a development machine, a 30 MiB object takes
+  about 1.5 seconds to write and 4.5 seconds to read.
+- A read that takes longer than 5 minutes can fail if the object is
+  overwritten or deleted during the read.
+- Incomplete multipart uploads are kept until they are completed or aborted.
+  Cloudflare aborts them after 7 days.
+
+The S3 backend also has these limits:
+
+- `version` is the S3 version ID when bucket versioning is on. Otherwise, it is
+  the ETag.
+- `uploaded` has one-second precision.
+- S3 returns custom metadata keys in lowercase. Orange keeps the original
+  case of keys that have capital letters in one extra metadata entry,
+  `orange-r2-key-case`, and restores it on reads. The entry counts toward the
+  S3 2 KB metadata limit, and other S3 clients see it. Two keys that differ
+  only in case cannot both be stored.
+- S3 stores a default content type when the put has none.
+- `checksums` returns MD5 for single-part objects, plus SHA-1 or SHA-256 when
+  the put gave one. A SHA-384 or SHA-512 checksum is verified but not stored.
+- `list()` with `include` reads each listed object's metadata with one more
+  request.
+- Completing a multipart upload with no parts fails. Aborting an unknown upload
+  succeeds.
+- Part ETags are the MD5 of the part.
+- A conditional put is atomic only if the store supports `If-Match` and
+  `If-None-Match` on writes. AWS S3, MinIO, and R2 support them.

@@ -1,0 +1,58 @@
+---
+title: Version metadata
+description: Configure and use Worker version metadata with OpenOrange.
+---
+
+# Version metadata
+
+**Status:** Supported
+
+## Configuration
+
+OpenOrange reads the standard Wrangler version metadata binding:
+
+```jsonc
+{
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  }
+}
+```
+
+The binding is available at `env.CF_VERSION_METADATA`.
+
+## How it works
+
+During development, OpenOrange provides:
+
+- `id`: a SHA-256 hash of the bundled Worker bytes and normalized resolved
+  configuration.
+- `tag`: the literal value `dev`.
+- `timestamp`: the bundle build time as an ISO timestamp.
+
+The runtime creates the object once per build. The values therefore remain
+stable across requests until the Worker is rebuilt. A changed bundle or changed
+normalized configuration produces a different ID; the build timestamp does not
+participate in that ID.
+
+`orange dev` resolves this binding from either `wrangler.jsonc` or
+`wrangler.toml` and injects it before the bundled Worker is evaluated. An
+end-to-end CLI test verifies the ID format, build timestamp, development tag,
+and stability across requests served by one runtime process.
+
+## Conformance
+
+- Static conformance checks the injected object against the exact `WorkerVersionMetadata` type.
+- Behavioral tests verify field presence, formats, property behavior, and serialization through the
+  pinned workerd runtime.
+- Unit tests verify deterministic IDs, invalid timestamps, and changes to either hash input.
+- The CLI conformance fixture requires `orange types` to match pinned Wrangler byte for byte and
+  proves the generated `Env` property is exactly the runtime factory's result type.
+- Cloudflare-generated identifiers are normalized rather than compared byte for byte.
+
+## Deviations
+
+- Development IDs are OpenOrange bundle hashes, not Cloudflare Worker version
+  IDs.
+- The development tag is always `dev`.
+- The timestamp represents the local bundle build, not a Cloudflare upload.

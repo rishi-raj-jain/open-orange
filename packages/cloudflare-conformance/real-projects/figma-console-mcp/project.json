@@ -1,0 +1,29 @@
+{
+	"id": "figma-console-mcp",
+	"repo": "southleft/figma-console-mcp",
+	"commit": "5ef4df3791606b8e1f877557ec0dde4796250b44",
+	"stars": 2660,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"FigmaConsoleMCPv3",
+			"PluginRelayDO"
+		],
+		"file": "src/index.ts",
+		"uses": [
+			"McpAgent",
+			"acceptWebSocket",
+			"getWebSockets",
+			"storage.get",
+			"storage.put",
+			"storage.delete"
+		]
+	},
+	"changes": []
+}

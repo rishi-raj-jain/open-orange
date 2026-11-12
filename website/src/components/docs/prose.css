@@ -1,0 +1,107 @@
+@reference '../../styles/global.css';
+
+/* Typography for the rendered docs (src/layouts/Docs.astro). */
+.docs-prose {
+	@apply text-[15.5px] leading-[1.7] text-ink-soft;
+}
+.docs-prose > :first-child {
+	margin-top: 0;
+}
+.docs-prose :where(h2, h3, h4) {
+	@apply scroll-mt-24 font-medium text-ink;
+}
+.docs-prose h2 {
+	@apply mt-14 mb-4 text-[1.5rem] leading-[1.25] tracking-[-0.02em];
+}
+.docs-prose h3 {
+	@apply mt-10 mb-3 text-[1.125rem] leading-[1.35] tracking-[-0.01em];
+}
+.docs-prose h4 {
+	@apply mt-8 mb-2 text-[1rem];
+}
+.docs-prose :where(p, ul, ol, pre, table, blockquote, figure, picture) {
+	@apply my-5;
+}
+.docs-prose a {
+	@apply font-medium text-ink underline decoration-ink/25 underline-offset-[3px] transition-colors hover:decoration-orange motion-reduce:transition-none;
+}
+.docs-prose strong {
+	@apply font-semibold text-ink;
+}
+.docs-prose :where(ul, ol) {
+	@apply pl-6;
+}
+.docs-prose ul {
+	@apply list-disc;
+}
+.docs-prose ol {
+	@apply list-decimal;
+}
+.docs-prose li {
+	@apply my-1.5 pl-1;
+}
+.docs-prose li::marker {
+	@apply text-ink-faint;
+}
+.docs-prose li > :where(ul, ol, p, pre) {
+	@apply my-2;
+}
+.docs-prose :not(pre) > code {
+	@apply rounded-md border border-line bg-paper-mid px-1.5 py-px font-mono text-[0.84em] text-ink;
+	overflow-wrap: anywhere;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+.docs-prose a code {
+	@apply text-inherit;
+}
+.docs-prose pre {
+	@apply overflow-x-auto rounded-xl border border-line px-5 py-4 font-mono text-[13px] leading-[1.65];
+	/* Shiki sets a white background inline; keep it. */
+}
+.docs-prose pre code {
+	@apply font-mono;
+}
+.docs-prose table {
+	@apply block w-full max-w-full overflow-x-auto rounded-xl border border-line bg-surface text-[14px] leading-[1.5];
+	border-collapse: separate;
+	border-spacing: 0;
+}
+.docs-prose :where(th, td) {
+	@apply border-b border-line px-4 py-2.5 text-left align-top;
+}
+.docs-prose tr:last-child > td {
+	@apply border-b-0;
+}
+.docs-prose th {
+	@apply bg-paper-mid text-[13px] font-semibold whitespace-nowrap text-ink;
+}
+.docs-prose td code {
+	@apply text-[0.82em];
+}
+.docs-prose blockquote {
+	@apply rounded-r-xl border-l-2 border-orange bg-orange-soft/60 px-5 py-3 text-ink-soft;
+}
+.docs-prose blockquote > :where(p, ul, ol) {
+	@apply my-2;
+}
+.docs-prose hr {
+	@apply my-12 border-line;
+}
+.docs-prose img {
+	@apply h-auto max-w-full;
+}
+.docs-prose figure {
+	@apply rounded-2xl border border-line bg-surface p-4 md:p-6;
+}
+
+/* Mobile sidebar and "On this page". */
+.docs-menu > summary::-webkit-details-marker {
+	display: none;
+}
+.docs-menu[open] > summary .chev {
+	transform: rotate(180deg);
+}
+[data-toc-link][data-active] {
+	@apply border-orange text-ink;
+}

@@ -1,0 +1,37 @@
+{
+	"orange": "96efb7b",
+	"ranAt": "2026-11-05T10:48:00.000Z",
+	"steps": [
+		{
+			"name": "1,000 objects with one idle socket each cost about 1.1 MB per object",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "1,000 idle sockets on one object cost about 0.2 MB per socket after a long hold",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "about half of an object's cost stays after it sleeps",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		}
+	],
+	"measurements": {
+		"awakeMbPerObject": [
+			1.12,
+			1.106,
+			1.126
+		],
+		"keptMbPerObject": [
+			0.484,
+			0.512,
+			0.489
+		],
+		"mbPerSocket": 0.203
+	}
+}

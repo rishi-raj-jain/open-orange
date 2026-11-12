@@ -1,0 +1,5 @@
+{
+	"name": "monorepo-worker",
+	"type": "module",
+	"dependencies": { "@acme/lib": "workspace:*", "@acme/shared": "file:../../packages/shared" }
+}

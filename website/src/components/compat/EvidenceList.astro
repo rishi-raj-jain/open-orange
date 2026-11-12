@@ -1,0 +1,33 @@
+---
+// The full list of recorded results behind a claim, for the open row.
+import { OUTCOME_LABEL, TONE_CLASS, type EvidenceResult } from '@/data/conformance';
+
+interface Props {
+	evidence: EvidenceResult[];
+}
+
+const { evidence } = Astro.props;
+---
+
+<ul class="results">
+	{evidence.map((e) => {
+		const o = OUTCOME_LABEL[e.orange];
+		const t = TONE_CLASS[o.tone];
+		return (
+			<li>
+				<span class="flex min-w-0 items-start gap-2">
+					<span class={`${t.dot} mt-1.5`} aria-hidden="true"></span>
+					<span class="min-w-0">
+						<span class="block text-ink">{e.label}</span>
+						{e.error ? <span class="err">{e.error}</span> : null}
+					</span>
+				</span>
+				<span class="whitespace-nowrap font-mono text-[12px] text-ink-faint sm:text-right">
+					<span class={t.text}>{o.label}</span>
+					{e.counts ? ` ${e.counts.pass}/${e.counts.total}` : ''}
+					{e.workerd ? <span class="block">workerd {e.workerd}</span> : null}
+				</span>
+			</li>
+		);
+	})}
+</ul>

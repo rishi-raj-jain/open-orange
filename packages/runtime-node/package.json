@@ -1,0 +1,56 @@
+{
+	"name": "@open-orange/runtime-node",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Node.js runtime for OpenOrange Workers compatibility",
+	"license": "Apache-2.0",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./bindings": "./src/bindings/implementations.ts",
+		"./durable-objects": "./src/bindings/durable-objects/index.ts",
+		"./durable-objects/rpc": "./src/bindings/durable-objects/rpc/index.ts",
+		"./globals": "./src/globals/implementations.ts",
+		"./modules": "./src/modules/implementations.ts",
+		"./modules/cloudflare-workers": "./src/modules/cloudflare-workers/index.ts",
+		"./events": "./src/events/implementations.ts",
+		"./process-protocol": "./src/process-protocol.ts",
+		"./runner": "./src/runner.ts",
+		"./substrate": "./src/substrate.ts"
+	},
+	"scripts": {
+		"test": "tsx --test 'src/**/*.test.ts'",
+		"typecheck": "tsc --noEmit"
+	},
+	"engines": {
+		"node": ">=22"
+	},
+	"dependencies": {
+		"@aws-sdk/client-s3": "3.1153.0",
+		"@rivet-dev/agentos-core": "0.4.1",
+		"@rivet-dev/durable-object-migrator": "1.0.0",
+		"@rivet-dev/sandbox-adapter": "0.5.3",
+		"capnweb": "0.12.0",
+		"devalue": "5.9.4",
+		"es-module-lexer": "1.7.0",
+		"heap-js": "2.5.0",
+		"html-rewriter-wasm": "0.4.1",
+		"http-cache-semantics": "4.3.0",
+		"ignore": "5.3.2",
+		"itty-time": "2.0.2",
+		"mime": "4.1.1",
+		"nodemailer": "^10.3.1",
+		"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+		"undici": "8.10.2",
+		"urlpattern-polyfill": "10.1.0",
+		"ws": "8.21.0",
+		"zod": "4.5.4"
+	},
+	"devDependencies": {
+		"@types/http-cache-semantics": "4.2.0",
+		"@types/node": "24.3.0",
+		"@types/nodemailer": "^8.0.2",
+		"tsx": "4.20.5",
+		"typescript": "5.9.3"
+	}
+}

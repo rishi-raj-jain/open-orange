@@ -1,0 +1,67 @@
+name: release
+
+# Started by `pnpm release` (scripts/release/main.ts, phase setup-local) after it commits the
+# version bump. Publishes to npm and tags v<version>. GitHub release creation is disabled for
+# now; see PHASES in scripts/release/main.ts.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version
+        required: true
+        type: string
+      latest:
+        description: Tag as latest on npm
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash -e {0}
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-24.04
+    permissions:
+      # Push the v<version> tag.
+      contents: write
+      # Exchange GitHub's OIDC token for npm trusted publishing.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      # Trusted publishing needs npm 11.5.1 or newer.
+      - run: npm install -g npm@^11.5.1
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Used only if npm trusted publishing is not configured for this repository.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          args=(--version "${{ inputs.version }}" --phase complete-ci --no-validate-git)
+          if [ "${{ inputs.latest }}" != "true" ]; then
+            args+=(--no-latest)
+          fi
+          pnpm release "${args[@]}"

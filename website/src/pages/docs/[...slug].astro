@@ -1,0 +1,55 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import type { MarkdownHeading } from 'astro';
+import Docs from '@/layouts/Docs.astro';
+import { TITLES, docHref } from '@/components/docs/nav';
+import { NO_PAGE } from '@/components/docs/routes';
+import BindingDetail from '@/components/docs/BindingDetail.astro';
+import TipScript from '@/components/compat/TipScript.astro';
+import { bindingsForDoc } from '@/data/bindings';
+
+type MdxModule = { Content: (props: Record<string, unknown>) => unknown; getHeadings: () => MarkdownHeading[] };
+
+// The collection lists the docs and validates their frontmatter. The page
+// imports each file as an MDX module instead of calling `render(entry)`:
+// Astro 5 loses `render()`'s module map when `--outDir` is outside the site
+// directory (it builds into `.astro/` and empties it), and this works either way.
+const modules = import.meta.glob<MdxModule>(['../../../../docs/*.mdx', '../../../../docs/modules/*.mdx', '../../../../docs/internals/*.mdx']);
+
+export async function getStaticPaths() {
+	const entries = await getCollection('docs');
+	return entries
+		.filter((entry) => !NO_PAGE.has(entry.id))
+		.map((entry) => ({ params: { slug: docHref(entry.id).replace(/^\/docs\/|\/$/g, '') }, props: { entry } }));
+}
+
+const { entry } = Astro.props as { entry: CollectionEntry<'docs'> };
+// Pages that read better without the "On this page" column.
+const WIDE = new Set(['modules/bindings']);
+// `filePath` is relative to the site root, e.g. `../docs/modules/kv.mdx`.
+const source = entry.filePath!.replace(/^\.\.\//, '');
+const load = modules[`../../../../${source}`];
+if (!load) throw new Error(`No MDX module for ${entry.filePath}`);
+const { Content, getHeadings } = await load();
+// Compatibility details from the conformance data, after the doc's own content.
+const bindings = bindingsForDoc(entry.id);
+const headings = [
+	...getHeadings(),
+	...(bindings.length ? [{ depth: 2, slug: 'compatibility', text: 'Compatibility' }] : []),
+	...(bindings.length > 1 ? bindings.map((b) => ({ depth: 3, slug: b.slug, text: b.product.product })) : []),
+];
+---
+
+<Docs title={TITLES[entry.id] ?? entry.data.title} description={entry.data.description} href={docHref(entry.id)} headings={headings} source={source} wide={WIDE.has(entry.id)}>
+	<Content />
+	{bindings.length > 0 && (
+		<section slot="after" id="compatibility" class="mt-16 scroll-mt-20 border-t border-line pt-10">
+			<h2 class="text-[1.75rem] font-medium leading-tight tracking-[-0.025em]">Compatibility</h2>
+			<p class="caption mt-2">From the latest conformance run. Scores on the <a href="/compatibility/" class="link">compatibility page</a>; every binding on the <a href="/docs/bindings/" class="link">status page</a>.</p>
+			<div class="mt-8">
+				{bindings.map((b, i) => <BindingDetail b={b} first={i === 0} />)}
+			</div>
+			<TipScript />
+		</section>
+	)}
+</Docs>

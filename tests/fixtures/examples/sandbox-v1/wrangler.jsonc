@@ -1,0 +1,14 @@
+{
+	"name": "sandbox-v1",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	// Files resolves native Linux errno names through node:os.
+	"compatibility_flags": ["nodejs_compat"],
+	// open-orange dev runs the container on the sandbox provider that
+	// ORANGE_SANDBOX_PROVIDER picks. wrangler dev builds the image with Docker.
+	"containers": [{ "class_name": "Sandbox", "image": "./Dockerfile", "instance_type": "lite", "max_instances": 5 }],
+	"durable_objects": {
+		"bindings": [{ "class_name": "Sandbox", "name": "SANDBOX" }]
+	},
+	"migrations": [{ "new_sqlite_classes": ["Sandbox"], "tag": "v1" }]
+}

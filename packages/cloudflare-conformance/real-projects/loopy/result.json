@@ -1,0 +1,96 @@
+{
+	"schemaVersion": 1,
+	"id": "loopy",
+	"repo": "Forward-Future/loopy",
+	"commit": "75966cbd572a4185064971c9fe5e9c52e8f8456d",
+	"stars": 3216,
+	"origin": "search",
+	"directory": "loop-library/worker",
+	"ranAt": "2026-11-05T02:22:52.458Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 6,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "a fresh catalog is closed, and a restored backup opens it",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.6
+		},
+		{
+			"name": "publishing checks the revision, and the new text reaches the public routes",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "two signed-in readers vote, and an unpublished loop is refused",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "the catalog and the votes survive the objects' sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the catalog and the votes survive a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.6
+		},
+		{
+			"name": "a weekly signup passes Turnstile and FormGuard, and reaches here.now",
+			"kind": "do-state",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"TURNSTILE_SECRET_KEY",
+				"HERENOW_API_KEY"
+			]
+		},
+		{
+			"name": "a reader signs in with GitHub",
+			"kind": "http",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"GITHUB_OAUTH_CLIENT_ID",
+				"GITHUB_OAUTH_CLIENT_SECRET"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"LoopCatalog",
+			"VoteStore",
+			"FormGuard"
+		],
+		"file": "loop-library/worker/src/catalog-store.js",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"storage.get",
+			"storage.put",
+			"storage.setAlarm"
+		]
+	}
+}

@@ -1,0 +1,87 @@
+{
+	"schemaVersion": 1,
+	"id": "coucou",
+	"repo": "Louis-CFM/coucou",
+	"commit": "74363634b037108393e450428e5f207515c2c29b",
+	"stars": 6926,
+	"origin": "search",
+	"directory": "android/relay",
+	"ranAt": "2026-11-05T02:19:28.364Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 8,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "the relay refuses a request without a key, a proof, or a valid room",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.5
+		},
+		{
+			"name": "a computer and a phone find each other, and frames cross unchanged",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "the platform answers the heartbeat, and text frames are refused",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "a room held under another key says so and closes",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.3
+		},
+		{
+			"name": "a new socket replaces the old one of its role, and the peer stays linked",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "an idle room hibernates, and the next frame still reaches the peer",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 45.2,
+			"error": "Some actor was still awake 45000ms after the last client activity"
+		},
+		{
+			"name": "after a restart, both sides join again and frames cross",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.9
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Room"
+		],
+		"file": "android/relay/src/room.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"setWebSocketAutoResponse"
+		]
+	}
+}

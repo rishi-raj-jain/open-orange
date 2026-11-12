@@ -1,0 +1,39 @@
+{
+	"id": "epicenter",
+	"repo": "EpicenterHQ/epicenter",
+	"commit": "7cc869b4a1295e2566b61e1a4d5967a89f413b9b",
+	"stars": 4840,
+	"origin": "search",
+	"directory": "apps/sync-lab",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "bun install --ignore-scripts --filter @epicenter/sync-lab",
+	"build": [
+		"bun run build"
+	],
+	"durableObjects": {
+		"classes": [
+			"SyncLabAuthority"
+		],
+		"file": "apps/sync-lab/worker/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"rpc"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "two sockets stay open while the authority hibernates, and a push wakes it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

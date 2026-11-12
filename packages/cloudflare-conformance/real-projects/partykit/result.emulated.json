@@ -1,0 +1,85 @@
+{
+	"schemaVersion": 1,
+	"id": "partykit",
+	"repo": "cloudflare/partykit",
+	"commit": "f0a2e97d233f24545b2648aec2ed6a191e11074e",
+	"stars": 1306,
+	"origin": "official",
+	"directory": "fixtures/tiptap-yjs",
+	"ranAt": "2026-11-10T02:07:02.802Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 11,
+		"command": "npm ci --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 19,
+		"command": "npm --prefix ../.. run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "editors stay connected across the room's hibernation, and an edit wakes it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 11.2
+		},
+		{
+			"name": "two editors sync edits in both directions",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 10.2
+		},
+		{
+			"name": "a custom ping answers the sender and notifies the others",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the document is saved when the room empties, and comes back after a sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "a room's document is separate from another room's",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the document survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.6
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Document"
+		],
+		"file": "fixtures/tiptap-yjs/src/server.ts",
+		"uses": [
+			"storage.sql",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"getByName"
+		]
+	}
+}

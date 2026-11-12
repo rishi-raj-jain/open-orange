@@ -1,0 +1,15 @@
+{
+	"name": "orange-durable-object-cross-script",
+	"main": "./worker.ts",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "REMOTE_COUNTER",
+				"class_name": "Counter",
+				"script_name": "another-worker"
+			}
+		]
+	}
+}

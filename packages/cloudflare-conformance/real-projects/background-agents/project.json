@@ -1,0 +1,56 @@
+{
+	"id": "background-agents",
+	"repo": "open-inspect/background-agents",
+	"commit": "cd63f81c9bd6e7992fa61abda9b595e1c0138f8a",
+	"stars": 3450,
+	"origin": "search",
+	"directory": "packages/control-plane",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "npm ci --ignore-scripts",
+	"build": [
+		"npm --prefix ../.. run build -w @open-inspect/shared"
+	],
+	"d1Migrations": [
+		"DB"
+	],
+	"devVars": {
+		"TOKEN_ENCRYPTION_KEY": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+		"PROVIDER_ACCOUNTS_ENCRYPTION_KEY": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+		"REPO_SECRETS_ENCRYPTION_KEY": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8=",
+		"SERVICE_AUTH_SECRET_SLACK_BOT": "local-only-slack-bot-secret",
+		"SCM_PROVIDER": "github",
+		"ALLOWED_EMAILS": "ada@example.com",
+		"MODAL_API_SECRET": "placeholder-sandboxes-are-not-started",
+		"MODAL_WORKSPACE": "placeholder"
+	},
+	"durableObjects": {
+		"classes": [
+			"SessionDO"
+		],
+		"file": "packages/control-plane/src/cloudflare/durable-object.ts",
+		"uses": [
+			"storage.sql",
+			"acceptWebSocket",
+			"getWebSockets",
+			"setAlarm",
+			"alarm"
+		]
+	},
+	"changes": [
+		{
+			"kind": "config",
+			"what": "packages/control-plane/wrangler.jsonc: adds migrations_dir for the DB binding, pointing at terraform/d1/migrations",
+			"why": "Production is deployed with Terraform, which applies these migrations. The repository's Wrangler config is the one its Worker tests use, and it has no migrations_dir."
+		}
+	],
+	"knownFailures": [
+		{
+			"step": "a subscribed client stays connected while the session hibernates",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

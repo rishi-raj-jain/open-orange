@@ -1,0 +1,29 @@
+---
+import Base from '@/layouts/Base.astro';
+import Hero from '@/components/Hero.astro';
+import Walkthrough from '@/components/Walkthrough.astro';
+import RunAnywhere from '@/components/RunAnywhere.astro';
+import Cost from '@/components/Cost.astro';
+import Limits from '@/components/Limits.astro';
+import GetStarted from '@/components/GetStarted.astro';
+import Dx from '@/components/Dx.astro';
+import Migrate from '@/components/Migrate.astro';
+import Modules from '@/components/Modules.astro';
+import Faq from '@/components/Faq.astro';
+import Cta from '@/components/Cta.astro';
+import { SITE } from '@/data/site';
+---
+
+<Base title={`${SITE.name} — ${SITE.tagline}`}>
+	<Hero />
+	<Walkthrough />
+	<RunAnywhere />
+	<Cost />
+	<Limits />
+	<Dx />
+	<GetStarted />
+	<Migrate />
+	<Modules />
+	<Faq />
+	<Cta />
+</Base>

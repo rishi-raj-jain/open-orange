@@ -1,0 +1,16 @@
+// Each storage binding names a deployed store and a different preview store.
+{
+	"name": "preview-bindings",
+	"main": "worker.js",
+	"compatibility_date": "2026-08-01",
+	"r2_buckets": [{ "binding": "BUCKET", "bucket_name": "live-uploads", "preview_bucket_name": "preview-uploads" }],
+	"kv_namespaces": [{ "binding": "KV", "id": "live-kv", "preview_id": "preview-kv" }],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "notes",
+			"database_id": "00000000-0000-4000-8000-00000000000a",
+			"preview_database_id": "00000000-0000-4000-8000-00000000000b"
+		}
+	]
+}

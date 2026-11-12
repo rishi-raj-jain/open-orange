@@ -1,0 +1,20 @@
+{
+	"orange": "e4c405f",
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"ranAt": "2026-11-05T03:03:17.399Z",
+	"steps": [
+		{
+			"name": "a runner reconnects after its Engine socket closes",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 83
+		},
+		{
+			"name": "a runner reconnects after its Engine socket stops carrying data",
+			"kind": "restart",
+			"status": "fail",
+			"seconds": 128,
+			"error": "75 s after the fault: 0 nodes, object call 500 in 45013ms"
+		}
+	]
+}

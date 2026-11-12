@@ -1,0 +1,16 @@
+{
+	"name": "beyond-cloudflare-quotas",
+	"main": "worker.js",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": ["nodejs_compat"],
+	"kv_namespaces": [{ "binding": "KV", "id": "quotas" }],
+	"durable_objects": { "bindings": [{ "name": "OBJECT", "class_name": "Quotas" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Quotas"] }],
+	"worker_loaders": [{ "binding": "LOADER" }],
+	"workflows": [{ "binding": "FLOW", "name": "quota-flow", "class_name": "Flow" }],
+	"queues": {
+		"producers": [{ "binding": "QUEUE", "queue": "quotas" }],
+		// Cloudflare caps max_batch_size at 100.
+		"consumers": [{ "queue": "quotas", "max_batch_size": 250, "max_batch_timeout": 1 }]
+	}
+}

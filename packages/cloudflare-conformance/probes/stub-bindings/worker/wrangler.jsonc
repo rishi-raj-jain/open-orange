@@ -1,0 +1,9 @@
+{
+	"name": "stub-bindings",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-01",
+	"vectorize": [{ "binding": "VECTORIZE", "index_name": "index" }],
+	"images": { "binding": "IMAGES" },
+	"pipelines": [{ "pipeline": "pipeline", "binding": "PIPELINE" }],
+	"mtls_certificates": [{ "binding": "CERT", "certificate_id": "certificate" }]
+}

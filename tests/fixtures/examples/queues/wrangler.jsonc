@@ -1,0 +1,28 @@
+{
+	"name": "queues",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"kv_namespaces": [{ "binding": "RESULTS", "id": "queues-example-results" }],
+	"queues": {
+		"producers": [
+			{ "binding": "JOBS", "queue": "jobs" },
+			{ "binding": "EVENTS", "queue": "events" }
+		],
+		"consumers": [
+			{
+				"queue": "jobs",
+				// At most 5 messages per batch. A batch waits up to 1 second to fill.
+				"max_batch_size": 5,
+				"max_batch_timeout": 1,
+				// A message gets 3 deliveries: the first attempt and 2 retries.
+				"max_retries": 2,
+				// The delay of a retry() call without its own delaySeconds.
+				"retry_delay": 1,
+				"dead_letter_queue": "jobs-failed"
+			},
+			{ "queue": "events", "max_batch_size": 10, "max_batch_timeout": 1, "max_retries": 3 },
+			// The dead letter queue is a normal queue, so this Worker consumes it too.
+			{ "queue": "jobs-failed", "max_batch_timeout": 1 }
+		]
+	}
+}

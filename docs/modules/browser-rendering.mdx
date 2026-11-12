@@ -1,0 +1,149 @@
+---
+title: Browser Rendering
+description: Run @cloudflare/puppeteer against a hosted browser such as Browserbase, or any Chrome DevTools Protocol endpoint.
+---
+
+# Browser Rendering
+
+**Status:** Supported. Needs a service: set `ORANGE_BROWSER_CDP_URL` to a Chrome DevTools Protocol endpoint.
+
+OpenOrange connects the `browser` binding to a browser that you name. The default path is a
+hosted browser, such as [Browserbase](https://www.browserbase.com/). Any Chrome DevTools
+Protocol (CDP) endpoint works, including a Chromium that you run yourself.
+
+## Choose a provider
+
+Set `ORANGE_BROWSER_CDP_URL` to the provider's CDP WebSocket URL:
+
+| Provider | `ORANGE_BROWSER_CDP_URL` | Notes |
+| --- | --- | --- |
+| [Browserbase](https://docs.browserbase.com/) | `wss://connect.browserbase.com?apiKey=<API key>` | Each `launch()` starts a new browser. See [Browserbase](#browserbase). |
+| [Browserless](https://docs.browserless.io/overview/connection-urls) | `wss://production-sfo.browserless.io?token=<API token>` | Other regions: `production-lon` and `production-ams`. A private fleet uses its own host, such as `chrome.browserless.io`. |
+| [Steel](https://docs.steel.dev/overview/authentication) | `wss://connect.steel.dev?apiKey=<API key>` | Without `sessionId`, Steel starts a new session for each connection. |
+| Other hosted CDP service | Its CDP WebSocket URL | The URL must accept a new connection each time. See the note below. |
+| Chromium that you run | `http://127.0.0.1:9222` | See [Run Chromium yourself](#run-chromium-yourself). |
+
+Each `launch()` opens a new connection to the same URL. A service that gives a WebSocket URL
+only after you create a session with its API, such as Hyperbrowser, does not fit one fixed
+URL.
+
+## Configuration
+
+1. Use the standard Wrangler binding:
+
+   ```jsonc
+   {
+     "compatibility_flags": ["nodejs_compat"],
+     "browser": { "binding": "BROWSER" }
+   }
+   ```
+
+2. Set `ORANGE_BROWSER_CDP_URL` to the CDP endpoint. For Browserbase, the endpoint carries the API key:
+
+   ```sh
+   # .dev.vars
+   ORANGE_BROWSER_CDP_URL="wss://connect.browserbase.com?apiKey=<your API key>"
+   ```
+
+3. Run `orange dev`.
+
+| Value of `ORANGE_BROWSER_CDP_URL` | What OpenOrange does |
+| --- | --- |
+| A `ws://` or `wss://` address, such as a hosted browser's endpoint or `ws://127.0.0.1:9222/devtools/browser/<id>` | Connects to it |
+| An `http://` or `https://` address, such as `http://127.0.0.1:9222` | Reads the browser's WebSocket address from `/json/version`, then connects |
+
+OpenOrange reads the variable from the shell environment, `.dev.vars`, or `.env`,
+like the [R2 S3 settings](./r2#store-a-bucket-in-s3-instead).
+
+On a cluster, set the variable on the runner pool. The runner must be able to reach the browser.
+
+## Use it
+
+`@cloudflare/puppeteer` works unchanged:
+
+```js
+import puppeteer from "@cloudflare/puppeteer";
+
+export default {
+  async fetch(request, env) {
+    const browser = await puppeteer.launch(env.BROWSER);
+    const page = await browser.newPage();
+    await page.goto("https://example.com");
+    const title = await page.title();
+    await browser.close();
+    return new Response(title);
+  },
+};
+```
+
+OpenOrange answers the requests that `@cloudflare/puppeteer` 1.x sends to
+Browser Rendering:
+
+| Request | What OpenOrange does |
+| --- | --- |
+| `launch()` (`POST /v1/devtools/browser`) | Checks that the browser answers, then starts a session. |
+| The DevTools WebSocket (`/v1/devtools/browser/<sessionId>`) | Opens a CDP connection to the browser and passes every message through. |
+| `sessions()`, `history()`, `limits()` | Lists this runtime's sessions. |
+
+OpenOrange does not limit the number of sessions. The limit of the browser or service in
+`ORANGE_BROWSER_CDP_URL` applies. `limits()` reports 10 concurrent sessions, the number
+that `@cloudflare/puppeteer` expects, and OpenOrange does not enforce it.
+
+## Browserbase
+
+Each `launch()` opens a new WebSocket to the endpoint, and Browserbase starts a new
+browser for each one. So each session runs in its own browser.
+
+When the session's WebSocket closes, Browserbase ends that browser within about a
+second. Browserbase bills for the minutes that its browsers run.
+
+Measured on a Browserbase project that allows 3 concurrent browsers:
+
+| Case | Result |
+| --- | --- |
+| `launch()` | About 2.2 to 2.5 seconds |
+| Open `https://example.com`, read its title, take a screenshot, and close | About 5 seconds in all |
+| Two sessions at once | Worked |
+| A fourth concurrent session | Failed. Browserbase answered `429`, and `launch()` threw. |
+| Browserbase ended a session | Puppeteer reported `disconnected`, the next call on the page threw, and `sessions()` no longer listed the session. |
+| A wrong API key | `launch()` threw. Browserbase answered `401`. |
+
+Errors that the Worker can read name the endpoint without its user info, query,
+or fragment, so they do not show the API key.
+
+## Run Chromium yourself
+
+Use this path if you do not want a hosted browser. Any headless Chrome or Chromium works,
+such as a `chromedp/headless-shell` container.
+
+```sh
+chromium --headless --remote-debugging-port=9222 &
+export ORANGE_BROWSER_CDP_URL=http://127.0.0.1:9222
+orange dev
+```
+
+All sessions share the one browser in `ORANGE_BROWSER_CDP_URL`. So that one Worker
+cannot stop the browser for the others:
+
+- `browser.close()` closes only the pages that the session opened. The browser keeps running.
+- When a session's WebSocket closes, its pages close too.
+
+Sessions share the browser's default context, so they share cookies and storage. For
+separate profiles, give each Worker its own browser.
+
+## Deviations
+
+| Cloudflare feature | On OpenOrange |
+| --- | --- |
+| `puppeteer.connect(env.BROWSER, sessionId)` after `browser.disconnect()` | Cannot rejoin. A session ends with its WebSocket. |
+| `keep_alive`, `location`, `recording`, and guardrails | Accepted and ignored |
+| Session limits | Not enforced. See [Use it](#use-it). |
+
+## Errors
+
+| Situation | What the Worker sees |
+| --- | --- |
+| `ORANGE_BROWSER_CDP_URL` is not set | `env.BROWSER.fetch()` throws `Browser Rendering binding "BROWSER" is not supported by OpenOrange. Set ORANGE_BROWSER_CDP_URL ...` |
+| The browser does not answer | `launch()` throws `Unable to create new browser: code: 503: message: Browser Rendering could not reach the browser at ...` |
+| The browser refuses the DevTools WebSocket, such as a wrong key or a hosted service's concurrency limit | `launch()` throws. The WebSocket request gets `502` with `Browser Rendering could not open the DevTools WebSocket at <endpoint>: Unexpected server response: <status>`. |
+| An unknown or busy session | The WebSocket request gets `404` or `409`, and `connect()` throws. |

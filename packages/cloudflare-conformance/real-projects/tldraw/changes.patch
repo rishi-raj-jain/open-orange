@@ -1,0 +1,16 @@
+diff --git a/apps/bemo-worker/wrangler.toml b/apps/bemo-worker/wrangler.toml
+index 7cfb804..2ff534a 100644
+--- a/apps/bemo-worker/wrangler.toml
++++ b/apps/bemo-worker/wrangler.toml
+@@ -54,6 +54,11 @@ code_update_strategy = { mode = "immediate" }
+ bindings = [{ name = "BEMO_DO", class_name = "BemoDO" }]
+ 
+ #################### R2 bucket ####################
++# Orange reads the top-level config, and the project's dev script passes --env dev.
++[[r2_buckets]]
++binding = 'BEMO_BUCKET'
++bucket_name = 'sync-demo-preview'
++
+ # in dev, we write to the preview bucket and need a `preview_bucket_name`
+ [[env.dev.r2_buckets]]
+ binding = 'BEMO_BUCKET'

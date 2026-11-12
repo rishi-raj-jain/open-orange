@@ -1,0 +1,77 @@
+{
+	"schemaVersion": 1,
+	"id": "ai",
+	"repo": "cloudflare/ai",
+	"commit": "34a8f4c00c0871883215a7114e9a7f3e7747ee1b",
+	"stars": 1212,
+	"origin": "search",
+	"directory": "demos/mcp-client",
+	"ranAt": "2026-11-05T02:17:48.571Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 8,
+		"command": "pnpm install --ignore-scripts --filter @cloudflare/agents-mcp-client-example"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 2,
+		"command": "pnpm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 4
+	},
+	"steps": [
+		{
+			"name": "the demo page is served from assets",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a page connects, adds an MCP server, and sees its tools over the WebSocket",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "after the agent sleeps, a new page sees the same server and tools",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "after a restart, a new page sees the same server and tools",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 8.1
+		},
+		{
+			"name": "another session has its own agent, with no servers",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"MyAgent"
+		],
+		"file": "demos/mcp-client/src/server.ts",
+		"uses": [
+			"agents Agent",
+			"addMcpServer",
+			"storage.sql",
+			"WebSocket broadcast"
+		]
+	}
+}

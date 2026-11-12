@@ -1,0 +1,7 @@
+{
+  "name": "tail-producer",
+  "main": "src/producer.js",
+  "compatibility_date": "2026-09-03",
+  "services": [{ "binding": "CONSUMER", "service": "tail-consumer" }],
+  "tail_consumers": [{ "service": "tail-producer" }, { "service": "tail-consumer" }]
+}

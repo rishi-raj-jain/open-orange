@@ -1,0 +1,50 @@
+{
+	"id": "radish",
+	"repo": "Dhravya/radish",
+	"commit": "98768e8124ca24ec3f76211daa45290392f6eefa",
+	"stars": 535,
+	"origin": "named",
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "bun install --ignore-scripts",
+	"devVars": {
+		"RADISH_AUTH_TOKEN": "local-only-token"
+	},
+	"durableObjects": {
+		"classes": [
+			"RedisDO"
+		],
+		"file": "src/do.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"storage.setAlarm",
+			"alarm",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment"
+		]
+	},
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Adds wrangler.jsonc with the REDIS Durable Object and the ColdTier R2 bucket",
+			"why": "The project configures its Worker only in Alchemy's alchemy.run.ts."
+		},
+		{
+			"kind": "code",
+			"what": "Adds src/orange-entry.ts: src/do.ts and src/worker.ts rewritten as a plain Durable Object class and Worker, using the project's Store and SessionExecutor unchanged",
+			"why": "src/do.ts and src/worker.ts export Alchemy Effect layers. Only Alchemy's bundler turns them into a Worker, and `alchemy dev` needs a Cloudflare account."
+		}
+	],
+	"knownFailures": [
+		{
+			"step": "a connection keeps its name while the object hibernates",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

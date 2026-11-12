@@ -1,0 +1,78 @@
+diff --git a/consumer/tsconfig.json b/consumer/tsconfig.json
+new file mode 100644
+index 0000000..c66b513
+--- /dev/null
++++ b/consumer/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++	"compilerOptions": {
++		"target": "es2024",
++		"lib": ["es2024"],
++		"module": "es2022",
++		"moduleResolution": "Bundler",
++		"noEmit": true,
++		"isolatedModules": true,
++		"strict": true,
++		"skipLibCheck": true
++	}
++}
+diff --git a/consumer/worker.ts b/consumer/worker.ts
+new file mode 100644
+index 0000000..4c6f327
+--- /dev/null
++++ b/consumer/worker.ts
+@@ -0,0 +1,39 @@
++import { DurableObject } from "cloudflare:workers";
++import { Browsable, studio } from "../dist/index.js";
++
++interface Env {
++	MY_DURABLE_OBJECT: DurableObjectNamespace;
++}
++
++@Browsable()
++export class MyDurableObject extends DurableObject<Env> {
++	public sql: SqlStorage;
++
++	constructor(ctx: DurableObjectState, env: Env) {
++		super(ctx, env);
++		this.sql = ctx.storage.sql;
++	}
++
++	async fetch(request: Request): Promise<Response> {
++		return new Response("Hello from MyDurableObject");
++	}
++}
++
++export default {
++	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
++		const path = new URL(request.url).pathname;
++
++		if (path === "/studio") {
++			return await studio(request, env.MY_DURABLE_OBJECT, {
++				basicAuth: {
++					username: "admin",
++					password: "password",
++				},
++			});
++		}
++
++		const id = env.MY_DURABLE_OBJECT.idFromName(path);
++		const stub = env.MY_DURABLE_OBJECT.get(id);
++		return stub.fetch(request);
++	},
++};
+diff --git a/consumer/wrangler.jsonc b/consumer/wrangler.jsonc
+new file mode 100644
+index 0000000..8fa8b7a
+--- /dev/null
++++ b/consumer/wrangler.jsonc
+@@ -0,0 +1,9 @@
++{
++	"name": "browsable-consumer",
++	"main": "worker.ts",
++	"compatibility_date": "2025-03-01",
++	"durable_objects": {
++		"bindings": [{ "name": "MY_DURABLE_OBJECT", "class_name": "MyDurableObject" }]
++	},
++	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["MyDurableObject"] }]
++}

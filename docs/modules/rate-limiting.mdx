@@ -1,0 +1,79 @@
+---
+title: Rate Limiting
+description: Use the Workers Rate Limiting binding with OpenOrange, backed by a local Rivet Actor.
+---
+
+# Rate Limiting
+
+**Status:** Supported. Runs on one Rivet Actor for each namespace.
+
+## Configuration
+
+OpenOrange reads the standard Wrangler `ratelimits` binding. No extra setup is
+needed:
+
+```jsonc
+{
+  "ratelimits": [
+    {
+      "name": "MY_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 100, "period": 60 }
+    }
+  ]
+}
+```
+
+The older `unsafe.bindings` form with `"type": "ratelimit"` and the same
+fields also works.
+
+Like `wrangler dev`, `orange dev` stops at startup when `simple.period` is not
+10 or 60, or when `simple.limit` is not a number. The error names the binding.
+
+## Usage
+
+```js
+export default {
+  async fetch(request, env) {
+    const key = request.headers.get("cf-connecting-ip") ?? "anonymous";
+    const { success } = await env.MY_RATE_LIMITER.limit({ key });
+    if (!success) return new Response("Too Many Requests", { status: 429 });
+    return new Response("ok");
+  },
+};
+```
+
+## How it works
+
+Each `namespace_id` is one internal Durable Object, which runs as a Rivet Actor
+named `openorange:ratelimit` with SQLite storage. The counters persist across
+`orange dev` restarts in the project's `.open-orange` directory.
+
+The counter is a fixed window, like `wrangler dev`:
+
+- The window is `floor(now / period)`, aligned to the wall clock.
+- Each `(key, period)` pair has one counter. Bindings with the same
+  `namespace_id` share counters.
+- A call increments the counter and returns `{ success: true }` until the
+  counter reaches `limit`. Then it returns `{ success: false }` until the next
+  window.
+- Each call reads and updates the counter in one SQLite transaction, so
+  overlapping calls never allow more than `limit`.
+
+`limit()` checks its options like `wrangler dev`. For example, an unknown
+option rejects with `bad rate limit options: [window]`. Like `wrangler dev`,
+a call can also override `limit` and `period`.
+
+## Conformance
+
+An end-to-end `orange dev` test covers the limit per key, separate keys and
+namespaces, shared namespaces, the next window, overlapping calls on one key,
+option errors, both configuration forms, and persistence across restarts.
+
+## Limits and deviations
+
+- Cloudflare counts per location and is eventually consistent, so it can allow
+  a few more calls than `limit`. OpenOrange has one exact counter per
+  `namespace_id`. It never allows more than `limit` in a window.
+- Each `limit()` call is one round trip to a Rivet Actor. Cloudflare answers
+  from a local cache.

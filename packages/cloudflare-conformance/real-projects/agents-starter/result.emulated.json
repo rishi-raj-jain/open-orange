@@ -1,0 +1,90 @@
+{
+	"schemaVersion": 1,
+	"id": "agents-starter",
+	"repo": "cloudflare/agents-starter",
+	"commit": "4ea6a72cbabe2b62a66294214361ac106b4a247e",
+	"stars": 1350,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:06:41.635Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 11,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "a client gets its identity and the MCP server list on connect",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "messages one client sets reach the other client and are stored",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a client calls a callable method, and a method without the decorator is refused",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the agent sleeps, and the messages come back from SQLite",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "a client stays connected while the agent hibernates, and its next call is answered",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 20.2
+		},
+		{
+			"name": "the messages survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 8.2
+		},
+		{
+			"name": "the assistant answers a chat message through Workers AI, and its tools schedule a task",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"CLOUDFLARE_API_TOKEN"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"ChatAgent"
+		],
+		"file": "src/server.ts",
+		"uses": [
+			"storage.sql",
+			"storage.setAlarm",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment"
+		]
+	}
+}

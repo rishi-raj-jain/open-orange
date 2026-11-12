@@ -1,0 +1,16 @@
+---
+// A status chip. What each label means is spelled out once per list, in its
+// section header or legend, never in a tooltip.
+import { TONE_CLASS, type Tone } from '@/data/conformance';
+
+interface Props {
+	tone: Tone;
+	label: string;
+	class?: string;
+}
+
+const { tone, label, class: className = '' } = Astro.props;
+const t = TONE_CLASS[tone];
+---
+
+<span class={`chip gap-1.5 ${t.chip} ${className}`}><span class={`${t.dot} size-1.5`}></span>{label}</span>

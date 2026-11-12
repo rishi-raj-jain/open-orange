@@ -1,0 +1,14 @@
+{
+	"name": "worker-loader-fixture",
+	"main": "worker.js",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": ["nodejs_compat"],
+	"vars": { "SECRET": "parent-secret" },
+	"worker_loaders": [{ "binding": "LOADER" }],
+	// A Durable Object makes `orange dev` start a Rivet Engine on a host
+	// loopback port, which dynamic Workers must not reach.
+	"durable_objects": {
+		"bindings": [{ "name": "ENGINE_USER", "class_name": "EngineUser" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EngineUser"] }]
+}

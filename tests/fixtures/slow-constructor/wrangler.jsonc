@@ -1,0 +1,7 @@
+{
+	"name": "slow-constructor",
+	"main": "worker.ts",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": { "bindings": [{ "name": "SLOW", "class_name": "SlowStart" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["SlowStart"] }]
+}

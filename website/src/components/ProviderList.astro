@@ -1,0 +1,29 @@
+---
+// The services a pluggable binding works with: hosted ones as chips, local
+// options on a line under them.
+import { PROVIDERS } from '@/data/site';
+
+interface Props {
+	slug: string;
+	/** Also show the note on how to point the binding at any service. */
+	note?: boolean;
+}
+const { slug, note = false } = Astro.props;
+const p = PROVIDERS[slug];
+---
+
+{p ? (
+	<div>
+		<ul class="flex flex-wrap gap-1.5">
+			{p.hosted.map((h) => (
+				<li>
+					<a href={h.href} rel="noopener" class="inline-flex items-center rounded-md border border-line bg-surface px-2 py-0.5 text-[13px] font-medium text-ink no-underline hover:border-ink-faint">{h.name}</a>
+				</li>
+			))}
+		</ul>
+		<p class="mt-2 text-[13px] text-ink-faint">
+			Locally: {p.local.map((l, i) => <>{i ? ', ' : ''}<a href={l.href} rel="noopener" class="text-ink-soft underline decoration-current/30 underline-offset-2 hover:text-ink">{l.name}</a></>)}
+		</p>
+		{note && p.note ? <p class="mt-1 text-[13px] text-ink-faint">{p.note}</p> : null}
+	</div>
+) : null}

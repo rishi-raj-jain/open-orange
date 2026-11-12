@@ -1,0 +1,9 @@
+{
+	"name": "service-binding-e2e",
+	"main": "./worker.js",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"services": [
+		{ "binding": "CALCULATOR", "service": "service-binding-e2e", "entrypoint": "Calculator" }
+	]
+}

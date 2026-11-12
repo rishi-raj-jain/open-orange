@@ -1,0 +1,38 @@
+{
+	"id": "tablecn",
+	"repo": "sadmann7/tablecn",
+	"commit": "2d74ac5827aa7abf60e334759e38cf7cdcb24d54",
+	"stars": 6371,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"SkaterRoom"
+		],
+		"file": "party/index.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"storage.deleteAll",
+			"storage.setAlarm",
+			"storage.deleteAlarm",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a client stays connected while the room hibernates, and its next edit is acknowledged",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

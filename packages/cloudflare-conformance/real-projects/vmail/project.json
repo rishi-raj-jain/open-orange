@@ -1,0 +1,65 @@
+{
+	"id": "vmail",
+	"repo": "oiov/vmail",
+	"commit": "0213e65cc555f7ef8ea38b34712afd6e20aa3eaa",
+	"stars": 1498,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts",
+	"d1Migrations": [
+		"DB"
+	],
+	"devVars": {
+		"BETTER_AUTH_URL": "http://localhost:8787",
+		"BETTER_AUTH_SECRET": "local-only-better-auth-secret-at-least-32-characters",
+		"API_KEY_SECRET": "local-only-api-key-secret-at-least-32-characters",
+		"MAILBOX_TOKEN_SECRET": "local-only-mailbox-token-secret-at-least-32-characters",
+		"GITHUB_CLIENT_ID": "",
+		"GITHUB_CLIENT_SECRET": "",
+		"GOOGLE_CLIENT_ID": "",
+		"GOOGLE_CLIENT_SECRET": "",
+		"ADMIN_EMAILS": "",
+		"EMAIL_DOMAIN": "example.test",
+		"TURNSTILE_KEY": "",
+		"TURNSTILE_SECRET": "",
+		"ENABLE_OPENAPI": "false",
+		"PASSWORD": "",
+		"API_RATE_LIMIT_PER_MINUTE": "30",
+		"SEND_CHANNEL": "",
+		"SENDER_EMAIL": "",
+		"RESEND_API_KEY": "",
+		"MAILCHANNELS_API_KEY": "",
+		"SEND_USER_DAILY_LIMIT": "10",
+		"SEND_GLOBAL_DAILY_LIMIT": "100",
+		"SEND_RATE_LIMIT_PER_MINUTE": "3",
+		"SEND_IP_RATE_LIMIT_PER_MINUTE": "10",
+		"API_DAILY_LIMIT": "1000",
+		"MAILBOX_DAILY_LIMIT": "20",
+		"MAX_ACTIVE_MAILBOXES": "20",
+		"GLOBAL_API_DAILY_LIMIT": "100000",
+		"GLOBAL_INBOUND_DAILY_LIMIT": "100000",
+		"MAILBOX_INBOUND_DAILY_LIMIT": "100",
+		"MAX_EMAIL_BYTES": "262144",
+		"SUSPEND_DATABASE_ACCESS": "false",
+		"SHOW_AFF": "false"
+	},
+	"durableObjects": {
+		"classes": [
+			"AccessLedger"
+		],
+		"file": "worker/src/access-ledger.ts",
+		"uses": [
+			"getByName",
+			"rpc",
+			"storage.sql",
+			"storage.kv",
+			"transactionSync",
+			"setAlarm"
+		]
+	},
+	"changes": []
+}

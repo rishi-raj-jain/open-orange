@@ -1,0 +1,11 @@
+{
+	"name": "orange-cloudflare-project",
+	"private": true,
+	"type": "module",
+	"imports": {
+		"#runtime": {
+			"workerd": "./src/runtime-workerd.js",
+			"default": "./src/runtime-node.js"
+		}
+	}
+}

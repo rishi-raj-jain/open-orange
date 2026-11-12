@@ -1,0 +1,9 @@
+{
+	"name": "chat-hibernation",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": {
+		"bindings": [{ "name": "CHAT_ROOM", "class_name": "ChatRoom" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }]
+}

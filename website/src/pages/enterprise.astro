@@ -1,0 +1,95 @@
+---
+import Base from '@/layouts/Base.astro';
+import Cta from '@/components/Cta.astro';
+import { SITE } from '@/data/site';
+
+const points = [
+	{
+		title: 'Data never leaves your network',
+		body: 'Workers, Durable Objects and their storage run inside your VPC, next to your database. There is no third-party edge in the request path and nothing to add to a data-processing agreement.',
+	},
+	{
+		title: 'Managed, in your account',
+		body: 'With BYOC, Rivet deploys and updates the control plane inside your AWS, GCP or Azure account over an outbound connection. No inbound access. Your cloud bill is the only bill.',
+	},
+	{
+		title: 'Or fully self-hosted',
+		body: 'Rivet is a single Apache 2.0 binary. Run it on Kubernetes, VMs or air-gapped hardware with no license key, and own the stack end to end.',
+	},
+	{
+		title: 'Spend your existing commitments',
+		body: 'AWS EDP, Google and Azure commitments and credits pay for OpenOrange. Running on Cloudflare means a second contract, a second vendor review and a second bill.',
+	},
+	{
+		title: 'Multi-cloud and exit without a rewrite',
+		body: 'The same wrangler config deploys to any target. Run in two clouds for resilience, or move when procurement says so, with one command.',
+	},
+	{
+		title: 'Upgrades on your schedule',
+		body: 'Deploy when you choose. A stopping runtime closes accepted WebSockets with 1012 Service Restart, so clients reconnect to the new version.',
+	},
+] as const;
+
+const support = [
+	{ label: 'Open source', body: 'Community support on GitHub. Apache 2.0, no license key, no feature gating.' },
+	{ label: 'Rivet Cloud and BYOC', body: 'Managed control plane with a support SLA, migration help and an engineer on the call.' },
+	{ label: 'Self-hosted with support', body: 'Run it yourself with a support contract for upgrades, incident response and architecture review.' },
+] as const;
+---
+
+<Base
+	title={`${SITE.name} for enterprise — the Cloudflare developer platform inside your VPC`}
+	description="Run Cloudflare Workers and Durable Objects inside your own AWS, GCP or Azure account, managed or self-hosted, paid for with the cloud commitments you already have."
+>
+	<section>
+		<div class="container-x pt-20 pb-16 md:pt-28 md:pb-20">
+			<h1 class="h-hero max-w-4xl">
+				The platform your team likes. The cloud your security team approved.
+			</h1>
+			<p class="lede mt-6 max-w-2xl">
+				OpenOrange runs your Cloudflare Workers project inside the AWS, GCP or Azure account you already operate, under the contracts, controls and commitments you already have.
+			</p>
+			<div class="mt-9 flex flex-col gap-3 sm:flex-row">
+				<a href={SITE.talkToEngineer} class="btn-primary">Talk to an engineer</a>
+				<a href={SITE.docsMigrate} class="btn-secondary">See the migration guide</a>
+			</div>
+		</div>
+	</section>
+
+	<section>
+		<div class="container-x pb-20 md:pb-28">
+			<ul class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+				{points.map((point) => (
+					<li class="card flex flex-col p-6">
+						<h2 class="h-card">{point.title}</h2>
+						<p class="body-copy mt-3 text-ink-soft">{point.body}</p>
+					</li>
+				))}
+			</ul>
+		</div>
+	</section>
+
+	<section class="border-t border-line bg-paper-mid">
+		<div class="container-x section grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-20">
+			<div>
+				<h2 class="h-section">Three ways to run it.</h2>
+				<p class="lede mt-6">
+					Every option is the same open-source stack. The difference is who operates the control plane and who you call when something breaks.
+				</p>
+			</div>
+			<dl class="card divide-y divide-line">
+				{support.map((tier) => (
+					<div class="grid gap-2 px-6 py-5 sm:grid-cols-[200px_1fr] sm:gap-6">
+						<dt class="text-[14px] font-semibold">{tier.label}</dt>
+						<dd class="text-[14px] leading-relaxed text-ink-soft">{tier.body}</dd>
+					</div>
+				))}
+			</dl>
+		</div>
+	</section>
+
+	<Cta
+		title="Bring the platform in‑house."
+		body="Tell us what you run on Cloudflare today and we will map it to your cloud, with a migration plan and a number."
+	/>
+</Base>

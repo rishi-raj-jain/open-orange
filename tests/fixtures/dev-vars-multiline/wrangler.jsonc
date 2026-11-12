@@ -1,0 +1,5 @@
+{
+	"name": "orange-test-dev-vars-multiline", "main": "worker.js", "compatibility_date": "2026-09-03",
+	// Workers AI reads its Orange settings from .dev.vars when the Worker starts.
+	"ai": { "binding": "AI" }
+}

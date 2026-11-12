@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="236" viewBox="0 0 600 236" role="img" aria-label="orange dev serves your Worker on localhost, and each Durable Object runs as a Rivet Actor with its own SQLite database">
+<style>
+.s{font-family:system-ui,-apple-system,&quot;Segoe UI&quot;,Helvetica,Arial,sans-serif;fill:#E6EDF3}
+.m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#E6EDF3}
+.mu{fill:#9DA7B3}
+.o{fill:#FFA45C}
+.g{fill:#6FD597}
+.b{font-weight:600}
+.cap{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;font-weight:600;letter-spacing:.12em}
+</style>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#E6EDF3"/></marker>
+<marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6E7681"/></marker>
+</defs>
+<rect x="20" y="78" width="124" height="44" rx="8" fill="#161B22" stroke="#E6EDF3" stroke-width="1.5"/><text class="m" x="36" y="105" font-size="14" text-anchor="start">GET /alice</text>
+<rect x="184" y="20" width="196" height="168" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/>
+<text class="cap g" x="200" y="45">ORANGE DEV</text>
+<rect x="200" y="68" width="164" height="64" rx="8" fill="#3B2412" stroke="#F38020" stroke-width="1.5"/>
+<text class="s b" x="216" y="95" font-size="15" text-anchor="start">Your Worker</text>
+<text class="m mu" x="216" y="116" font-size="13" text-anchor="start">src/index.ts</text>
+<text class="m mu" x="200" y="164" font-size="13" text-anchor="start">localhost:8787</text>
+<path d="M144 100 H194" fill="none" stroke="#E6EDF3" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="424" y="20" width="156" height="168" rx="10" fill="none" stroke="#3FB96B" stroke-width="1.5" stroke-dasharray="7 6"/>
+<text class="cap g" x="440" y="45">RIVET ACTORS</text>
+<rect x="440" y="68" width="32" height="32" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/><text class="s b g" x="456" y="88.5" font-size="12" text-anchor="middle">DO</text>
+<rect x="486" y="68" width="32" height="32" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/><text class="s b g" x="502" y="88.5" font-size="12" text-anchor="middle">DO</text>
+<rect x="532" y="68" width="32" height="32" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/><text class="s b g" x="548" y="88.5" font-size="12" text-anchor="middle">DO</text>
+<rect x="440" y="110" width="32" height="32" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/><text class="s b g" x="456" y="130.5" font-size="12" text-anchor="middle">DO</text>
+<rect x="486" y="110" width="32" height="32" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/><text class="s b g" x="502" y="130.5" font-size="12" text-anchor="middle">DO</text>
+<rect x="532" y="110" width="32" height="32" rx="8" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/><text class="s b g" x="548" y="130.5" font-size="12" text-anchor="middle">DO</text>
+<text class="s mu" x="440" y="170" font-size="13" text-anchor="start">SQLite in each one</text>
+<path d="M364 100 H418" fill="none" stroke="#E6EDF3" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="20" y="206" width="14" height="14" rx="3" fill="#3B2412" stroke="#F38020" stroke-width="1.5"/>
+<text class="s mu" x="42" y="218" font-size="14" text-anchor="start">Your Worker, not changed</text>
+<rect x="243.2" y="206" width="14" height="14" rx="3" fill="#10301E" stroke="#3FB96B" stroke-width="1.5"/>
+<text class="s mu" x="265.2" y="218" font-size="14" text-anchor="start">Open Orange on Rivet</text>
+</svg>

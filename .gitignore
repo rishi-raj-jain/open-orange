@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.open-orange/
+packages/cloudflare-conformance/.upstream/
+packages/cloudflare-conformance/.real-projects/
+examples/*/.wrangler/
+tests/fixtures/examples/*/.wrangler/
+examples/*/worker-configuration.d.ts
+tests/fixtures/examples/*/worker-configuration.d.ts

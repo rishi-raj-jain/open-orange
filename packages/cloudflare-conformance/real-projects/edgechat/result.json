@@ -1,0 +1,102 @@
+{
+	"schemaVersion": 1,
+	"id": "edgechat",
+	"repo": "aozorae/Edgechat",
+	"commit": "1288c66997d5e2f9eefc515cf60b2072f8d655be",
+	"stars": 1395,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:20:50.379Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 10,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 2,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "the API answers and the app shell is served",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the admin signs in, creates a user, and both see the general channel",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.3
+		},
+		{
+			"name": "two users chat in a room, a retry is not delivered twice, and history is kept",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "a user's inbox socket hears about a message in a room they are not viewing",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "two sockets stay open while the room hibernates, and a message wakes it",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 60.1,
+			"error": "Some actor was still awake 60 s after the last client activity"
+		},
+		{
+			"name": "after the room sleeps, a new socket chats and the history is there",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.3
+		},
+		{
+			"name": "the session and history survive an orange dev and engine restart, and the room works",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 9.5
+		}
+	],
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Sets migrations_dir in wrangler.example.toml to a new directory with worker/schema.sql (a symlink) and one admin row",
+			"why": "The project creates its D1 schema and first admin through GitHub Actions and `wrangler d1 execute`. The row is what `npm run admin:bootstrap` generates, with a local-only password."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"ChannelRoom",
+			"UserInbox",
+			"Scheduler",
+			"InstanceBridge",
+			"VoiceCall",
+			"TelegramNotifications"
+		],
+		"file": "worker/src/do/ChannelRoom.js",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"storage.setAlarm"
+		]
+	}
+}

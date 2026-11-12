@@ -1,0 +1,41 @@
+diff --git a/server.ts b/server.ts
+index 9398646..4c7cb93 100644
+--- a/server.ts
++++ b/server.ts
+@@ -7,8 +7,6 @@ import {
+ import type { AppLoadContext, ServerBuild } from '@remix-run/cloudflare'
+ import { createRequestHandler } from '@remix-run/cloudflare'
+ import * as build from '@remix-run/dev/server-build'
+-// @ts-expect-error
+-import manifestJSON from '__STATIC_CONTENT_MANIFEST'
+ import { mode } from '~/utils/mode'
+ import { queue } from './app/queue'
+ 
+@@ -98,12 +96,8 @@ export const createKvAssetHandler = (ASSET_MANIFEST: Record<string, string>) =>
+ export { ChatRoom } from './app/durableObjects/ChatRoom.server'
+ export { queue } from './app/queue'
+ 
+-const kvAssetHandler = createKvAssetHandler(JSON.parse(manifestJSON))
+-
+ export default {
+ 	async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+-		const assetResponse = await kvAssetHandler(request, env, ctx, build)
+-		if (assetResponse) return assetResponse
+ 		return remixHandler(request, { env, mode })
+ 	},
+ 	queue,
+diff --git a/wrangler.toml b/wrangler.toml
+index bc41016..2054c1a 100644
+--- a/wrangler.toml
++++ b/wrangler.toml
+@@ -4,8 +4,8 @@ compatibility_date = "2024-10-07"
+ main = "./build/index.js"
+ compatibility_flags = ["nodejs_compat"]
+ 
+-[site]
+-  bucket = "./public"
++[assets]
++directory = "./public"
+ 
+ [vars]
+ CALLS_APP_ID = "YOUR_CALLS_SFU_APP_ID_HERE"

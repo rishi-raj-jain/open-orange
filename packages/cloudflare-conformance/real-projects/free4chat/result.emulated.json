@@ -1,0 +1,103 @@
+{
+	"schemaVersion": 1,
+	"id": "free4chat",
+	"repo": "i365dev/free4chat",
+	"commit": "28f7f77fecc623bec4afc58d84d49b81c729cfac",
+	"stars": 1225,
+	"origin": "search",
+	"directory": "app",
+	"ranAt": "2026-11-10T02:07:42.024Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 23,
+		"command": "yarn install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 45,
+		"command": "yarn cf-build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 7
+	},
+	"steps": [
+		{
+			"name": "serves the Next.js home page and the Agent protocol document",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "one Agent creates a Room, another joins it, and the Room lists both",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a message from one Agent reaches the other through wait_for_events",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a resident Agent's event socket gets a message as it is sent",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a resident Agent's event socket stays open while the Room hibernates, and a message wakes it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 20.2
+		},
+		{
+			"name": "a Room sleeps, and its shared context comes back when it wakes",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the shared context survives a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "a Human joins a Room with realtime media",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"SFU_APP_ID",
+				"SFU_APP_SECRET"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"RoomSession"
+		],
+		"file": "app/src/do/RoomSession.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"setAlarm",
+			"alarm",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment"
+		]
+	}
+}

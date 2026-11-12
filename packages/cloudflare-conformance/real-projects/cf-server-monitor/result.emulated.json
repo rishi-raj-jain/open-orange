@@ -1,0 +1,94 @@
+{
+	"schemaVersion": 1,
+	"id": "cf-server-monitor",
+	"repo": "huilang-me/CF-Server-Monitor",
+	"commit": "609cc0b0998793510453be8eadced2064b28ad7d",
+	"stars": 2907,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:04:55.972Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "the dashboard and its config are served",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "the admin logs in and adds a server, which is stored in D1",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the broadcaster counts its subscribers across requests",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a probe's HTTP report reaches a subscribed browser",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 5.1
+		},
+		{
+			"name": "a probe reports over WebSocket, gets an ack, and reaches the browser",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a browser stays subscribed while the broadcaster hibernates",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 15.1
+		},
+		{
+			"name": "the server and the login survive a restart, and reports flow again",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 12.9
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"MetricsBroadcaster"
+		],
+		"file": "src/durable/MetricsBroadcaster.js",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"setWebSocketAutoResponse",
+			"storage.get",
+			"storage.put",
+			"storage.setAlarm",
+			"alarm"
+		]
+	}
+}

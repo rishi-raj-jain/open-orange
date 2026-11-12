@@ -1,0 +1,21 @@
+---
+// One line on the cost receipt: item (details on hover), Cloudflare's price
+// struck out, the OpenOrange price, and how many times cheaper.
+import Tip from '@/components/Tip.astro';
+
+interface Props {
+	l: { label: string; unit: string; tip: string; cloudflare: number; openorange: number };
+}
+const { l } = Astro.props;
+const usd = (n: number) => (n >= 0.1 ? `$${n.toFixed(2)}` : `$${Number(n.toPrecision(2))}`);
+---
+
+<li class="grid grid-cols-[minmax(0,1fr)_3.75rem_4rem_2.75rem] items-baseline gap-1.5 py-[3px] sm:grid-cols-[minmax(0,1fr)_4rem_4.25rem_3rem] sm:gap-2">
+	<span class="whitespace-nowrap normal-case">
+		<Tip tip={l.tip} align="start">{l.label}</Tip>
+		<span class="hidden text-[11px] text-ink-faint sm:inline"> /{l.unit}</span>
+	</span>
+	<span class="text-right tabular-nums text-ink-faint line-through decoration-ink-faint/60">{usd(l.cloudflare)}</span>
+	<span class="text-right font-semibold tabular-nums">{usd(l.openorange)}</span>
+	<span class="text-right font-semibold tabular-nums text-orange-deep">{(l.cloudflare / l.openorange).toFixed(1)}×</span>
+</li>

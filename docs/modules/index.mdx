@@ -1,0 +1,52 @@
+---
+title: Runtime modules
+description: Configuration, implementation notes, compatibility status, and known deviations for OpenOrange runtime capabilities.
+---
+
+# Runtime modules
+
+These documents describe how OpenOrange exposes Cloudflare Workers capabilities
+on Node.js. A module document covers one ambient-global family, imported
+`cloudflare:*` module, environment binding, or Worker event family.
+
+Every document includes:
+
+- The support status:
+  - **Supported:** unchanged code runs. The page lists each difference from
+    Cloudflare.
+  - **Partial:** the module runs, but some documented APIs throw or act
+    differently in ways that common code can hit.
+  - **Not supported:** the binding loads, and its calls throw.
+- Wrangler-compatible configuration and application usage.
+- How the capability is implemented by OpenOrange.
+- Static and behavioral conformance coverage.
+- Known differences from Cloudflare.
+
+The modules are:
+
+- [Globals](./globals)
+- [Fetch events](./fetch-events)
+- [Cron Triggers](./cron-triggers)
+- [Tail Workers](./tail-workers)
+- [Secrets Store](./secrets-store)
+- [Version metadata](./version-metadata)
+- [Durable Objects](./durable-objects)
+- [Bindings](./bindings): every binding, what it runs on, and what you set
+- [Worker Loader](./worker-loader): each dynamic Worker in its own Node.js process, in an agentOS VM
+- [KV](./kv)
+- [D1](./d1)
+- [Hyperdrive](./hyperdrive)
+- [Rate Limiting](./rate-limiting)
+- [Workers AI](./workers-ai)
+- [R2](./r2)
+- [Email](./email): Send Email through your SMTP server, and inbound mail to `email()`
+- [Browser Rendering](./browser-rendering): `@cloudflare/puppeteer` against a hosted browser, or any Chrome DevTools Protocol endpoint
+- [Workflows](./workflows): Cloudflare's own Workflows engine, with one Rivet Actor for each instance
+- [Queues](./queues)
+- [Static assets](./assets)
+- [Cache API](./cache)
+- [Multiple Workers](./multi-worker): service bindings, `script_name`, and dispatch namespaces across Workers
+- [Sandbox](./sandbox): `@cloudflare/sandbox` on a provider you choose
+
+Some pages have no conformance section yet: Hyperdrive, Browser Rendering, and
+Email.

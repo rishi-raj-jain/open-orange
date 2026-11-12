@@ -1,0 +1,33 @@
+{
+	"id": "loopy",
+	"repo": "Forward-Future/loopy",
+	"commit": "75966cbd572a4185064971c9fe5e9c52e8f8456d",
+	"stars": 3216,
+	"origin": "search",
+	"directory": "loop-library/worker",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": "loop-library/worker",
+	"install": "npm install --ignore-scripts",
+	"devVars": {
+		"LOOP_PUBLISH_TOKEN": "local-publish-token-for-the-corpus-run",
+		"SESSION_SECRET": "local-session-secret-for-the-corpus-run"
+	},
+	"durableObjects": {
+		"classes": [
+			"LoopCatalog",
+			"VoteStore",
+			"FormGuard"
+		],
+		"file": "loop-library/worker/src/catalog-store.js",
+		"uses": [
+			"storage.sql.exec",
+			"storage.transactionSync",
+			"storage.get",
+			"storage.put",
+			"storage.setAlarm"
+		]
+	},
+	"changes": []
+}

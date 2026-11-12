@@ -1,0 +1,6 @@
+{
+	"name": "r2",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"r2_buckets": [{ "binding": "FILES", "bucket_name": "files" }]
+}

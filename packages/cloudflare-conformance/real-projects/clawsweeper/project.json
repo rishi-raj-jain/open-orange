@@ -1,0 +1,37 @@
+{
+	"id": "clawsweeper",
+	"repo": "openclaw/clawsweeper",
+	"commit": "1265122ec07d137740c688d90d5bf9538aa03a78",
+	"stars": 2005,
+	"origin": "search",
+	"directory": "dashboard",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts",
+	"devVars": {
+		"INGEST_TOKEN": "local-only-scenario-ingest-token",
+		"CLAWSWEEPER_WEBHOOK_SECRET": "local-only-scenario-webhook-secret"
+	},
+	"durableObjects": {
+		"classes": [
+			"StatusStore",
+			"ExactReviewQueue",
+			"GithubEtagCache"
+		],
+		"file": "dashboard/worker.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"storage.list",
+			"storage.kv",
+			"storage.transactionSync",
+			"storage.setAlarm",
+			"storage.getAlarm",
+			"storage.deleteAlarm"
+		]
+	},
+	"changes": []
+}

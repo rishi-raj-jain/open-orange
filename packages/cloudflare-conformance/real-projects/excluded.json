@@ -1,0 +1,57 @@
+[
+	{
+		"repo": "cloudflare/actors",
+		"stars": 443,
+		"reason": "Left out on purpose: not useful with Rivet Actors."
+	},
+	{
+		"repo": "cloudflare/wildebeest",
+		"stars": 2116,
+		"reason": "Its README says it is archived and unmaintained, and its DO config binds no object."
+	},
+	{
+		"repo": "supermemoryai/markdowner",
+		"stars": 2030,
+		"reason": "No commit since 2024-07-20. package.json lacks a dependency the code imports. Its DO only holds a Browser Rendering session."
+	},
+	{
+		"repo": "transitive-bullshit/agentic",
+		"stars": 18086,
+		"reason": "Archived."
+	},
+	{
+		"repo": "getsentry/sentry-javascript",
+		"stars": 8771,
+		"reason": "Its Wrangler configs are test fixtures for the SDK."
+	},
+	{
+		"repo": "denoland/celld",
+		"stars": 6223,
+		"reason": "A Durable Object runtime, with fixtures. Not an app on Cloudflare."
+	},
+	{
+		"repo": "cloudflare/workers-sdk",
+		"stars": 4702,
+		"reason": "Wrangler itself. Its Durable Objects are test fixtures."
+	},
+	{
+		"repo": "cloudflare/miniflare",
+		"stars": 3925,
+		"reason": "A local simulator, archived."
+	},
+	{
+		"repo": "rohanprasadofficial/localflare",
+		"stars": 1562,
+		"reason": "A local Cloudflare tool, not an app."
+	},
+	{
+		"repo": "secondsky/claude-skills",
+		"stars": 244,
+		"reason": "Skill templates, not a deployed project."
+	},
+	{
+		"repo": "syumai/workers-go",
+		"stars": 1181,
+		"reason": "A Go library. Its Durable Objects are examples."
+	}
+]

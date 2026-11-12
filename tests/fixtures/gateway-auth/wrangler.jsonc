@@ -1,0 +1,11 @@
+{
+  "name": "orange-test-gateway-auth",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "durable_objects": {
+    "bindings": [{ "name": "COUNTER", "class_name": "Counter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Counter"] }],
+  // No consumer, so sent messages stay in the queue and its backlog counts them.
+  "queues": { "producers": [{ "binding": "JOBS", "queue": "jobs" }] }
+}

@@ -1,0 +1,5 @@
+{
+	"name": "rpc-stream-pollution-peer",
+	"main": "worker.js",
+	"compatibility_date": "2026-05-26"
+}

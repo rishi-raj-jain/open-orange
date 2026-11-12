@@ -1,0 +1,43 @@
+{
+	"id": "dashi-taskboard",
+	"repo": "chuspeeism/dashi-taskboard",
+	"commit": "9aa1f4e7936d841748ed4e0fc7781b57ae6ae6cc",
+	"stars": 3441,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm run build:web"
+	],
+	"d1Migrations": [
+		"DB"
+	],
+	"devVars": {
+		"TASKBOARD_SHARED_SECRET": "local-only-shared-secret"
+	},
+	"durableObjects": {
+		"classes": [
+			"RealtimeHub"
+		],
+		"file": "cloud/src/index.mjs",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"storage.list",
+			"storage.put",
+			"storage.delete"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a board socket stays open while the hub hibernates, and a later write reaches it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

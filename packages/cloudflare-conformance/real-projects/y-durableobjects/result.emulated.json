@@ -1,0 +1,92 @@
+{
+	"schemaVersion": 1,
+	"id": "y-durableobjects",
+	"repo": "napolab/y-durableobjects",
+	"commit": "e6d6d0615c7051ddc43222c16d8078070ee64d32",
+	"stars": 256,
+	"origin": "named",
+	"directory": "example/apps/workers",
+	"ranAt": "2026-11-10T02:16:54.992Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "pnpm install --frozen-lockfile --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "a plain request gets the upgrade error",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "two editors see each other's edits",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a cursor sent through awareness reaches the other editor",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a document in another room stays apart",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the document comes back after the room sleeps with nobody in it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "two open editors keep syncing across a hibernation",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 45.1,
+			"error": "Some actor was still awake 45000ms after the last client activity"
+		},
+		{
+			"name": "the document survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.6
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"YDurableObjects"
+		],
+		"file": "src/yjs/index.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"storage.get",
+			"storage.list",
+			"storage.put",
+			"storage.delete",
+			"storage.transaction",
+			"blockConcurrencyWhile"
+		]
+	}
+}

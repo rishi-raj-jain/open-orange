@@ -1,0 +1,7 @@
+{
+  "name": "orange-test-abort-race",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "durable_objects": { "bindings": [{ "name": "OBJ", "class_name": "Obj" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Obj"] }]
+}

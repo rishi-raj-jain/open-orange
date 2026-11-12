@@ -1,0 +1,80 @@
+import { DurableObject } from 'cloudflare:workers';
+
+// Send incremented counter value every second
+async function* dataSource(signal: AbortSignal) {
+    let counter = 0;
+    while (!signal.aborted) {
+        yield counter++;
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+
+    console.log('Data source cancelled');
+}
+
+export class MyDurableObject extends DurableObject<Env> {
+    async fetch(request: Request): Promise<Response> {
+        const abortController = new AbortController();
+
+        const stream = new ReadableStream({
+            async start(controller) {
+                if (request.signal.aborted) {
+                    controller.close();
+                    abortController.abort();
+                    return;
+                }
+
+                for await (const value of dataSource(abortController.signal)) {
+                    controller.enqueue(new TextEncoder().encode(String(value)));
+                }
+            },
+            cancel() {
+                console.log('Stream cancelled');
+                abortController.abort();
+            },
+        });
+
+        const headers = new Headers({
+            'Content-Type': 'application/octet-stream',
+        });
+
+        return new Response(stream, { headers });
+    }
+
+}
+
+export default {
+    async fetch(request, env, ctx): Promise<Response> {
+        const stub = env.MY_DURABLE_OBJECT.getByName("foo");
+        const response = await stub.fetch(request, { ...request });
+        if (!response.ok || !response.body) {
+            return new Response('Invalid response', { status: 500 });
+        }
+
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+
+        let data = [] as string[];
+        let i = 0;
+        while (true) {
+            // Cancel the stream after 5 messages
+            if (i > 5) {
+                reader.cancel();
+                break;
+            }
+            const { value, done } = await reader.read();
+
+            if (value) {
+                console.log(`Got value ${value}`);
+                data = [...data, value];
+            }
+
+            if (done) {
+                break;
+            }
+            i++;
+        }
+
+        return Response.json(data);
+    },
+
+} satisfies ExportedHandler<Env>;
+

@@ -1,0 +1,88 @@
+{
+	"schemaVersion": 1,
+	"id": "unifi-mcp",
+	"repo": "sirkirby/unifi-mcp",
+	"commit": "f595762ba75031665458bbeb8c5701d896f7e269",
+	"stars": 994,
+	"origin": "search",
+	"directory": "apps/worker/worker",
+	"ranAt": "2026-11-05T02:41:04.791Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm ci --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "health is open, and the admin API and MCP refuse a wrong token",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the admin API creates a location, and another request lists it",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a relay registers over a WebSocket, and an agent's tool call round-trips through it",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a scoped agent token is stored hashed, and it may not run a write tool",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a relay stays connected while the object hibernates, and a tool call wakes it",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 45.1,
+			"error": "Some actor was still awake 45000ms after the last client activity"
+		},
+		{
+			"name": "the catalog, location, and tokens come back from SQLite after a sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "after a restart the data stays, the scoped token works, and the relay reconnects with its token",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.5
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"RelayObject"
+		],
+		"file": "apps/worker/worker/src/relay-object.ts",
+		"uses": [
+			"blockConcurrencyWhile",
+			"storage.sql.exec",
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment"
+		]
+	}
+}

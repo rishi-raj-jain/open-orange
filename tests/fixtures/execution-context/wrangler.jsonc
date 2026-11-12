@@ -1,0 +1,19 @@
+{
+  "name": "orange-test-execution-context",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "durable_objects": {
+    "bindings": [
+      { "name": "OBJECTS", "class_name": "Objects" },
+      { "name": "BAD_FETCH", "class_name": "BadFetch" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Objects", "BadFetch"] }],
+  "services": [
+    { "binding": "NO_FETCH", "service": "orange-test-execution-context", "entrypoint": "NoFetch" },
+    { "binding": "THROWER", "service": "orange-test-execution-context", "entrypoint": "Thrower" },
+    { "binding": "PROPS", "service": "orange-test-execution-context", "entrypoint": "Props" },
+    { "binding": "PROPS_SET", "service": "orange-test-execution-context", "entrypoint": "Props", "props": { "tenant": "acme" } },
+    { "binding": "SELF", "service": "orange-test-execution-context" }
+  ]
+}

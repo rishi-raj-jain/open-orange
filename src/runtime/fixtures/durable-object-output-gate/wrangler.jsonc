@@ -1,0 +1,13 @@
+{
+	"name": "durable-object-output-gate-e2e",
+	"main": "./worker.js",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"services": [
+		{ "binding": "PROBE", "service": "durable-object-output-gate-e2e", "entrypoint": "Probe" }
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "GATED", "class_name": "GatedObject" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["GatedObject"] }]
+}

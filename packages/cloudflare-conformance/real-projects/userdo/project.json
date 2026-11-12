@@ -1,0 +1,36 @@
+{
+	"id": "userdo",
+	"repo": "acoyfellow/UserDO",
+	"commit": "f2a1040343728d4e041679ed124699fbd4281921",
+	"stars": 138,
+	"origin": "named",
+	"directory": "examples/hono",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "bun install --ignore-scripts --frozen-lockfile",
+	"durableObjects": {
+		"classes": [
+			"MyAppDO",
+			"UserDO"
+		],
+		"file": "examples/hono/index.tsx",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.sql",
+			"acceptWebSocket",
+			"getWebSockets",
+			"RPC"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a socket stays open while the user's object hibernates, and a message wakes it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

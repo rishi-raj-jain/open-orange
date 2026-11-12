@@ -1,0 +1,8 @@
+{
+  "name": "orange-test-worker-process-env",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": { "GREETING": "hello", "LIMITS": { "max": 3 } },
+  "kv_namespaces": [{ "binding": "CACHE", "id": "cache" }]
+}

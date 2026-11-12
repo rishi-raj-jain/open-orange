@@ -1,0 +1,32 @@
+{
+	"id": "supermemory",
+	"repo": "supermemoryai/supermemory",
+	"commit": "16ed414e0e0c61c946b7687ec813b2064fe75dd4",
+	"directory": "apps/mcp",
+	"ranAt": "2026-11-05T14:08:23.371Z",
+	"plan": "Free",
+	"deployedWith": "rivet deploy",
+	"steps": [
+		{
+			"name": "serves the server description and the OAuth resource metadata",
+			"kind": "http",
+			"status": "pass"
+		},
+		{
+			"name": "an MCP client without a token gets 401 with the resource metadata",
+			"kind": "http",
+			"status": "pass"
+		},
+		{
+			"name": "SpaceState refuses an upload token with no session",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "the active space is stored in SpaceState and an upload session is consumed once",
+			"kind": "do-state",
+			"status": "pass",
+			"note": "Ran once with a real Supermemory sign-in, by a separate script through the project's public MCP API. The upload went to the pool by hand, because the Worker advertises Supermemory's production host for uploads."
+		}
+	]
+}

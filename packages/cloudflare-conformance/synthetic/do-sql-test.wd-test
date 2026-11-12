@@ -1,0 +1,22 @@
+using Workerd = import "/workerd/workerd.capnp";
+
+const config :Workerd.Config = (
+  services = [
+    (name = "main", worker = .mainWorker),
+    (name = "TEST_TMPDIR", disk = (writable = true)),
+  ],
+);
+
+const mainWorker :Workerd.Worker = (
+  compatibilityFlags = ["nodejs_compat"],
+  modules = [
+    (name = "worker", esModule = embed "do-sql-test.js"),
+  ],
+  durableObjectNamespaces = [
+    (className = "TestDurableObject", uniqueKey = "c0c1c2c3c4c5c6c7c8c9d0d1d2d3d4d5", enableSql = true),
+  ],
+  durableObjectStorage = (localDisk = "TEST_TMPDIR"),
+  bindings = [
+    (name = "ns", durableObjectNamespace = "TestDurableObject"),
+  ],
+);

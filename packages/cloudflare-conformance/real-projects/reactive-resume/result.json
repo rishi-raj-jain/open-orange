@@ -1,0 +1,81 @@
+{
+	"schemaVersion": 1,
+	"id": "reactive-resume",
+	"repo": "reactive-resume/reactive-resume",
+	"commit": "f7b0eee784820650c6066a0814abc2d191a1192a",
+	"stars": 45283,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:32:10.790Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 11,
+		"command": "pnpm install --frozen-lockfile --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 71,
+		"command": "pnpm build:cloudflare"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 15
+	},
+	"steps": [
+		{
+			"name": "the public routes that need no database are served",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 2
+		},
+		{
+			"name": "the sixth sign-in in a minute is refused by the Coordination limit",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the limit is still in force after the object sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the limit is still in force after a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 20
+		},
+		{
+			"name": "an account signs up and gets a session from PostgreSQL through Hyperdrive",
+			"kind": "binding",
+			"status": "fail",
+			"seconds": 0,
+			"error": "Expected values to be strictly equal:\n\n500 !== 200\n"
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Coordination"
+		],
+		"file": "apps/server/src/cloudflare/coordination.ts",
+		"uses": [
+			"storage.kv",
+			"storage.transactionSync",
+			"storage.setAlarm",
+			"storage.deleteAll",
+			"alarm",
+			"acceptWebSocket",
+			"getWebSockets"
+		]
+	}
+}

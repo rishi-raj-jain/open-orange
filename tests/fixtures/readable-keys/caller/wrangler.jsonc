@@ -1,0 +1,11 @@
+{
+  "name": "orange-test-readable-keys-caller",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "durable_objects": {
+    "bindings": [
+      { "name": "GREETER", "class_name": "Greeter", "script_name": "orange-test-readable-keys" }
+    ]
+  },
+  "services": [{ "binding": "GREETER_WORKER", "service": "orange-test-readable-keys" }]
+}

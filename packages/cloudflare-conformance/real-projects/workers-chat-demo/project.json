@@ -1,0 +1,34 @@
+{
+	"id": "workers-chat-demo",
+	"repo": "cloudflare/workers-chat-demo",
+	"commit": "dd32ce87617a9df6c614004d2fc2fb0628698121",
+	"stars": 1123,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"ChatRoom",
+			"RateLimiter"
+		],
+		"file": "src/chat.mjs",
+		"uses": [
+			"storage.list",
+			"storage.put",
+			"acceptWebSocket",
+			"serializeAttachment"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a socket stays open while the room hibernates, and a message wakes it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

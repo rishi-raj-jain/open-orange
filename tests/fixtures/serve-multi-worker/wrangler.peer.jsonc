@@ -1,0 +1,9 @@
+{
+	"name": "serve-peer", "main": "peer.js", "compatibility_date": "2026-09-03",
+	"routes": ["127.0.0.1/api/*"],
+	"triggers": { "crons": ["* * * * *"] },
+	"kv_namespaces": [{ "binding": "KV", "id": "shared-kv" }],
+	"queues": { "consumers": [{ "queue": "serve-jobs", "max_batch_timeout": 1 }] },
+	"durable_objects": { "bindings": [{ "name": "COUNTER", "class_name": "Counter" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Counter"] }]
+}

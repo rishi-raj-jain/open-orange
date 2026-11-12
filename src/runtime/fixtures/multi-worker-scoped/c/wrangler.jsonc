@@ -1,0 +1,6 @@
+{
+	"name": "scoped-c",
+	"main": "worker.js",
+	"compatibility_date": "2025-09-01",
+	"queues": { "consumers": [{ "queue": "jobs" }] }
+}

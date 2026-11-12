@@ -1,0 +1,90 @@
+{
+	"schemaVersion": 1,
+	"id": "togetherjs",
+	"repo": "jsfiddle/togetherjs",
+	"commit": "77eada2994aec51174f9f06fd925025bb2faac3b",
+	"stars": 6997,
+	"origin": "search",
+	"directory": "hub-worker",
+	"ranAt": "2026-11-10T01:59:42.732Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "the hub answers its health check",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "peers in a room relay messages, and server-echo returns to the sender",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "findroom fills the same room until max, then mints another",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "the registry forgets a room when its last peer leaves",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 1.1
+		},
+		{
+			"name": "two sockets stay open while a room hibernates, and a message wakes it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the registry still knows a room after every object sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "after a restart a room has no ghost peers and relays again",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.8
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Room",
+			"Registry"
+		],
+		"file": "hub-worker/src/room.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"storage.get",
+			"storage.put",
+			"rpc"
+		]
+	}
+}

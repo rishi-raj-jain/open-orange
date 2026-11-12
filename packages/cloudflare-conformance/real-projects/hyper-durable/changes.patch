@@ -1,0 +1,89 @@
+diff --git a/consumer/RubberDuck.js b/consumer/RubberDuck.js
+new file mode 100644
+index 0000000..a9f96dc
+--- /dev/null
++++ b/consumer/RubberDuck.js
+@@ -0,0 +1,18 @@
++import { HyperDurable } from '../src/index';
++
++export class RubberDuck extends HyperDurable {
++  constructor(state, env) {
++    super(state, env);
++
++    this.name = 'New Duck';
++    this.favoriteFoods = [];
++  }
++
++  addFavoriteFood(food) {
++    this.favoriteFoods.push(food);
++  }
++
++  sayHello() {
++    return `Hello world, my name is ${this.name}, and I have ${this.favoriteFoods.length} favorite foods.`;
++  }
++}
+diff --git a/consumer/worker.js b/consumer/worker.js
+new file mode 100644
+index 0000000..ecd2b3e
+--- /dev/null
++++ b/consumer/worker.js
+@@ -0,0 +1,41 @@
++import { proxyHyperDurables } from '../src/index';
++import { RubberDuck } from './RubberDuck';
++
++export { RubberDuck };
++
++export default {
++  async fetch(request, env) {
++    const [, duck, action] = new URL(request.url).pathname.split('/');
++    const { RUBBERDUCK } = proxyHyperDurables(env, { RUBBERDUCK: RubberDuck });
++    const stub = RUBBERDUCK.get(RUBBERDUCK.idFromName(duck));
++    try {
++      if (action === 'name') {
++        const { name } = await request.json();
++        return Response.json({ name: await stub.setName(name) });
++      }
++      if (action === 'foods') {
++        const { foods } = await request.json();
++        await Promise.all(foods.map((food) => stub.addFavoriteFood(food)));
++        return Response.json({ ok: true });
++      }
++      if (action === 'beak') {
++        return Response.json({ beak: await stub.beak });
++      }
++      if (action === 'foods-only') {
++        return Response.json({ favoriteFoods: await stub.favoriteFoods });
++      }
++      if (action === 'destroy') {
++        return Response.json({ destroyed: await stub.destroy() });
++      }
++      if (action === 'name-only') {
++        return Response.json({ name: await stub.name });
++      }
++      return Response.json({
++        favoriteFoods: await stub.favoriteFoods,
++        greeting: await stub.sayHello(),
++      });
++    } catch (error) {
++      return Response.json({ error: error.message, details: error.details }, { status: 500 });
++    }
++  },
++};
+diff --git a/consumer/wrangler.toml b/consumer/wrangler.toml
+new file mode 100644
+index 0000000..8e36857
+--- /dev/null
++++ b/consumer/wrangler.toml
+@@ -0,0 +1,12 @@
++name = "hyper-durable-consumer"
++main = "worker.js"
++compatibility_date = "2022-05-17"
++
++[durable_objects]
++bindings = [
++  { name = "RUBBERDUCK", class_name = "RubberDuck" }
++]
++
++[[migrations]]
++tag = "v1"
++new_classes = ["RubberDuck"]

@@ -1,0 +1,44 @@
+{
+	"id": "reactive-resume",
+	"repo": "reactive-resume/reactive-resume",
+	"commit": "f7b0eee784820650c6066a0814abc2d191a1192a",
+	"stars": 45283,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --frozen-lockfile --ignore-scripts",
+	"build": [
+		"pnpm build:cloudflare"
+	],
+	"devVars": {
+		"AUTH_SECRET": "0000000000000000000000000000000000000000000000000000000000000a11",
+		"ENCRYPTION_SECRET": "0000000000000000000000000000000000000000000000000000000000000b22",
+		"CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE": "postgres://local:local@127.0.0.1:5432/reactive_resume"
+	},
+	"durableObjects": {
+		"classes": [
+			"Coordination"
+		],
+		"file": "apps/server/src/cloudflare/coordination.ts",
+		"uses": [
+			"storage.kv",
+			"storage.transactionSync",
+			"storage.setAlarm",
+			"storage.deleteAll",
+			"alarm",
+			"acceptWebSocket",
+			"getWebSockets"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "an account signs up and gets a session from PostgreSQL through Hyperdrive",
+			"owner": "environment",
+			"note": "It needs PostgreSQL, which this machine does not have. With postgres:16-alpine, its 67 migrations, and the connection string in this project.json, the step passed in a separate run."
+		}
+	]
+}

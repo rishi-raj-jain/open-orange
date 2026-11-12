@@ -1,0 +1,24 @@
+{
+	"name": "mixed-bindings",
+	"main": "./worker.js",
+	"compatibility_date": "2026-09-03",
+	"ai": { "binding": "AI" },
+	"analytics_engine_datasets": [{ "binding": "STATS", "dataset": "events" }],
+	"kv_namespaces": [{ "binding": "CACHE", "id": "cache" }],
+	"send_email": [{ "name": "EMAIL" }],
+	"vectorize": [{ "binding": "VECTORS", "index_name": "docs" }],
+	"vars": { "GREETING": "hello" },
+	"durable_objects": {
+		"bindings": [
+			{ "name": "ROOM", "class_name": "Room" },
+			{ "name": "CART", "class_name": "Cart" }
+		]
+	},
+	"migrations": [
+		{ "tag": "v1", "new_classes": ["Cart"] },
+		{ "tag": "v2", "new_sqlite_classes": ["Room", "Lobby"] }
+	],
+	"triggers": { "crons": ["*/5 * * * *"] },
+	"tail_consumers": [{ "service": "mixed-bindings" }],
+	"unsafe": { "bindings": [{ "name": "FUTURE", "type": "quantum_ledger" }] }
+}

@@ -1,0 +1,10 @@
+{
+	"name": "durable-object-abort-on-resume-e2e",
+	"main": "./worker.js",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"durable_objects": {
+		"bindings": [{ "name": "SESSION", "class_name": "IdleSession" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["IdleSession"] }]
+}

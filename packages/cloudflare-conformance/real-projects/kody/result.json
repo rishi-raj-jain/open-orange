@@ -1,0 +1,88 @@
+{
+	"schemaVersion": 1,
+	"id": "kody",
+	"repo": "kody-hq/kody",
+	"commit": "762a7397cf31f7a0dad7262342fd93f0b6a7894c",
+	"stars": 903,
+	"origin": "named",
+	"directory": "packages/status",
+	"ranAt": "2026-11-05T02:26:04.108Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 7,
+		"command": "npm install --ignore-scripts --force -w @kody/status"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "the status page and its JSON read from the store",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the one-minute cron runs a probe pass into the object",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 42.3
+		},
+		{
+			"name": "three failing passes open an incident, and the page shows it",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 177.9
+		},
+		{
+			"name": "the open incident survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the open incident survives a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.4
+		},
+		{
+			"name": "after the restart, the cron runs again, and two good passes resolve the incident",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 102.6
+		},
+		{
+			"name": "an operator alert email goes out through the Cloudflare Email API",
+			"kind": "http",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"CLOUDFLARE_API_TOKEN"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"StatusStore"
+		],
+		"file": "packages/status/status-store.ts",
+		"uses": [
+			"storage.sql.exec",
+			"blockConcurrencyWhile",
+			"RPC methods",
+			"scheduled() into the object"
+		]
+	}
+}

@@ -1,0 +1,102 @@
+{
+	"schemaVersion": 1,
+	"id": "background-agents",
+	"repo": "open-inspect/background-agents",
+	"commit": "cd63f81c9bd6e7992fa61abda9b595e1c0138f8a",
+	"stars": 3450,
+	"origin": "search",
+	"directory": "packages/control-plane",
+	"ranAt": "2026-11-10T02:02:05.651Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 20,
+		"command": "npm ci --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 4,
+		"command": "npm --prefix ../.. run build -w @open-inspect/shared"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 7
+	},
+	"steps": [
+		{
+			"name": "an unsigned request is refused, and a Slack actor enrolls",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a session is created, indexed in D1, and kept in its object",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.4
+		},
+		{
+			"name": "a client answers to ping over its socket, and a bad token is refused",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.7
+		},
+		{
+			"name": "a subscribed client stays connected while the session hibernates",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 83
+		},
+		{
+			"name": "the session comes back from its object after a sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 13.2
+		},
+		{
+			"name": "the session survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 21.2
+		},
+		{
+			"name": "a prompt runs in a sandbox",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"MODAL_TOKEN_ID",
+				"MODAL_TOKEN_SECRET",
+				"ANTHROPIC_API_KEY"
+			]
+		}
+	],
+	"changes": [
+		{
+			"kind": "config",
+			"what": "packages/control-plane/wrangler.jsonc: adds migrations_dir for the DB binding, pointing at terraform/d1/migrations",
+			"why": "Production is deployed with Terraform, which applies these migrations. The repository's Wrangler config is the one its Worker tests use, and it has no migrations_dir."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"SessionDO"
+		],
+		"file": "packages/control-plane/src/cloudflare/durable-object.ts",
+		"uses": [
+			"storage.sql",
+			"acceptWebSocket",
+			"getWebSockets",
+			"setAlarm",
+			"alarm"
+		]
+	}
+}

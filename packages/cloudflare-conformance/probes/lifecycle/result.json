@@ -1,0 +1,160 @@
+{
+	"schemaVersion": 1,
+	"id": "lifecycle",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-10T02:18:11.237Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": null,
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "storage: a value survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "alarm: fires on time",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 0.6
+		},
+		{
+			"name": "alarm: wakes a sleeping object with no request",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 20.1
+		},
+		{
+			"name": "alarm: a future alarm survives a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 23.5
+		},
+		{
+			"name": "alarm: an alarm due while the process is down fires after a restart, with no request",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 11
+		},
+		{
+			"name": "hibernation: a socket stays open through the object's sleep, and a message wakes it",
+			"kind": "sleep",
+			"status": "fail",
+			"seconds": 45.1,
+			"error": "Some actor was still awake 45000ms after the last client activity"
+		},
+		{
+			"name": "hibernation: an object that closes its own socket still sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "open socket: an idle socket stays open past the sleep timeout",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 15.1
+		},
+		{
+			"name": "open socket: an idle object drops its in-memory state while its socket stays open",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 15.1
+		},
+		{
+			"name": "open socket: the object sleeps after its last socket closes",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "open socket: webSocketClose gets the client's close code",
+			"kind": "websocket",
+			"status": "fail",
+			"seconds": 20.1,
+			"error": "/closed?room=k4 did not reach the expected state: {\"code\":1001}"
+		},
+		{
+			"name": "open socket: a restart closes it with 1012, and a reconnect finds storage",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.6
+		},
+		{
+			"name": "open socket: a crash closes it with 1006, and a reconnect finds storage",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 13.7
+		},
+		{
+			"name": "KV-backed class: the storage API keeps a value",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "KV-backed class: SQL is available",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "Workflows: create, step, status, complete",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "Workflows: sendEvent releases a waiting instance",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "Workflows: terminate() ends a waiting instance",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "Workflows: pause() and resume()",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "Workflows: restart() runs a finished instance again",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Room"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"alarms",
+			"hibernatable WebSockets",
+			"storage.put"
+		]
+	}
+}

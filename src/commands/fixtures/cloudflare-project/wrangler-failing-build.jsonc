@@ -1,0 +1,7 @@
+{
+	"name": "orange-cloudflare-project-failing-build",
+	"main": "./src/index.js",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"build": { "command": "exit 3" }
+}

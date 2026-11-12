@@ -1,0 +1,190 @@
+---
+// Bank notes falling behind a hero. Positions, delays and spins are drawn
+// from a seeded generator at build time so the HTML is stable between
+// builds. Decorative only: aria-hidden, and still under reduced motion.
+//
+// Clicking anywhere in the nearest `[data-cash-hero]` ancestor bursts a
+// handful of extra notes out of the pointer. The burst is scoped to that
+// element, so the rest of the page is unaffected.
+interface Props {
+	count?: number;
+}
+const { count = 28 } = Astro.props;
+
+let seed = 0x6f72616e; // "oran"
+const rand = () => {
+	seed = (seed * 1664525 + 1013904223) >>> 0;
+	return seed / 0x100000000;
+};
+
+const bills = Array.from({ length: count }, () => ({
+	x: Math.round(rand() * 100), // % across
+	delay: -(rand() * 14).toFixed(2), // negative so the sky is already full on load
+	fall: (11 + rand() * 7).toFixed(2), // seconds to cross
+	spin: (3 + rand() * 4).toFixed(2), // seconds per tumble
+	sway: Math.round(30 + rand() * 60), // px
+	scale: (0.7 + rand() * 0.6).toFixed(2),
+}));
+---
+
+<div class="cash-rain pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+	{bills.map((b) => (
+		<span
+			class="cash-fall absolute top-0 block will-change-transform"
+			style={`left:${b.x}%;--delay:${b.delay}s;--fall:${b.fall}s;--spin:${b.spin}s;--sway:${b.sway}px;--scale:${b.scale}`}
+		>
+			<span class="cash-spin cash-note block w-28">
+				<img src="/images/dollar.png" alt="" width="112" height="43" class="cash-face" loading="eager" decoding="async" draggable="false" />
+				<img src="/images/dollar-back.png" alt="" width="112" height="43" class="cash-face cash-face-back" loading="eager" decoding="async" draggable="false" />
+			</span>
+		</span>
+	))}
+</div>
+
+<style>
+	.cash-rain {
+		container-type: size;
+	}
+	.cash-fall {
+		transform: translate3d(0, -20cqh, 0) scale(var(--scale));
+		animation: cash-fall var(--fall) linear var(--delay) infinite;
+	}
+	.cash-spin {
+		animation: cash-spin var(--spin) ease-in-out var(--delay) infinite;
+		transform-style: preserve-3d;
+	}
+	@keyframes cash-fall {
+		0% {
+			transform: translate3d(0, -20cqh, 0) scale(var(--scale));
+		}
+		25% {
+			transform: translate3d(var(--sway), 10cqh, 0) scale(var(--scale));
+		}
+		50% {
+			transform: translate3d(calc(var(--sway) * -1), 40cqh, 0) scale(var(--scale));
+		}
+		75% {
+			transform: translate3d(var(--sway), 70cqh, 0) scale(var(--scale));
+		}
+		100% {
+			transform: translate3d(0, 110cqh, 0) scale(var(--scale));
+		}
+	}
+	@keyframes cash-spin {
+		0% {
+			transform: perspective(300px) rotateX(0deg) rotateZ(-18deg);
+		}
+		50% {
+			transform: perspective(300px) rotateX(180deg) rotateZ(18deg);
+		}
+		100% {
+			transform: perspective(300px) rotateX(360deg) rotateZ(-18deg);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.cash-fall,
+		.cash-spin {
+			animation: none;
+		}
+		.cash-fall {
+			transform: translate3d(0, calc(var(--sway) * 1.6), 0) scale(var(--scale));
+		}
+	}
+</style>
+
+<style is:global>
+	/* A note is a two-sided card: front and back stacked, each hiding its
+	   backface, so an X-axis tumble shows Franklin then Independence Hall. */
+	.cash-note {
+		position: relative;
+		transform-style: preserve-3d;
+		aspect-ratio: 400 / 153;
+	}
+	.cash-face {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		display: block;
+		backface-visibility: hidden;
+		filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.25));
+	}
+	.cash-face-back {
+		transform: rotateX(180deg);
+	}
+	/* Burst notes are appended to the hero itself, above the content, and
+	   never catch the pointer so a second click still lands on the hero. */
+	.cash-burst {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 7rem;
+		pointer-events: none;
+		z-index: 20;
+		will-change: transform, opacity;
+	}
+</style>
+
+<script>
+	const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+
+	function burst(hero: HTMLElement, x: number, y: number) {
+		if (reduced.matches) return;
+		const rect = hero.getBoundingClientRect();
+		const ox = x - rect.left;
+		const oy = y - rect.top;
+		const n = 18 + Math.floor(Math.random() * 8);
+		for (let i = 0; i < n; i++) {
+			const note = document.createElement('span');
+			note.className = 'cash-burst cash-note';
+			note.setAttribute('aria-hidden', 'true');
+			for (const [src, cls] of [
+				['/images/dollar.png', 'cash-face'],
+				['/images/dollar-back.png', 'cash-face cash-face-back'],
+			]) {
+				const img = document.createElement('img');
+				img.src = src;
+				img.alt = '';
+				img.draggable = false;
+				img.className = cls;
+				note.append(img);
+			}
+			hero.append(note);
+
+			// Shoot up and out in a fan, then let gravity bring the note down past
+			// the bottom of the hero while it tumbles.
+			const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.9;
+			const speed = 420 + Math.random() * 520;
+			const vx = Math.cos(angle) * speed;
+			const vy = Math.sin(angle) * speed;
+			const g = 1400;
+			const dur = 1500 + Math.random() * 600;
+			const scale = 0.6 + Math.random() * 0.6;
+			const rz0 = (Math.random() - 0.5) * 60;
+			const rz1 = rz0 + (Math.random() - 0.5) * 720;
+			const rx1 = (Math.random() - 0.5) * 1080;
+			const frames = [];
+			const steps = 24;
+			for (let s = 0; s <= steps; s++) {
+				const t = (s / steps) * (dur / 1000);
+				const px = ox + vx * t - 56;
+				const py = oy + vy * t + 0.5 * g * t * t - 24;
+				const k = s / steps;
+				frames.push({
+					transform: `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0) perspective(300px) rotateX(${(rx1 * k).toFixed(1)}deg) rotateZ(${(rz0 + (rz1 - rz0) * k).toFixed(1)}deg) scale(${scale})`,
+					opacity: k < 0.8 ? 1 : 1 - (k - 0.8) / 0.2,
+				});
+			}
+			note.animate(frames, { duration: dur, easing: 'linear', fill: 'forwards' }).onfinish = () => note.remove();
+		}
+	}
+
+	for (const hero of document.querySelectorAll<HTMLElement>('[data-cash-hero]')) {
+		hero.addEventListener('pointerdown', (e) => {
+			if (e.button !== 0) return;
+			// Links and buttons inside the hero keep their own behavior.
+			if ((e.target as HTMLElement).closest('a, button')) return;
+			burst(hero, e.clientX, e.clientY);
+		});
+	}
+</script>

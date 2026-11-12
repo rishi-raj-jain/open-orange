@@ -1,0 +1,81 @@
+{
+	"schemaVersion": 1,
+	"id": "tubatools",
+	"repo": "luolangaga/tubatools",
+	"commit": "15dcb42c095c496e5dd68820faa6a0434475c411",
+	"stars": 6035,
+	"origin": "search",
+	"directory": "cloudflare-worker",
+	"ranAt": "2026-11-05T02:39:36.438Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 5,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 4
+	},
+	"steps": [
+		{
+			"name": "a created group is found by code, and an unknown code is not",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a password group refuses the wrong password",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "two devices join and see each other",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "an SDP offer sent on one device's socket reaches the other device",
+			"kind": "websocket",
+			"status": "fail",
+			"seconds": 20.1,
+			"error": "No WebSocket message within 20000ms"
+		},
+		{
+			"name": "a group survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10
+		},
+		{
+			"name": "a group survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.4
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"GroupRoom"
+		],
+		"file": "cloudflare-worker/src/index.ts",
+		"uses": [
+			"storage.list",
+			"storage.put",
+			"storage.deleteAll",
+			"acceptWebSocket",
+			"WebSocket.addEventListener"
+		]
+	}
+}

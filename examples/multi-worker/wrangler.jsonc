@@ -1,0 +1,17 @@
+{
+	"name": "gateway",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"services": [
+		{ "binding": "AUTH", "service": "auth" },
+		{ "binding": "ADMIN", "service": "auth", "entrypoint": "Admin" }
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "SESSIONS", "class_name": "Session", "script_name": "auth" }]
+	},
+	"queues": { "producers": [{ "binding": "EMAILS", "queue": "emails" }] },
+	"workflows": [
+		{ "binding": "SIGNUPS", "name": "signups", "class_name": "SignupWorkflow", "script_name": "jobs" }
+	],
+	"dispatch_namespaces": [{ "binding": "WORKERS", "namespace": "session-workers" }]
+}

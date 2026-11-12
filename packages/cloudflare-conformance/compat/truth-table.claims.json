@@ -1,0 +1,1521 @@
+{
+	"schemaVersion": 1,
+	"notices": [
+		{
+			"id": "websocket-hibernation",
+			"title": "WebSocket hibernation",
+			"availability": "coming-soon",
+			"cloudflare": "A socket stays open while the object sleeps, and a message wakes the object.",
+			"orange": "Orange emulates hibernation, and real hibernation is coming soon. When an object with an open accepted WebSocket is idle, Orange drops the object and its in-memory state and keeps the socket open. The next message builds a new instance of the object. The Rivet actor stays running the whole time, and it sleeps once the last socket closes. A client stays connected, but the actor does not sleep while it does.",
+			"why": "Rivet 3 has paused WebSocket hibernation, so an actor cannot sleep with a socket open. Orange hibernates the object inside the running actor instead.",
+			"action": "Have clients reconnect on any close, and don't depend on one close code. Keep anything that must survive hibernation or a restart in storage. Close sockets you no longer need, so the actor can sleep.",
+			"drawbacks": [
+				"An object with an open socket is always a running actor and does not scale to zero: the actor, its sockets, and their state stay in memory. Before the emulation, an idle awake object cost about 1.1 MB in total, in Orange and the Engine, and each idle socket on one object cost about 0.2 MB. About half of an object's cost stayed after it slept. Measured through `orange serve` on one machine, with 1,000 idle objects or 1,000 idle sockets on one object, and not measured again with the emulation. It is not a limit.",
+				"A deploy closes open sockets. On one cluster, each client reconnected on the first try: `1012` on 4 sockets and `1011` on 1. The object is a new instance, and storage survives. In-memory state and the old sockets do not. Whether the object gets `webSocketClose` during a rollout is not measured.",
+				"Old and new runners overlap for about 100 s during a rollout, and the Engine can place new objects on the old runner then. Those clients get cut off soon after opening.",
+				"Under `orange dev`, a restart closes open sockets with `1012` and a crash with `1006`. In both cases a reconnect works and storage survives.",
+				"Orange pings every network socket every 30 s, because Cloudflare closes idle sockets on pool URLs at 125 s with `1006`. With pings, idle sockets stayed open until a rollout closed them at 695 s. A Worker and its objects never see the pings. `wrangler dev` kept idle sockets open for 360 s with no pings. Real Cloudflare is not measured: its docs say idle sockets get closed and recommend a heartbeat.",
+				"A client whose connection is cut gives the object `webSocketClose` with `1006` within about 1 s. A client that stays connected but stops answering pings is closed with `1006` at about 90 s. The object sleeps after both.",
+				"`webSocketClose` gets `1001 \"gateway disconnected\"` where a client closed cleanly with `1000`. `wrangler dev` passes the client's code.",
+				"The object hibernates, but its actor does not sleep with a socket open. Real projects' steps that wait for every actor to sleep fail with `Some actor was still awake`. The real-project results show each of those steps again under a sleep check that also accepts the emulation."
+			],
+			"writtenFor": "partial",
+			"evidence": [
+				{
+					"kind": "test-file",
+					"file": "synthetic--do-websocket-hibernation-test"
+				},
+				{
+					"kind": "probe",
+					"probe": "lifecycle",
+					"step": "hibernation: a socket stays open through the object's sleep, and a message wakes it"
+				},
+				{
+					"kind": "probe",
+					"probe": "lifecycle",
+					"step": "open socket: an idle socket stays open past the sleep timeout"
+				},
+				{
+					"kind": "probe",
+					"probe": "lifecycle",
+					"step": "open socket: an idle object drops its in-memory state while its socket stays open"
+				},
+				{
+					"kind": "probe",
+					"probe": "lifecycle",
+					"step": "open socket: the object sleeps after its last socket closes"
+				},
+				{
+					"kind": "probe",
+					"probe": "lifecycle",
+					"step": "open socket: webSocketClose gets the client's close code"
+				},
+				{
+					"kind": "probe",
+					"probe": "lifecycle",
+					"step": "open socket: a restart closes it with 1012, and a reconnect finds storage"
+				},
+				{
+					"kind": "probe",
+					"probe": "lifecycle",
+					"step": "open socket: a crash closes it with 1006, and a reconnect finds storage"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "an idle socket on a pool URL, with no pings, closes at 125 s with 1006"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "with pings, idle sockets stay open until a rollout closes them at 695 s"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "a rollout closes sockets with 1012, and each client reconnects on the first try"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "a socket can also close with 1011 when its object's generation ends"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "after a rollout the object is a new instance, and an accepted socket's storage is kept"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "a cut client gives the object webSocketClose 1006 within about 1 s, and the object sleeps"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "a client that stops answering pings is closed with 1006 at about 90 s, and the object sleeps"
+				},
+				{
+					"kind": "repro",
+					"repro": "cluster-websocket",
+					"step": "wrangler dev keeps idle sockets open for 360 s with no pings"
+				},
+				{
+					"kind": "repro",
+					"repro": "keep-awake-memory",
+					"step": "1,000 objects with one idle socket each cost about 1.1 MB per object"
+				},
+				{
+					"kind": "repro",
+					"repro": "keep-awake-memory",
+					"step": "1,000 idle sockets on one object cost about 0.2 MB per socket after a long hold"
+				},
+				{
+					"kind": "repro",
+					"repro": "keep-awake-memory",
+					"step": "about half of an object's cost stays after it sleeps"
+				}
+			]
+		}
+	],
+	"areas": [
+		{
+			"id": "sqlite",
+			"title": "SQLite",
+			"summary": "Durable Object SQL and D1 run on RivetKit's SQLite 3.46. It is a different build from workerd's, so most SQL runs the same and a known set does not. Each row says what to write instead.",
+			"claims": [
+				{
+					"id": "sqlite-features",
+					"title": "JSON, FTS5, RETURNING, UPSERT, window functions, CTEs, STRICT, generated columns, foreign keys",
+					"cloudflare": "Available.",
+					"orange": "Same.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "JSON: json_extract and ->> run"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "JSON: json_each runs"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "FTS5: a full-text table can be created and searched"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "RETURNING and UPSERT run"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "window functions, CTEs, STRICT, and generated columns run"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "foreign keys are enforced by default"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "math: abs() and round() run (core SQLite)"
+						}
+					]
+				},
+				{
+					"id": "sqlite-durability",
+					"title": "Rows across sleep and restart",
+					"cloudflare": "Rows are durable.",
+					"orange": "Same. Rows survive the object's sleep and an orange dev and Engine restart.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "rows survive the object's sleep"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "rows survive a restart"
+						}
+					]
+				},
+				{
+					"id": "sqlite-math",
+					"title": "Math functions: cos, sin, sqrt, pow, floor, ceil, and the rest",
+					"cloudflare": "Available.",
+					"orange": "Fails with `no such function: cos`, in Durable Object SQL and in D1.",
+					"why": "RivetKit's SQLite is built without the optional math function set.",
+					"action": "Compute in JavaScript after you read the row, or store the computed value in a column. `abs()` and `round()` are core SQLite and run.",
+					"writtenFor": "does-not-work",
+					"evidence": [
+						{
+							"kind": "test",
+							"test": "api-tests--sql-test > main"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "math: cos() runs"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "math: sqrt() and pow() run"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "math: floor() and ceil() run"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "D1: cos() runs"
+						}
+					]
+				},
+				{
+					"id": "sqlite-delete-limit",
+					"title": "`DELETE ... LIMIT` and `UPDATE ... LIMIT`",
+					"cloudflare": "Available.",
+					"orange": "Fails with `near \"LIMIT\": syntax error`, in Durable Object SQL and in D1.",
+					"why": "RivetKit's SQLite is built without that optional grammar.",
+					"action": "Write `DELETE FROM t WHERE rowid IN (SELECT rowid FROM t WHERE ... ORDER BY ... LIMIT n)`. The same form works for `UPDATE`, and it runs on Cloudflare too.",
+					"writtenFor": "does-not-work",
+					"evidence": [
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > deleteWithLimit"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "DELETE ... LIMIT runs"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "UPDATE ... LIMIT runs"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "D1: DELETE ... LIMIT runs"
+						}
+					]
+				},
+				{
+					"id": "sqlite-delete-limit-workaround",
+					"title": "The portable form of `DELETE ... LIMIT`",
+					"cloudflare": "Available.",
+					"orange": "Same. `WHERE rowid IN (SELECT rowid ... LIMIT n)` deletes n rows.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "workaround: DELETE WHERE rowid IN (SELECT ... LIMIT n) deletes n rows"
+						}
+					]
+				},
+				{
+					"id": "sqlite-rows-read",
+					"title": "`cursor.rowsRead` and D1 `meta.rows_read`",
+					"cloudflare": "Counts rows the query scanned. Cloudflare bills on it.",
+					"orange": "Counts rows the query returned. A query that scans 5 rows and returns 1 reports 1.",
+					"why": "RivetKit returns finished results and has no scan counters. Orange has no per-row billing to match.",
+					"action": "Do not build cost limits or query-plan checks on this number. To check that a query uses an index, run `EXPLAIN QUERY PLAN`.",
+					"writtenFor": "does-not-work",
+					"evidence": [
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > readRowCounters"
+						},
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > largeRowCounters"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "counters: rowsRead counts scanned rows, not returned rows"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "D1: meta.rows_read counts scanned rows"
+						}
+					]
+				},
+				{
+					"id": "sqlite-rows-written",
+					"title": "`cursor.rowsWritten`",
+					"cloudflare": "Counts every row written, including index and trigger writes. Cloudflare bills on it.",
+					"orange": "Counts changed rows from SQLite's change count. Plain inserts match. Index and trigger writes are not counted.",
+					"why": "It comes from `sqlite3_changes()`, which does not see those writes.",
+					"action": "Use it to learn how many rows a statement changed. Do not use it as a billing estimate.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "counters: rowsWritten counts a plain insert"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "counters: rowsWritten counts index writes"
+						},
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > writeRowCounters"
+						},
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > triggerRowCounters"
+						}
+					]
+				},
+				{
+					"id": "sqlite-authorizer",
+					"title": "SQL that Cloudflare's authorizer blocks",
+					"cloudflare": "Rejects `ATTACH`, most `PRAGMA`s, and internal functions, also inside `DEFAULT` expressions.",
+					"orange": "They run, against the object's own database. Orange blocks only reserved table names and transaction control.",
+					"why": "RivetKit's SQLite has no authorizer hook. An object's code is trusted app code and each object has its own database, so this does not cross a boundary.",
+					"action": "Code that runs on Cloudflare runs the same here. If you may go back to Cloudflare, keep to its allow-list, because Orange will not stop you.",
+					"writtenFor": "does-not-work",
+					"evidence": [
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > authorizerDefaultExpressions"
+						},
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > internalFunctionsBlocked"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "authorizer: PRAGMA journal_mode = DELETE is rejected"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "authorizer: ATTACH is rejected"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "authorizer: sqlite_compileoption_used() is rejected"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "authorizer: blocked function in a DEFAULT expression is rejected"
+						}
+					]
+				},
+				{
+					"id": "sqlite-reserved-names",
+					"title": "Reserved `_cf_` tables, such as `_cf_KV`",
+					"cloudflare": "Reading them fails with `access to _cf_KV.key is prohibited`.",
+					"orange": "Reading them also fails, with `not authorized`.",
+					"why": "Orange blocks the names with a text check, not a SQLite authorizer, so the message cannot name the column.",
+					"action": "Treat any error here as a refusal. Do not match on its text.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "reserved names: reading _cf_KV is rejected"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "reserved names: the _cf_KV error names the column"
+						},
+						{
+							"kind": "test",
+							"test": "synthetic--do-sql-test > regulatorReservedNames"
+						}
+					]
+				},
+				{
+					"id": "sqlite-rivet-tables",
+					"title": "Rivet's `_rivet_` tables in `sqlite_master`",
+					"cloudflare": "No such tables. Code can dump every table it finds, apart from `_cf_`.",
+					"orange": "Orange leaves RivetKit's `_rivet_` tables out of `sqlite_master`, `sqlite_schema`, and `PRAGMA table_list`, so code that walks every table and dumps it works. A query that renames the `name` and `tbl_name` columns, or only counts or aggregates rows, still sees them, and reading one fails with `not authorized`.",
+					"why": "RivetKit keeps its internal tables in the object's own database.",
+					"action": "Do not name your tables `_rivet_*`. If you count or aggregate over `sqlite_master`, skip names that start with `_rivet_` as well as `_cf_`.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "reserved names: sqlite_master lists no _rivet_ table"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "dump: every table sqlite_master lists can be read"
+						}
+					]
+				},
+				{
+					"id": "sqlite-multi-statement",
+					"title": "Multi-statement `exec()`",
+					"cloudflare": "Bindings apply to the last statement. Only its rows return.",
+					"orange": "Unbound scripts run and return the last statement's rows. Bindings on a script throw `OpenOrange does not yet support bindings on multi-statement SQL`.",
+					"why": "RivetKit's script call takes no bindings.",
+					"action": "Send a bound statement on its own. For several together, wrap them in `ctx.storage.transactionSync()`.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "multi-statement: only the last statement's rows return"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "multi-statement: bindings apply to the last statement"
+						}
+					]
+				},
+				{
+					"id": "sqlite-transactions-in-sql",
+					"title": "`BEGIN` and `COMMIT` in SQL, empty-result `columnNames`",
+					"cloudflare": "`BEGIN` is rejected, and an empty result keeps its columns.",
+					"orange": "Same.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "BEGIN in SQL is rejected, as on Cloudflare"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "empty result keeps columnNames"
+						}
+					]
+				},
+				{
+					"id": "sqlite-workerd-suite",
+					"title": "workerd's own SQL tests",
+					"orange": "`api-tests--sql-test` and the do-sql tests ported from workerd's C++ tests. What fails is listed in the rows above.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "test-file",
+							"file": "synthetic--do-sql-test"
+						},
+						{
+							"kind": "test-file",
+							"file": "api-tests--sql-test"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "durable-objects",
+			"title": "Durable Objects",
+			"summary": "Each object is one Rivet Actor. Storage, alarms, RPC, and WebSockets follow workerd's behaviour, checked against workerd's own tests.",
+			"claims": [
+				{
+					"id": "do-storage",
+					"title": "Storage API: get, put, list, delete, transaction, sync KV",
+					"cloudflare": "Available.",
+					"orange": "Same, stored in the object's SQLite.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "test-file",
+							"file": "synthetic--do-storage-test"
+						},
+						{
+							"kind": "test-file",
+							"file": "api-tests--actor-kv-test"
+						},
+						{
+							"kind": "test-file",
+							"file": "api-tests--sync-kv-test"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "storage: a value survives the object's sleep"
+						}
+					]
+				},
+				{
+					"id": "do-kv-backed",
+					"title": "KV-backed classes (`new_classes`)",
+					"cloudflare": "A separate storage backend with no SQL.",
+					"orange": "Accepted, and stored in SQLite like every other class, so the class can also use SQL. There is no import of data from a Cloudflare KV-backed object.",
+					"action": "New code runs unchanged. To move a live object off Cloudflare, read its data out through its own API.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "KV-backed class: the storage API keeps a value"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "KV-backed class: SQL is available"
+						}
+					]
+				},
+				{
+					"id": "do-ids-gates",
+					"title": "Object ids and input gates",
+					"cloudflare": "Available.",
+					"orange": "Same.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "test-file",
+							"file": "synthetic--do-id-test"
+						},
+						{
+							"kind": "test-file",
+							"file": "synthetic--do-input-gate-test"
+						},
+						{
+							"kind": "test-file",
+							"file": "api-tests--actor-block-concurrency-depth-test"
+						}
+					]
+				},
+				{
+					"id": "do-alarms",
+					"title": "Alarms",
+					"cloudflare": "An alarm fires on time, wakes a sleeping object, and survives a restart.",
+					"orange": "Same, when the process is up at the alarm's time.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "test-file",
+							"file": "synthetic--do-alarm-test"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "alarm: fires on time"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "alarm: wakes a sleeping object with no request"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "alarm: a future alarm survives a restart"
+						}
+					]
+				},
+				{
+					"id": "do-alarm-overdue",
+					"title": "An alarm due while the process is down",
+					"cloudflare": "Fires when the runtime comes back.",
+					"orange": "Same. It fires after a restart, with no request.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "alarm: an alarm due while the process is down fires after a restart, with no request"
+						}
+					]
+				},
+				{
+					"id": "do-rpc",
+					"title": "RPC and entrypoints",
+					"cloudflare": "Available.",
+					"orange": "Stubs, `WorkerEntrypoint`, `RpcTarget`, and streams work. Calls from one process to one object keep the order they were made in, whichever stub made them, as in workerd. Other failing tests are in the report.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "area",
+							"area": "RPC + entrypoints"
+						},
+						{
+							"kind": "test",
+							"test": "api-tests--request-signal-enabled > abortIfClientAbandonsRequest"
+						},
+						{
+							"kind": "test",
+							"test": "api-tests--request-signal-enabled > abortedRequestDoesNotAbortSubrequest"
+						}
+					]
+				},
+				{
+					"id": "do-websockets",
+					"title": "WebSockets through an object",
+					"cloudflare": "Available.",
+					"orange": "Same, while the object stays awake.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "test-file",
+							"file": "synthetic--do-websocket-test"
+						},
+						{
+							"kind": "project",
+							"project": "workers-chat-demo",
+							"step": "two clients chat in a room, and history is kept"
+						}
+					]
+				},
+				{
+					"id": "do-self-close",
+					"title": "An object that closes its own socket can still sleep",
+					"cloudflare": "Available.",
+					"orange": "Same.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "hibernation: an object that closes its own socket still sleeps"
+						}
+					]
+				},
+				{
+					"id": "do-facets",
+					"title": "Durable Object facets",
+					"cloudflare": "Available.",
+					"orange": "A child Rivet Actor per facet, with abort, class swap, and delete.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "facets-loader"
+						}
+					]
+				},
+				{
+					"id": "do-runner-half-open",
+					"title": "A runner whose Engine connection goes half-open",
+					"cloudflare": "Not applicable: Cloudflare has no runner to reconnect.",
+					"orange": "A closed socket reconnects. A socket that stays open and stops carrying data never does: the node leaves the pool, the runner logs nothing, and Durable Object calls return 500 after 45 s. Reproduced locally with a TCP proxy. Not proven on a cluster: one cluster outage had matching symptoms.",
+					"why": "A RivetKit bug: the envoy client's read loop has no deadline, so nothing notices silence while connected.",
+					"action": "Until the fix ships, watch the node count in `/pools/{pool}/nodes` and restart a runner that has no node.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "repro",
+							"repro": "runner-half-open",
+							"step": "a runner reconnects after its Engine socket closes"
+						},
+						{
+							"kind": "repro",
+							"repro": "runner-half-open",
+							"step": "a runner reconnects after its Engine socket stops carrying data"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "bindings",
+			"title": "Bindings",
+			"summary": "Each binding runs on Rivet Actors unless noted. The scaling table below says how each one grows.",
+			"claims": [
+				{
+					"id": "binding-kv",
+					"title": "KV",
+					"cloudflare": "Eventually consistent, with a global edge cache.",
+					"orange": "Strongly consistent. Reads never see stale values, and `cacheStatus` is always null.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "kv"
+						}
+					]
+				},
+				{
+					"id": "binding-d1",
+					"title": "D1",
+					"cloudflare": "Available.",
+					"orange": "`prepare`, `batch`, and migrations work, on the SQLite build above. Everything in the SQLite section applies.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "d1-migrations"
+						},
+						{
+							"kind": "probe",
+							"probe": "sqlite-surface",
+							"step": "D1: batch() runs statements in order"
+						}
+					]
+				},
+				{
+					"id": "binding-r2",
+					"title": "R2",
+					"cloudflare": "Available.",
+					"orange": "On an S3-compatible store per bucket, or in actor SQLite when none is set. In actor SQLite, Rivet's storage limit for one actor bounds a bucket. SSE-C keys throw.",
+					"action": "In production, set `ORANGE_R2_<BUCKET>_S3_*`.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "r2"
+						}
+					]
+				},
+				{
+					"id": "binding-queues",
+					"title": "Queues",
+					"cloudflare": "Available.",
+					"orange": "Delays, retries, dead letter queues, and batches work. One batch at a time per queue.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "queues"
+						}
+					]
+				},
+				{
+					"id": "binding-workflows",
+					"title": "Workflows",
+					"cloudflare": "Available.",
+					"orange": "Steps, retries, sleeps, events, `terminate`, `pause`, `resume`, and `restart` work. `terminate` cannot stop a step callback that is already running.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "workflows"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "Workflows: create, step, status, complete"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "Workflows: sendEvent releases a waiting instance"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "Workflows: terminate() ends a waiting instance"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "Workflows: pause() and resume()"
+						},
+						{
+							"kind": "probe",
+							"probe": "lifecycle",
+							"step": "Workflows: restart() runs a finished instance again"
+						}
+					]
+				},
+				{
+					"id": "binding-rate-limiting",
+					"title": "Rate Limiting",
+					"cloudflare": "Local to each edge location, and approximate.",
+					"orange": "One exact counter per namespace.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "rate-limiting"
+						}
+					]
+				},
+				{
+					"id": "binding-cache",
+					"title": "Cache API",
+					"cloudflare": "Available.",
+					"orange": "`caches.default` and named caches work, on Miniflare's freshness rules. Set `ORANGE_CACHE=off` to turn it off.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "cache-api"
+						}
+					]
+				},
+				{
+					"id": "binding-cron",
+					"title": "Cron Triggers",
+					"cloudflare": "Available.",
+					"orange": "Full Cloudflare cron syntax, including `LW` and `#`.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "cron"
+						}
+					]
+				},
+				{
+					"id": "binding-ai",
+					"title": "Workers AI",
+					"cloudflare": "Models on Cloudflare's network.",
+					"orange": "Any OpenAI-compatible provider. It needs your key, and `@cf/` model names need a mapping in `ORANGE_AI_MODELS`.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "workers-ai"
+						}
+					]
+				},
+				{
+					"id": "binding-sandbox",
+					"title": "Sandboxes",
+					"cloudflare": "On Cloudflare Containers.",
+					"orange": "`@cloudflare/sandbox` on your choice of provider, set by `ORANGE_SANDBOX_PROVIDER`.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "sandbox"
+						},
+						{
+							"kind": "example",
+							"example": "sandbox-v1"
+						}
+					]
+				},
+				{
+					"id": "binding-services",
+					"title": "Service bindings and dispatch namespaces",
+					"cloudflare": "Available.",
+					"orange": "Across the Workers of one `orange dev` session. `orange deploy` ships one Worker at a time, so a binding to another Worker has nothing to reach on a pool.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "example",
+							"example": "multi-worker"
+						},
+						{
+							"kind": "example",
+							"example": "rpc-entrypoints"
+						}
+					]
+				},
+				{
+					"id": "binding-services-connect",
+					"title": "`connect()` through a service binding to another Worker",
+					"cloudflare": "Available.",
+					"orange": "A call reaches the `connect()` handler in another Worker of the `orange dev` session.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "test",
+							"test": "api-tests--connect-handler-test > localAddressViaServiceBinding"
+						}
+					]
+				},
+				{
+					"id": "binding-services-events",
+					"title": "`queue()` and `scheduled()` on a service binding",
+					"cloudflare": "Available.",
+					"orange": "Both run the handler and report its outcome. `queue()` reads workerd's `serializedBody` format, and a crafted payload fails the event. A `serializedBody` holding a stream, stub, or abort signal also fails the event. A decoded `Headers` isn't immutable, because Orange has no `Headers` guard. Unlike `connect()`, both calls reject when the binding points at another Worker of an `orange dev` session.",
+					"action": "In `orange dev`, call `queue()` and `scheduled()` on a binding to the same Worker. Send plain values in `serializedBody`.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "test-file",
+							"file": "api-tests--deserialize-hardening-test"
+						},
+						{
+							"kind": "test",
+							"test": "api-tests--queue-metadata-test > queue-metadata-test"
+						}
+					]
+				},
+				{
+					"id": "binding-send-email",
+					"title": "Send Email (`send_email`)",
+					"cloudflare": "Sends mail from a Worker. `destination_address` and the allow lists limit who it can reach.",
+					"orange": "Sends through the SMTP server in `ORANGE_EMAIL_SMTP_URL`. Both an `EmailMessage` and the message object work, with Cc, Bcc, and attachments. A recipient outside the address limits is refused before anything is sent. Without the variable, `send()` throws an error that names it.",
+					"action": "Set `ORANGE_EMAIL_SMTP_URL` to your mail provider's SMTP endpoint.",
+					"drawbacks": [
+						"You bring the SMTP provider. Orange does not check sender domains or verified destinations. Your provider does its own checks."
+					],
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "email",
+							"step": "Send Email: an EmailMessage with its own MIME arrives over SMTP"
+						},
+						{
+							"kind": "probe",
+							"probe": "email",
+							"step": "Send Email: a message object arrives with its Cc, Bcc, and attachment"
+						},
+						{
+							"kind": "probe",
+							"probe": "email",
+							"step": "Send Email: a recipient outside allowed_destination_addresses is refused, and nothing is sent"
+						},
+						{
+							"kind": "project",
+							"project": "agentic-inbox",
+							"step": "a sent email and a threaded reply are delivered over SMTP through the send_email binding"
+						}
+					]
+				},
+				{
+					"id": "binding-email",
+					"title": "Inbound email: `email()`, `forward()`, and `reply()`",
+					"cloudflare": "Email Routing delivers mail to the `email()` handler, and `message.forward()` and `message.reply()` send it on.",
+					"orange": "A message POSTed to `/cdn-cgi/handler/email` runs `email()`: raw MIME, or a SendGrid or Mailgun inbound webhook. `forward()` and `reply()` send through `ORANGE_EMAIL_SMTP_URL`, and `setReject()` answers 400. With `ORANGE_EMAIL_INBOUND_SECRET` set, a wrong secret gets 401 and `email()` does not run. `orange serve` serves the route only when the secret is set. The evidence here runs on `orange dev`.",
+					"why": "Email Routing itself, Cloudflare's MX and routing rules, is Cloudflare-only. Orange has no mail server, so something else must receive the mail and POST it.",
+					"action": "Point your mail provider's inbound webhook at `/cdn-cgi/handler/email`, with the secret.",
+					"drawbacks": [
+						"Email Routing is Cloudflare-only. A provider such as SendGrid or Mailgun must receive the mail."
+					],
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "email",
+							"step": "Inbound email: a POSTed message runs email(), and forward() sends it on over SMTP"
+						},
+						{
+							"kind": "probe",
+							"probe": "email",
+							"step": "Inbound email: reply() sends the Worker's reply, with In-Reply-To"
+						},
+						{
+							"kind": "probe",
+							"probe": "email",
+							"step": "Inbound email: setReject() answers 400"
+						},
+						{
+							"kind": "probe",
+							"probe": "email",
+							"step": "Inbound email: a wrong secret gets 401, and email() does not run"
+						},
+						{
+							"kind": "project",
+							"project": "vmail",
+							"step": "an inbound email goes through email() into the mailbox, and the mailbox lists it"
+						},
+						{
+							"kind": "project",
+							"project": "vmail",
+							"step": "an email to a mailbox that was never created is rejected"
+						},
+						{
+							"kind": "project",
+							"project": "agentic-inbox",
+							"step": "an inbound email goes through the Worker's email() handler into the inbox"
+						}
+					]
+				},
+				{
+					"id": "binding-browser",
+					"title": "Browser Rendering (`browser`)",
+					"cloudflare": "`@cloudflare/puppeteer` drives a browser that Cloudflare runs.",
+					"orange": "`@cloudflare/puppeteer` 1.x works unchanged against the Chrome in `ORANGE_BROWSER_CDP_URL`: pages, screenshots, and sessions, with requests at once each in their own page. `browser.close()` closes only that session's pages. Without the variable, `fetch()` throws an error that names it.",
+					"action": "Run a headless Chrome that the runner can reach, and set `ORANGE_BROWSER_CDP_URL` to it.",
+					"drawbacks": [
+						"You run the browser. All sessions share it, so they share cookies and storage.",
+						"A session ends with its WebSocket, so `connect()` cannot rejoin a session after `disconnect()`.",
+						"`keep_alive`, `location`, and recording are accepted and ignored."
+					],
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "browser-rendering",
+							"step": "launch() opens a page in the configured browser, reads it, and takes a PNG screenshot"
+						},
+						{
+							"kind": "probe",
+							"probe": "browser-rendering",
+							"step": "two requests at once each read their own page"
+						},
+						{
+							"kind": "probe",
+							"probe": "browser-rendering",
+							"step": "browser.close() ends the session, and the next launch still works"
+						},
+						{
+							"kind": "probe",
+							"probe": "browser-rendering",
+							"step": "connect() to a session that is in use is refused"
+						}
+					]
+				},
+				{
+					"id": "binding-stubs",
+					"title": "Vectorize, Images, Pipelines, mTLS",
+					"cloudflare": "Available.",
+					"orange": "Not implemented. Config loads, and a call throws a clear error that names the binding.",
+					"action": "Call your provider's HTTP API with `fetch()`.",
+					"writtenFor": "does-not-work",
+					"evidence": [
+						{
+							"kind": "probe",
+							"probe": "stub-bindings",
+							"step": "Vectorize: query() runs"
+						},
+						{
+							"kind": "probe",
+							"probe": "stub-bindings",
+							"step": "Images: info() runs"
+						},
+						{
+							"kind": "probe",
+							"probe": "stub-bindings",
+							"step": "Pipelines: send() runs"
+						},
+						{
+							"kind": "probe",
+							"probe": "stub-bindings",
+							"step": "mTLS certificates: fetch() runs"
+						}
+					]
+				},
+				{
+					"id": "binding-containers",
+					"title": "Containers",
+					"cloudflare": "Available.",
+					"orange": "No container runtime. The config loads with a warning. A class listed under `containers` gets a `ctx.container` that runs only Cloudflare Sandbox images, on `ORANGE_SANDBOX_PROVIDER`. Not run here.",
+					"writtenFor": "not-run",
+					"evidence": []
+				}
+			]
+		},
+		{
+			"id": "runtime",
+			"title": "Runtime",
+			"summary": "Workers run on Node.js with workerd-shaped globals. These counts are workerd's own test suite, scored only where workerd itself passes.",
+			"claims": [
+				{
+					"id": "runtime-node",
+					"title": "Node.js compatibility",
+					"orange": "Stock Node.js built-ins. Tests that only pass because of a workerd stub do not count.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "area",
+							"area": "Node.js compat"
+						}
+					]
+				},
+				{
+					"id": "runtime-web",
+					"title": "Web platform",
+					"orange": "The report groups the failures by cause.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "area",
+							"area": "Web platform"
+						}
+					]
+				},
+				{
+					"id": "runtime-streams",
+					"title": "Streams",
+					"orange": "See the report for the failing tests.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "area",
+							"area": "Streams"
+						}
+					]
+				},
+				{
+					"id": "runtime-fetch",
+					"title": "Fetch, HTTP, sockets",
+					"orange": "See the report for the failing tests.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "area",
+							"area": "Fetch, HTTP, sockets"
+						}
+					]
+				},
+				{
+					"id": "runtime-crypto",
+					"title": "Crypto",
+					"orange": "All scored tests pass.",
+					"writtenFor": "works",
+					"evidence": [
+						{
+							"kind": "area",
+							"area": "Crypto"
+						}
+					]
+				},
+				{
+					"id": "runtime-flags",
+					"title": "Compatibility flags",
+					"cloudflare": "A Worker's flags and date select its behaviour.",
+					"orange": "Orange applies `request_signal_passthrough` and the assets navigation flags. The rest of the profile stays fixed, and `orange dev` warns about a flag it ignores. Tests that need a different flag value fail.",
+					"action": "Read the warning from `orange dev`, and don't depend on a flag it names.",
+					"writtenFor": "partial",
+					"evidence": [
+						{
+							"kind": "test",
+							"test": "api-tests--request-signal-passthrough > requestPassedOverRpcIncludesSignal"
+						},
+						{
+							"kind": "test",
+							"test": "api-tests--request-signal-enabled > requestPassedOverRpcDoesNotIncludeSignal"
+						},
+						{
+							"kind": "test",
+							"test": "api-tests--http-test > cacheMode"
+						},
+						{
+							"kind": "test",
+							"test": "api-tests--js-rpc-test > sendStubOverRpc"
+						}
+					]
+				}
+			]
+		}
+	],
+	"beyond": [
+		{
+			"id": "beyond-cpu",
+			"title": "CPU time per request",
+			"cloudflare": "10 ms on Free. 30 s by default on Paid, up to 5 minutes.",
+			"orange": "No limit. An object ran 35 s of CPU in one request.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "beyond-limits",
+					"step": "a Durable Object runs 35 s of CPU in one request"
+				}
+			]
+		},
+		{
+			"id": "beyond-memory",
+			"title": "Memory",
+			"cloudflare": "128 MB per isolate.",
+			"orange": "The container's memory. An object held 512 MiB between requests.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "beyond-limits",
+					"step": "a Durable Object holds 512 MiB between requests"
+				}
+			]
+		},
+		{
+			"id": "beyond-subrequests",
+			"title": "Subrequests per request",
+			"cloudflare": "50 on Free. A configurable limit on Paid.",
+			"orange": "No limit. One request made 2,000.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "beyond-limits",
+					"step": "one request makes 2,000 subrequests"
+				}
+			]
+		},
+		{
+			"id": "beyond-request-body",
+			"title": "Request body size",
+			"cloudflare": "100 MB on Free and Pro, up to 500 MB on Enterprise.",
+			"orange": "No limit. A 600 MiB body streamed through.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "beyond-limits",
+					"step": "a 600 MiB request body streams through"
+				}
+			]
+		},
+		{
+			"id": "beyond-startup",
+			"title": "Global scope time",
+			"cloudflare": "1 s, or the deploy fails.",
+			"orange": "No limit. A Worker with a 1.5 s global scope started.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "beyond-limits",
+					"step": "a Worker whose global scope runs for 1.5 s starts"
+				}
+			]
+		},
+		{
+			"id": "beyond-sqlite-limits",
+			"title": "SQLite size limits",
+			"cloudflare": "2 MB per value, 100 KB per statement, 100 bound parameters, 100 columns.",
+			"orange": "SQLite's own limits. A 5 MiB BLOB, a 300 KB statement, 200 parameters, and 200 columns all ran. workerd refuses each one.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "beyond-surface",
+					"step": "SQLite: a 5 MiB BLOB"
+				},
+				{
+					"kind": "probe",
+					"probe": "beyond-surface",
+					"step": "SQLite: a 300 KB statement"
+				},
+				{
+					"kind": "probe",
+					"probe": "beyond-surface",
+					"step": "SQLite: 200 bound parameters"
+				},
+				{
+					"kind": "probe",
+					"probe": "beyond-surface",
+					"step": "SQLite: a table with 200 columns"
+				}
+			]
+		},
+		{
+			"id": "beyond-sqlite-functions",
+			"title": "`sqlite_version()`",
+			"cloudflare": "Rejected: `not authorized to use function`.",
+			"orange": "Runs.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "sqlite-surface",
+					"step": "sqlite_version() runs"
+				}
+			]
+		},
+		{
+			"id": "beyond-node",
+			"title": "Real Node.js APIs",
+			"cloudflare": "`node:child_process` throws `not implemented`, and `node:net` cannot listen.",
+			"orange": "Stock Node.js. A Worker ran a host command and listened on a port. The container is the isolation boundary, as for any Rivet Actor.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "beyond-surface",
+					"step": "node:child_process runs a host command"
+				},
+				{
+					"kind": "probe",
+					"probe": "beyond-surface",
+					"step": "node:fs writes and reads a real file"
+				},
+				{
+					"kind": "probe",
+					"probe": "beyond-surface",
+					"step": "node:net listens on a port"
+				}
+			]
+		},
+		{
+			"id": "beyond-storage",
+			"title": "Storage per object",
+			"cloudflare": "10 GB.",
+			"orange": "No Orange limit. Not run at this size.",
+			"writtenFor": "not-run",
+			"evidence": []
+		}
+	],
+	"scaling": [
+		{
+			"binding": "Durable Objects",
+			"scalesBy": "Object ID",
+			"detail": "One actor per object id. Add ids to add capacity.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "Durable Objects: one actor per object id"
+				}
+			]
+		},
+		{
+			"binding": "Workflows",
+			"scalesBy": "Instance",
+			"detail": "One actor per instance.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "Workflows: one actor per instance"
+				}
+			]
+		},
+		{
+			"binding": "D1",
+			"scalesBy": "Database",
+			"detail": "One actor per database. A busy database is one actor, so split by tenant for more.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "D1: one actor per database"
+				}
+			]
+		},
+		{
+			"binding": "KV",
+			"scalesBy": "Namespace",
+			"detail": "One actor per namespace, so one namespace does not fan out across actors. Split namespaces for more.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "KV: one actor per namespace"
+				}
+			]
+		},
+		{
+			"binding": "Queues",
+			"scalesBy": "Queue",
+			"detail": "One actor per queue, delivering one batch at a time.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "Queues: one actor per queue"
+				}
+			]
+		},
+		{
+			"binding": "Rate Limiting",
+			"scalesBy": "Namespace",
+			"detail": "One actor per namespace_id, which holds every key's counter.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "Rate Limiting: one actor per namespace"
+				}
+			]
+		},
+		{
+			"binding": "Cache",
+			"scalesBy": "Cache name",
+			"detail": "One actor per cache name. `caches.default` is one actor, so busy traffic should use named caches.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "Cache: one actor per cache name"
+				},
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "Cache: caches.default is one actor"
+				}
+			]
+		},
+		{
+			"binding": "R2",
+			"scalesBy": "S3 or bucket",
+			"detail": "With S3 set, as far as your S3 store goes. Without it, one actor per bucket.",
+			"writtenFor": "works",
+			"evidence": [
+				{
+					"kind": "probe",
+					"probe": "scale-units",
+					"step": "R2: one actor per bucket without S3"
+				},
+				{
+					"kind": "example",
+					"example": "r2"
+				}
+			]
+		},
+		{
+			"binding": "Workers",
+			"scalesBy": "Runner count",
+			"detail": "Stateless requests go to any runner in the pool. Not measured across runners here.",
+			"writtenFor": "not-run",
+			"evidence": []
+		}
+	],
+	"cloud": {
+		"notes": [
+			"Six projects also ran on Rivet Cloud, one run each on a Free cluster. These results are separate from the local ones above.",
+			"Each scenario ran on one shared Free cluster, recorded as Engine 3.0.0 when it was created, the day before these runs. That version comes from the creation record, and was not read during the runs. Each project then got its own Free cluster, where one real request proved it. Those clusters report Engine 3.0.0.",
+			"Only `starbasedb` used `orange deploy`'s upload and rollout. The others used the image `orange deploy --dry-run` writes, uploaded and rolled out with the Rivet CLI.",
+			"Sleep isn't proven on a pool. The Engine API's actor timestamps are null, and these images log no lifecycle lines, so sleep steps wait past the idle window and read state afterward. A restart step is a real rollout to a newly built image.",
+			"A deploy reports done before the new build serves, so each scenario waited for the old node to leave and a project-specific request to succeed.",
+			"The Orange under test was a local merge of the CLI and Durable Object branches, before they landed."
+		],
+		"projects": [
+			{
+				"project": "starbasedb",
+				"what": "A SQL database over HTTP and WebSocket, built on a Durable Object's SQLite.",
+				"ran": "The API refused a request with no token. A client created a table, inserted rows, ran a transaction, used the REST API and JSON export, and queried over a WebSocket. The table survived an idle wait and a real rollout.",
+				"shortfalls": [
+					"The cron callback step did not apply: it calls a local server, which a pool can't reach.",
+					"The recorded run is the third attempt. The first was stopped because the old build might still have been serving. The second failed on rows the first had left and on a wrong sleep check in the test runner.",
+					"The API needs a token, and there is no page to open in a browser."
+				],
+				"writtenFor": {
+					"pass": 7,
+					"fail": 0,
+					"notApplicable": 1,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "tldraw",
+				"what": "The sync backend of tldraw's multiplayer whiteboard, with one Durable Object per room and assets in R2.",
+				"ran": "Assets uploaded to and read from R2 on a Google Cloud Storage bucket, through Orange's S3 settings. Two clients synced pages over WebSockets, a late joiner got them, and a page survived the room emptying and a real rollout.",
+				"shortfalls": [
+					"This is the backend only, with no editor to open.",
+					"The image needed the Worker bundled by hand first, because the Orange it ran on could not install `workspace:` packages inside the image.",
+					"Only the object reads and writes the project uses ran against Cloud Storage."
+				],
+				"writtenFor": {
+					"pass": 6,
+					"fail": 0,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "computer",
+				"what": "A workspace in a Durable Object, with a filesystem and a shell that runs in a Dynamic Worker. This was the first Dynamic Worker on a cluster.",
+				"ran": "Files written through the object read back, each workspace stayed separate, and a shell in a Dynamic Worker read and wrote the same files. A bundled skill mounted read-only. Files survived an idle wait and a real rollout.",
+				"shortfalls": [
+					"The image needed the Worker bundled by hand first, because the project's package comes from its monorepo.",
+					"The scenario does not touch the R2 mount. A separate check read and listed a Cloud Storage object through it. The project's mount is read-only."
+				],
+				"writtenFor": {
+					"pass": 6,
+					"fail": 0,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "kody",
+				"what": "A status page for the Kody app, where a one-minute cron probes components and a Durable Object stores incidents.",
+				"ran": "The page and its JSON read from the store. The real cron fired on the pool, and three failing passes opened an incident, which survived an idle wait and a real rollout.",
+				"shortfalls": [
+					"Its origin points at a host that never answers, so the pool doesn't probe the project's real site. So every component reads down, and that outage comes from this setup.",
+					"Two steps did not apply, because they need an origin that answers or recovers.",
+					"Operator alert email needs a real credential.",
+					"A binding to the project's jobs Worker points at a Worker that isn't deployed. No step called it."
+				],
+				"writtenFor": {
+					"pass": 4,
+					"fail": 0,
+					"notApplicable": 2,
+					"needsSecrets": 1
+				}
+			},
+			{
+				"project": "partykit",
+				"what": "A collaborative text editor fixture on PartyServer, with Yjs documents in Durable Objects.",
+				"ran": "Two editors synced edits both ways over WebSockets, and a custom message reached the others. A document was saved when its room emptied, came back after an idle wait, stayed separate from another room's, and survived a real rollout.",
+				"shortfalls": [
+					"Editors staying connected across a room's hibernation failed, as expected: WebSocket hibernation is not available on Rivet 3, so open sockets keep the object awake.",
+					"The editor client isn't in the deployed assets, so there is nothing to open in a browser."
+				],
+				"writtenFor": {
+					"pass": 5,
+					"fail": 1,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			},
+			{
+				"project": "supermemory",
+				"what": "Supermemory's MCP server, which gives AI clients a memory, with a Durable Object for each user's active space and for upload sessions.",
+				"ran": "The server described itself and its OAuth metadata, refused a client with no token, and refused an unknown upload token. With a real Supermemory sign-in, a token was accepted on the pool, an upload session worked once and refused a second use, and the active space carried across connections.",
+				"shortfalls": [
+					"Uploads don't work for a real client on a pool URL. The Worker builds its upload URL from `MCP_RESOURCE`, which stays on Supermemory's production host so that tokens match, so a client following it gets a 401 from production. The passing step posted the same path to the pool by hand.",
+					"The image needed `build.command` removed after running it by hand, because the Orange it ran on refused a custom build.",
+					"The sign-in step ran by a separate script, after two attempts stopped on that script's own checks."
+				],
+				"writtenFor": {
+					"pass": 4,
+					"fail": 0,
+					"notApplicable": 0,
+					"needsSecrets": 0
+				}
+			}
+		]
+	},
+	"emulatedHibernation": {
+		"note": "Orange emulates hibernation. When an object with open accepted WebSockets is idle, Orange drops the object and keeps its sockets open, and the next message or alarm builds the object again. The Rivet actor stays running the whole time, so the memory and the cost of each connected object remain. This is not Cloudflare's hibernation, where a hibernated object uses no memory and is not billed for duration. An emulated result shows what a step does when the sleep check also accepts this state as asleep. It never changes the status of a step or a claim. A project that fails only hibernation steps, and passes them all this way, shows as works, with emulated hibernation, and is counted apart from the projects that work."
+	}
+}

@@ -1,0 +1,21 @@
+05:44:18 OPEN acc-msg accepted msg
+05:44:18 OPEN std-msg standard msg
+05:45:18 AGE acc-msg 60s pings=0 sent=2 replies=2
+05:45:18 AGE std-msg 60s pings=0 sent=2 replies=2
+05:46:18 AGE acc-msg 120s pings=0 sent=4 replies=4
+05:46:18 AGE std-msg 120s pings=0 sent=4 replies=4
+05:47:18 AGE acc-msg 180s pings=0 sent=6 replies=6
+05:47:18 AGE std-msg 180s pings=0 sent=6 replies=6
+05:48:18 AGE acc-msg 240s pings=0 sent=8 replies=8
+05:48:18 AGE std-msg 240s pings=0 sent=8 replies=8
+05:49:18 AGE acc-msg 300s pings=0 sent=10 replies=10
+05:49:18 AGE std-msg 300s pings=0 sent=10 replies=10
+05:50:18 AGE acc-msg 360s pings=0 sent=12 replies=12
+05:50:18 AGE std-msg 360s pings=0 sent=12 replies=12
+05:51:04 CLOSED acc-msg accepted msg after 406s code=1012 "Service Restart" pings=0 sent=14 replies=14
+05:51:04 CLOSED std-msg standard msg after 406s code=1012 "Service Restart" pings=0 sent=14 replies=14
+05:51:05 RECONNECTED std-msg try 1 newBoot=true count=n/a
+05:51:05 RECONNECTED acc-msg try 1 newBoot=true count=15
+05:51:06 LASTCLOSE std-msg {"boot":"0a9359c0-051b-4273-b4fe-add10a7f48b6","lastClose":null}
+05:51:06 LASTCLOSE acc-msg {"boot":"9fdeb3d3-4d2e-4efa-a22f-400a892fcd4a","lastClose":{"at":"2026-11-05T05:51:06.093Z","code":1001,"reason":"gateway disconnected","wasClean":false}}
+05:51:06 PROOFDONE

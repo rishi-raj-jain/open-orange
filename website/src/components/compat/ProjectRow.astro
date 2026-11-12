@@ -1,0 +1,102 @@
+---
+// One real open-source project. The closed row shows the repository, its size,
+// the cause of each failed step, and how many steps passed.
+import Row from './Row.astro';
+import Chip from './Chip.astro';
+import { PROJECT_LABEL, TONE_CLASS, fmt, inline, type ProjectRow } from '@/data/conformance';
+
+interface Props {
+	project: ProjectRow;
+}
+
+const { project: p } = Astro.props;
+const s = PROJECT_LABEL[p.status];
+const t = TONE_CLASS[s.tone];
+const causes = [...new Set(p.failures.map((f) => f.ownerLabel))];
+const stepsPercent = p.steps.total === 0 ? 0 : (p.steps.pass / p.steps.total) * 100;
+const classes = p.durableObjects.classes.length;
+---
+
+<Row id={`project-${p.id}`} data-status={p.status}>
+	<Chip slot="status" tone={s.tone} label={s.label} />
+	<span slot="name" class="row-name block truncate">{p.repo}</span>
+	<span slot="a" class="row-text-faint">
+		{fmt(p.stars)} stars · {classes} {classes === 1 ? 'class' : 'classes'} · {p.changes.length === 0 ? 'unmodified' : `${p.changes.length} ${p.changes.length === 1 ? 'change' : 'changes'}`}
+	</span>
+	<span slot="b" class="flex flex-wrap gap-1.5">
+		{p.status === 'needs-secrets' && p.secrets.length ? <span class="text-[12.5px] text-ink-faint">Needs {p.secrets.join(', ')}</span> : null}
+		{causes.map((c) => (
+			<span class="tip" tabindex="0">
+				<span class="chip tone-fail">{c}</span>
+				<span class="tip-body" role="tooltip">
+					{p.failures.filter((f) => f.ownerLabel === c).map((f) => (
+						<span class="mb-2 block last:mb-0">
+							<span class="block text-white">{f.step}</span>
+							<span class="mono">{f.error}</span>
+						</span>
+					))}
+				</span>
+			</span>
+		))}
+	</span>
+	<span slot="end" class="flex items-center gap-2.5 md:justify-end">
+		<span class="h-1.5 w-16 overflow-hidden rounded-full bg-ink/10"><span class={`block h-full ${t.bar}`} style={`width:${stepsPercent}%`}></span></span>
+		<span class="row-num">{p.steps.pass}/{p.steps.total}</span>
+	</span>
+
+	<dl>
+		<dt>Source</dt>
+		<dd>
+			<a href={p.url} class="link" rel="noopener">{p.repo}</a> at <code>{p.commit.slice(0, 7)}</code>, Worker in <code>{p.directory}</code>.
+			{classes ? (
+				<span> Durable Objects: {p.durableObjects.classes.map((c, i) => <><code>{c}</code>{i < classes - 1 ? ', ' : ''}</>)} using {p.durableObjects.uses.map((u, i) => <><code>{u}</code>{i < p.durableObjects.uses.length - 1 ? ', ' : ''}</>)}.</span>
+			) : null}
+		</dd>
+		<dt>Changes</dt>
+		{p.changes.length ? (
+			<dd>
+				<ul class="space-y-1.5">
+					{p.changes.map((c) => (
+						<li><span class="text-ink" set:html={inline(c.what)} /> <span class="text-ink-faint" set:html={inline(c.why)} /></li>
+					))}
+				</ul>
+			</dd>
+		) : (
+			<dd>None. The project ran as published.</dd>
+		)}
+		{p.failures.length ? (
+			<>
+				<dt>Failed steps</dt>
+				<dd>
+					<ul class="results">
+						{p.failures.map((f) => (
+							<li>
+								<span class="flex items-start gap-2">
+									<span class="dot-fail mt-1.5" aria-hidden="true"></span>
+									<span class="min-w-0">
+										<span class="block text-ink">{f.step}</span>
+										<span class="block text-ink-faint">{f.ownerLabel}{f.note ? ` — ${f.note}` : ''}</span>
+										<span class="err">{f.error}</span>
+										{f.emulated ? <span class="mt-1 block text-ink-faint">With emulated hibernation, this step {f.emulated === 'pass' ? 'passes' : 'fails'}. It still counts as failed.</span> : null}
+									</span>
+								</span>
+							</li>
+						))}
+					</ul>
+				</dd>
+			</>
+		) : null}
+		{p.secrets.length ? (
+			<>
+				<dt>Credentials a real deployment would set</dt>
+				<dd>{p.secrets.map((x, i) => <><code>{x}</code>{i < p.secrets.length - 1 ? ', ' : ''}</>)}</dd>
+			</>
+		) : null}
+		{p.error ? (
+			<>
+				<dt>Error</dt>
+				<dd><span class="err">{p.error}</span></dd>
+			</>
+		) : null}
+	</dl>
+</Row>

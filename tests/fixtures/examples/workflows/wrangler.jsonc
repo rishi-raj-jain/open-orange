@@ -1,0 +1,6 @@
+{
+	"name": "workflows",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"workflows": [{ "binding": "ORDERS", "class_name": "OrderWorkflow", "name": "orders" }]
+}

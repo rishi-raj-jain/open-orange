@@ -1,0 +1,5 @@
+{
+	"coverage": "included",
+	"expectation": "partial",
+	"source": "worker.ts"
+}

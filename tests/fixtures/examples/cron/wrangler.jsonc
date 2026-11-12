@@ -1,0 +1,20 @@
+{
+	"name": "cron",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"kv_namespaces": [{ "binding": "RUNS", "id": "cron-example-runs" }],
+	"triggers": {
+		"crons": [
+			// Every 5 minutes.
+			"*/5 * * * *",
+			// 03:00 UTC every day.
+			"0 3 * * *",
+			// 18:00 UTC on the last weekday (Monday to Friday) of the month.
+			"0 18 LW * *",
+			// 09:00 UTC on the first Monday of the month. Weekdays run from 1 (Sunday) to 7 (Saturday).
+			"0 9 * * 2#1",
+			// Minute 15 of every hour. This job always fails.
+			"15 * * * *"
+		]
+	}
+}

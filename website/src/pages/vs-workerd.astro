@@ -1,0 +1,177 @@
+---
+import Base from '@/layouts/Base.astro';
+import Cta from '@/components/Cta.astro';
+import {
+	SITE,
+	STATUS_LABEL,
+	WORKERD,
+	WORKERD_LIMITS,
+	WORKERD_PICK,
+	WORKERD_RECEIPTS,
+	WORKERD_SERVICES,
+	WORKERD_STATUS_LABEL,
+} from '@/data/site';
+
+const counts = WORKERD_SERVICES.reduce(
+	(acc, row) => {
+		acc[row.workerd.status] += 1;
+		return acc;
+	},
+	{ supported: 0, partial: 0, shim: 0, none: 0 },
+);
+const needBackend = counts.shim + counts.none;
+---
+
+<Base
+	title={`workerd vs ${SITE.name}`}
+	description="workerd is the open-source runtime behind Cloudflare Workers. It runs your fetch handler; KV, R2, D1, Queues, Workflows and the Cache API are bindings that call a service you have to build. Service by service, with limits and cost."
+>
+	<!-- Head to head. -->
+	<section>
+		<div class="container-x pt-20 pb-20 md:pt-28 md:pb-28">
+			<div class="relative grid gap-4 md:grid-cols-2 md:gap-6">
+				<div class="card p-8 md:p-10">
+					<h1 class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">workerd</h1>
+					<p class="body-copy mt-6 max-w-sm text-ink-soft">
+						Open-source V8 behind Cloudflare Workers. Runs your fetch handler. Every stateful binding calls a service you have to build.
+					</p>
+				</div>
+				<div class="rounded-2xl bg-plate p-8 text-white md:p-10">
+					<p class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">OpenOrange</p>
+					<p class="body-copy mt-6 max-w-sm text-cream/70">
+						Workers API on Node.js, with Rivet underneath for everything stateful. The services ship with it.
+					</p>
+				</div>
+				<span class="absolute left-1/2 top-1/2 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-[13px] font-semibold md:flex" aria-hidden="true">vs</span>
+			</div>
+			<dl class="mt-12 flex flex-wrap gap-x-12 gap-y-4">
+				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{counts.supported}<span class="text-[0.5em] text-ink-faint"> / {WORKERD_SERVICES.length}</span></dd><dt class="text-[15px] text-ink-faint">services complete in workerd</dt></div>
+				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{needBackend}</dd><dt class="text-[15px] text-ink-faint">need a backend you build</dt></div>
+				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem] text-orange-deep">{WORKERD_SERVICES.filter((r) => r.openorange.status === 'drop-in').length}</dd><dt class="text-[15px] text-ink-faint">drop-in on OpenOrange</dt></div>
+			</dl>
+		</div>
+	</section>
+
+	<!-- Service by service. -->
+	<section id="services" class="scroll-mt-20 rule">
+		<div class="container-x section">
+			<h2 class="h-section">Service by service</h2>
+			<ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{WORKERD_SERVICES.map((row) => (
+					<li class="card flex flex-col overflow-hidden">
+						<h3 class="border-b border-line px-5 py-3.5 text-[15px] font-semibold">{row.service}</h3>
+						<div class="flex-1 px-5 py-4">
+							<div class="flex items-center justify-between gap-3">
+								<p class="label">workerd</p>
+								<span class={row.workerd.status === 'supported' ? 'chip-neutral font-semibold text-ink' : 'chip-muted'}>{WORKERD_STATUS_LABEL[row.workerd.status]}</span>
+							</div>
+							{row.workerd.detail ? (
+								<p class="mt-2.5 text-[13px] leading-snug text-ink-soft">
+									{row.workerd.detail}
+									{row.workerd.source ? (
+										<>
+											{' '}
+											<a href={row.workerd.source} class="link whitespace-nowrap" rel="noopener">source</a>
+										</>
+									) : null}
+								</p>
+							) : null}
+						</div>
+						<div class="border-t border-line bg-paper-mid px-5 py-4">
+							<div class="flex items-center justify-between gap-3">
+								<p class="label text-ink">OpenOrange</p>
+								<span class={row.openorange.status === 'drop-in' ? 'chip-good' : row.openorange.status === 'pluggable' ? 'chip-neutral' : 'chip-muted'}>{STATUS_LABEL[row.openorange.status]}</span>
+							</div>
+							{row.openorange.detail ? <p class="mt-2.5 text-[13px] leading-snug text-ink-soft">{row.openorange.detail}</p> : null}
+						</div>
+					</li>
+				))}
+			</ul>
+			<p class="caption mt-6">
+				workerd read from <a href={`${WORKERD.repo}/tree/${WORKERD.commit}`} class="link" rel="noopener">cloudflare/workerd at {WORKERD.commitShort}</a>, {WORKERD.verified}. Shim only: the binding ships, the service does not. Test results per feature: <a href="/compatibility/" class="link">compatibility</a>; per binding: <a href="/docs/bindings/" class="link">bindings</a>.
+			</p>
+		</div>
+	</section>
+
+	<!-- Limits. -->
+	<section id="limits" class="scroll-mt-20 rule">
+		<div class="container-x section">
+			<h2 class="h-section">Limits</h2>
+			<p class="lede mt-6 max-w-2xl">The 128 MB and 30 second caps are Cloudflare's, not workerd's.</p>
+			<ul class="mt-10 grid gap-4 sm:grid-cols-2">
+				{WORKERD_LIMITS.map((row) => (
+					<li class="card p-5">
+						<h3 class="text-[15px] font-semibold">
+							{row.source ? <a href={row.source} class="hover:text-orange-deep" rel="noopener">{row.label}</a> : row.label}
+						</h3>
+						<dl class="mt-3 divide-y divide-line text-[13.5px]">
+							<div class="flex gap-4 py-2">
+								<dt class="w-24 shrink-0 text-ink-faint">Cloudflare</dt>
+								<dd class="text-ink-faint">{row.cloudflare}</dd>
+							</div>
+							<div class="flex gap-4 py-2">
+								<dt class="w-24 shrink-0 text-ink-faint">workerd</dt>
+								<dd class="text-ink-soft">{row.workerd}</dd>
+							</div>
+							<div class="flex gap-4 py-2 font-semibold">
+								<dt class="w-24 shrink-0 text-orange-deep">OpenOrange</dt>
+								<dd>{row.openorange}</dd>
+							</div>
+						</dl>
+					</li>
+				))}
+			</ul>
+			<p class="caption mt-6">Workers Paid plan, checked {SITE.verified}. workerd from worker-factory.c++ at {WORKERD.commitShort}.</p>
+		</div>
+	</section>
+
+	<!-- Cost. Same month, three bills. -->
+	<section id="cost" class="scroll-mt-20 rule">
+		<div class="container-x section">
+			<h2 class="h-section">Cost</h2>
+			<p class="lede mt-6 max-w-2xl">100 always-on Durable Objects for one month.</p>
+			<div class="mt-10 grid gap-4 md:grid-cols-3">
+				{WORKERD_RECEIPTS.map((receipt) => (
+					<div class={`flex flex-col rounded-2xl p-6 md:p-7 ${receipt.id === 'openorange' ? 'bg-plate text-white' : 'card'}`}>
+						<p class="text-[1.5rem] font-semibold leading-none tracking-[-0.02em]">{receipt.title}</p>
+						<ul class={`mt-6 flex-1 text-[13.5px] ${receipt.id === 'openorange' ? 'divide-y divide-white/10 border-y border-white/10' : 'divide-y divide-line border-y border-line'}`}>
+							{receipt.lines.map((line) => (
+								<li class="flex items-baseline gap-3 py-2.5">
+									<span class={receipt.id === 'openorange' ? 'text-cream/80' : 'text-ink-soft'}>{line.item}</span>
+									<span class="flex-1"></span>
+									<span class={line.amount.startsWith('you') ? 'text-ink-faint' : 'font-mono tabular-nums'}>{line.amount}</span>
+								</li>
+							))}
+						</ul>
+						{receipt.note ? <p class={`caption mt-3 ${receipt.id === 'openorange' ? 'text-cream/50' : ''}`}>{receipt.note}</p> : null}
+						<p class="mt-6 flex items-baseline justify-between">
+							<span class={`text-[13px] font-semibold ${receipt.id === 'openorange' ? 'text-cream/60' : 'text-ink-faint'}`}>Total / mo</span>
+							<span class="stat font-mono text-[2rem]">${receipt.total}</span>
+						</p>
+					</div>
+				))}
+			</div>
+			<p class="mt-8 text-[15px]"><a href="/#cost" class="link">See the cost breakdown</a></p>
+		</div>
+	</section>
+
+	<section class="rule">
+		<div class="container-x section grid gap-4 md:grid-cols-2 md:gap-6">
+			{WORKERD_PICK.map((column) => (
+				<div class="card p-7 md:p-8">
+					<h2 class="h-sub">{column.title}</h2>
+					<ul class="mt-6 divide-y divide-line">
+						{column.items.map((item) => (
+							<li class="flex items-start gap-3 py-3.5 text-[15px] leading-snug">
+								<span class="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-orange" aria-hidden="true"></span>
+								{item}
+							</li>
+						))}
+					</ul>
+				</div>
+			))}
+		</div>
+	</section>
+
+	<Cta title="Same project. All of it runs." body="Keep the wrangler config." />
+</Base>

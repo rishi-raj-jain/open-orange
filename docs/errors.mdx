@@ -1,0 +1,34 @@
+---
+title: Errors
+description: What Orange prints when a command fails, and what the report link holds.
+---
+
+# Errors
+
+When an `orange` command fails, its last line links to a new issue on
+[rivet-dev/open-orange](https://github.com/rivet-dev/open-orange/issues), with the
+title and error filled in. A terminal shows a short link. A pipe or CI log shows the full URL.
+
+Nothing is sent. The link opens only if you open it, and you can edit the issue first.
+
+Before Orange builds the link, it removes these from the error text:
+
+| Removed | Replaced with |
+|---|---|
+| Values of `--token`-like flags and of variables such as `*_TOKEN`, `*_SECRET`, and `RIVET_ENDPOINT` | `<redacted>` |
+| Bearer and basic credentials, and `password=...`-like pairs | `<redacted>` |
+| Long opaque strings | `<redacted>` |
+| The project directory and home directory | `.` and `~` |
+| Other absolute paths | `<path>/<file name>` |
+| URL credentials, paths, and queries | Only `scheme://host` stays |
+| Your user name, when it has 3 or more characters | `<user>` |
+
+Only the error text and the Orange, Node.js, and OS versions go in the link. Command
+arguments do not, unless the error text repeats them.
+
+Orange prints no link for a failure that is the command's result or the user's input:
+
+- You stop a command with Ctrl-C (exit `130`).
+- A command gets invalid arguments or an unknown command (exit `2`).
+- `orange doctor` finds a check to fix, and `orange migrate backfill` has objects to retry (exit `1`).
+- A Wrangler command that Orange does not implement.

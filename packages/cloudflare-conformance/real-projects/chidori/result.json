@@ -1,0 +1,85 @@
+{
+	"schemaVersion": 1,
+	"id": "chidori",
+	"repo": "ThousandBirdsInc/chidori",
+	"commit": "0a0aba5ce0d8b65e5924bf749b9e4cbba4199d2e",
+	"stars": 1372,
+	"origin": "search",
+	"directory": "integrations/cloudflare-durable-objects",
+	"ranAt": "2026-11-05T02:17:44.905Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": {
+		"ok": true,
+		"seconds": 0,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "a run's journal keeps its order, and the run is listed in the index",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "two runs do not see each other's journal, and a PUT replaces one journal",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "blobs are bytes, and conditional writes act as a compare-and-swap",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "of many writers racing for one lease, exactly one wins",
+			"kind": "do-state",
+			"status": "fail",
+			"seconds": 0.1,
+			"error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    200,\n+   200,\n+   200,\n+   200,\n+   200,\n+   200,\n+   200,\n    412,\n-   412,\n-   412,\n-   412,\n-   412,\n-   412,\n-   412\n  ]\n"
+		},
+		{
+			"name": "the agent registry lives in the singleton index object",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the journal, blobs, index, and registry survive the objects' sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the journal, blobs, index, and registry survive a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.3
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"ChidoriRun"
+		],
+		"file": "integrations/cloudflare-durable-objects/src/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"cursor.toArray",
+			"cursor.one"
+		]
+	}
+}

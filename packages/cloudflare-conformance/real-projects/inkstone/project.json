@@ -1,0 +1,44 @@
+{
+	"id": "inkstone",
+	"repo": "shuaiplus/inkstone",
+	"commit": "f59087f66e8c524c465eb7a7ec9ab7883057af02",
+	"stars": 1163,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"dist/inkstone/wrangler.json"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm run build"
+	],
+	"durableObjects": {
+		"classes": [
+			"SyncHub",
+			"CredentialVault"
+		],
+		"file": "src/worker/durable/credential-vault.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"blockConcurrencyWhile",
+			"storage.get",
+			"storage.put"
+		]
+	},
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Replaces the [exports.SyncHub] and [exports.CredentialVault] tables in wrangler.toml with one migration that creates both SQLite classes.",
+			"why": "Unmodified, orange dev exits with: Unsupported Wrangler configuration: exports. The build copies that field into dist/inkstone/wrangler.json, the config that npm run deploy uses. The patch shows what lies behind that Orange bug."
+		}
+	],
+	"knownFailures": [
+		{
+			"step": "a socket stays connected while SyncHub hibernates",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

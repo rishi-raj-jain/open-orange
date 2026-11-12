@@ -1,0 +1,126 @@
+---
+title: Runtime globals
+description: How OpenOrange installs and validates Cloudflare Workers globals in Node.js.
+---
+
+# Runtime globals
+
+**Status:** Partial
+
+## Configuration
+
+OpenOrange runs one fixed compatibility profile: compatibility date
+`2026-09-03` with `nodejs_compat`. No OpenOrange-specific configuration is
+required.
+
+OpenOrange ignores `compatibility_date` and `compatibility_flags` in the
+Wrangler file. Worker code should behave as it does on Node.js, so OpenOrange
+does not switch runtime behavior by date or flag. `orange dev` prints a startup
+warning that lists each flag it does not apply. The
+`assets_navigation_prefers_asset_serving` flags are the only exception. See
+[Static assets](./assets).
+
+## How it works
+
+OpenOrange intersects value-bearing declarations with the globals exposed across
+the pinned workerd global prototype chain. The current profile contains 83
+Cloudflare global names. Before loading the Worker entrypoint, the runtime
+installs a manifest with exactly those names.
+
+- `atob`, `btoa`, `queueMicrotask`, `TextEncoder`, and `TextDecoder` are implemented.
+- `Headers`, `Request`, `Response`, `URL`, `URLSearchParams`, `Blob`, `DOMException`, `Event`,
+  `ReadableStream`, `WritableStream`, `TransformStream`, `console`, and the four timer functions are
+  partial implementations backed by pinned Undici or Node.js primitives.
+- Outbound `fetch()` converts Orange requests to that pinned Undici substrate and wraps its response
+  back into the Worker-compatible response.
+- `performance` and `structuredClone()` use the captured Node.js web-platform implementations, and
+  `WebAssembly` exposes the captured Node.js namespace.
+- `console` forwards to the Node.js console captured before Worker globals are installed, so Worker
+  diagnostics reach `orange dev` output.
+- Unhandled promise rejections are reported as background diagnostics without terminating the shared
+  runtime process.
+- The global scope dispatches `unhandledrejection` and `rejectionhandled` events, as workerd does.
+- `WebSocket` supports outbound client connections for RivetKit and Cap'n Web.
+- `WebSocketPair` now creates two entangled Worker endpoints with acceptance, queued delivery,
+  copied text and binary frames, current close validation, close events, and the latest default
+  close auto-reply behavior.
+- `Response` accepts a pair endpoint with status 101 and exposes it through `response.webSocket`;
+  the runtime couples that endpoint to real client and Durable Object transport connections.
+- `serializeAttachment()` and `deserializeAttachment()` work on WebSocket endpoints.
+- Timers return browser-style numeric identifiers from one shared pool, and either clear function
+  can cancel a timeout or interval.
+- The runtime captures these Node.js constructors and functions before installing the Cloudflare
+  manifest so the HTTP substrate, Cap'n Web, and RivetKit continue to use compatible host
+  primitives.
+- Until Worker code has its own thread, hidden `ref()`, `unref()`, and `refresh()` methods on
+  numeric timer values bridge Node libraries that dynamically expect timer handles.
+
+`crypto` delegates standard Web Crypto operations to Node.js and supplies the
+Cloudflare structural extensions used by current Workers types:
+`subtle.timingSafeEqual()` and streaming SHA-1, SHA-256, SHA-384, and SHA-512
+digests through `crypto.DigestStream`.
+
+- The HTTP globals support normalized headers, repeated `Set-Cookie` values, buffered request and
+  response bodies, cloning, the body readers, and the basic `Response.error()`,
+  `Response.redirect()`, and `Response.json()` constructors.
+- Status-101 WebSocket responses retain their socket and reject cloning, a non-null body, a missing
+  socket, or a non-101 status using the pinned workerd behavior.
+- URL parsing, mutation, query iteration, and live `searchParams` mutation are supported.
+- Other globals keep the Node.js host value when Node.js provides one, such as `TextDecoderStream`
+  and the streams queuing strategies.
+- The rest install as throwing placeholders.
+- Calling, constructing, or reading a property from a placeholder produces a clear unimplemented
+  error.
+
+A `ReadableStream` body is used as is, so it locks only when the body is read.
+Reading it accepts any `ArrayBuffer` or `ArrayBufferView` chunk, as workerd
+does, and an iterable body becomes a stream whose `cancel()` calls the
+iterator's `return()`.
+
+When Orange sends a response whose `Content-Encoding` is exactly `gzip` or
+`br`, it compresses the body and drops `Content-Length`, as workerd does. A
+response created with `encodeBody: "manual"` already holds encoded bytes, so
+Orange sends them as they are. This applies to Worker responses, Durable Object
+`fetch()` responses, and service binding responses, whose callers read the
+decoded body.
+
+A byte `ReadableStream` that does not set `autoAllocateChunkSize` gets
+workerd's default of 4096 bytes, so a default read still exposes
+`controller.byobRequest`. `queueMicrotask()`, `setTimeout()`, and
+`setInterval()` reject a non-function callback when they are called.
+
+The encoding and HTTP implementations delegate their substrate behavior to
+Node.js while conforming to the pinned Cloudflare constructors. Partial values
+must be assignable to the complete Cloudflare contract; fully implemented
+values additionally require exact inferred types.
+
+## Conformance
+
+- The conformance check verifies the global manifest has no missing or extra Cloudflare names,
+  verifies supported values against the reference contract, and runs behavior fixtures against the
+  pinned Cloudflare runtime.
+- The HTTP fixture compares header iteration and `Set-Cookie` handling, buffered request bodies,
+  cloning, response constructors, status metadata, and exact tested errors.
+- The WebSocket fixture compares pair shape, upgrade responses, queued text and binary frames, close
+  validation, event data, ready states, and close auto-reply.
+- The check also verifies that the manifest is installed before the Worker module evaluates.
+
+## Deviations
+
+- Node-specific globals without Cloudflare counterparts remain available at
+  runtime but are not included in generated Worker types.
+- Custom request fetchers and the `encodeResponseBody` request option are not
+  implemented. `Blob` and `FormData` bodies work.
+- `fetch()` decodes `deflate` response bodies through undici. Workerd decodes
+  only `gzip` and `br`, and passes other codings through.
+- `URL.createObjectURL()` is not implemented.
+- These are not implemented: custom fetchers, Cloudflare-specific outbound
+  request metadata, some Cloudflare crypto algorithms, exact stream queuing
+  semantics, exact timer delay, scheduling and resource-limit behavior,
+  performance-entry semantics, and structured-clone host types.
+- Unimplemented Cloudflare globals without a Node.js host value throw instead
+  of providing partial behavior. Host values are Node.js behavior, not
+  verified workerd behavior.
+- Unhandled rejections are diagnosed and dispatched as `unhandledrejection`
+  events. An exception thrown from a timer, microtask, or event listener is diagnosed the
+  same way and does not stop the runtime process.

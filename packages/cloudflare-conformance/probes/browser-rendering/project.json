@@ -1,0 +1,25 @@
+{
+	"id": "browser-rendering",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"local": true,
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --frozen-lockfile --ignore-scripts",
+	"devVars": {
+		"ORANGE_BROWSER_CDP_URL": "http://127.0.0.1:19222"
+	},
+	"durableObjects": {
+		"classes": ["none"],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"none: this probe checks Browser Rendering"
+		]
+	},
+	"changes": []
+}

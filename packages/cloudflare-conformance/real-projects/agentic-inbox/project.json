@@ -1,0 +1,48 @@
+{
+	"id": "agentic-inbox",
+	"repo": "cloudflare/agentic-inbox",
+	"commit": "48039bb6785af34e592c2966f87cde2b255c4c80",
+	"stars": 8589,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"build/server/wrangler.json"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm run build",
+		"sed -i s/\"legacy_env\":true,// build/server/wrangler.json"
+	],
+	"devVars": {
+		"ORANGE_EMAIL_SMTP_URL": "smtp://127.0.0.1:11025"
+	},
+	"durableObjects": {
+		"classes": [
+			"MailboxDO",
+			"EmailAgent",
+			"EmailMCP"
+		],
+		"file": "workers/durableObject/index.ts",
+		"uses": [
+			"storage.sql",
+			"RPC methods",
+			"agents Agent",
+			"McpAgent",
+			"AIChatAgent",
+			"WebSocket"
+		]
+	},
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Sets POLICY_AUD and TEAM_DOMAIN in wrangler.jsonc vars, with TEAM_DOMAIN pointing at a local JWKS server that the scenario runs",
+			"why": "The production build refuses every request without Cloudflare Access settings. The scenario signs real Access JWTs, and the Worker verifies them through its own jose code. The Vite build writes build/server/wrangler.json, so .dev.vars written after the build cannot reach it."
+		},
+		{
+			"kind": "config",
+			"what": "A build step removes \"legacy_env\":true from the generated build/server/wrangler.json",
+			"why": "Orange's wrangler 4.129.0 refuses the field that the project's Vite plugin 1.29.0 writes, and orange dev exits at boot. Removing it shows what lies behind that error. Repro: repros/generated-legacy-env."
+		}
+	]
+}

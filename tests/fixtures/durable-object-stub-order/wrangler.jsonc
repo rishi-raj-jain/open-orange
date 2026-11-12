@@ -1,0 +1,7 @@
+{
+	"name": "orange-test-durable-object-stub-order",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": { "bindings": [{ "name": "STORE", "class_name": "Store" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Store"] }]
+}

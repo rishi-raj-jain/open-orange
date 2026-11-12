@@ -1,0 +1,109 @@
+---
+import Logo from './Logo.astro';
+import { NAV, SITE } from '@/data/site';
+import { BINDINGS } from '@/data/bindings';
+
+// Bindings that run (everything but stubs), shown as a badge on the Bindings link.
+const supported = BINDINGS.filter((b) => b.product.status !== 'stub').length;
+const badges: Record<string, { text: string; title: string }> = {
+	'/docs/bindings/': { text: String(supported), title: `${supported} of ${BINDINGS.length} Cloudflare bindings supported` },
+};
+
+const linkClass = 'text-[14px] font-medium text-ink-soft transition-colors hover:text-ink motion-reduce:transition-none';
+---
+
+<header class="sticky top-0 z-50 bg-paper/85 backdrop-blur-md">
+	<div class="container-x flex h-[72px] items-center justify-between gap-6">
+		<div class="flex items-center gap-10">
+			<a href="/" class="flex shrink-0 items-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em]">
+				<Logo size={26} />
+				<span>Open<span class="text-orange">Orange</span></span>
+			</a>
+
+			<nav aria-label="Primary" class="hidden items-center gap-7 md:flex">
+				{NAV.map((item) => (
+					<a href={item.href} class={`${linkClass} inline-flex items-center gap-1.5`}>
+						{item.label}
+						{badges[item.href] && <span class="rounded-full border border-orange/45 bg-orange-soft px-1.5 text-[11px] font-semibold tabular-nums leading-[1.35] text-orange-deep" title={badges[item.href].title}>{badges[item.href].text}</span>}
+					</a>
+				))}
+			</nav>
+		</div>
+
+		<div class="flex items-center gap-2">
+			<a href={SITE.github} class={`${linkClass} mr-1 hidden items-center gap-1.5 md:flex`} rel="noopener">
+				<svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+				GitHub
+			</a>
+			<button type="button" class="mr-2 hidden h-9 w-9 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-paper-mid hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange motion-reduce:transition-none md:flex" data-theme-toggle aria-pressed="false" aria-label="Dark mode" title="Dark mode">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="dark:hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="hidden dark:block"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></svg>
+			</button>
+			<a href={SITE.docsMigrate} class="btn-primary hidden sm:inline-flex">Migrate</a>
+			<button type="button" class="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft hover:bg-paper-mid md:hidden" data-menu-toggle aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu">
+				<svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M2 4.5h14M2 9h14M2 13.5h14" /></svg>
+			</button>
+		</div>
+	</div>
+
+	<nav id="mobile-menu" aria-label="Primary, mobile" class="hidden border-t border-line bg-paper md:!hidden" data-menu>
+		<div class="container-x flex flex-col py-3">
+			{NAV.map((item) => (
+				<a href={item.href} class="flex items-center gap-2 rounded-lg px-3 py-2.5 text-[15px] font-medium text-ink-soft hover:bg-paper-mid hover:text-ink">
+					{item.label}
+					{badges[item.href] && <span class="rounded-full border border-orange/45 bg-orange-soft px-1.5 text-[11px] font-semibold tabular-nums text-orange-deep">{badges[item.href].text}</span>}
+				</a>
+			))}
+			<a href={SITE.github} class="rounded-lg px-3 py-2.5 text-[15px] font-medium text-ink-soft hover:bg-paper-mid hover:text-ink" rel="noopener">GitHub</a>
+			<button type="button" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-left text-[15px] font-medium text-ink-soft hover:bg-paper-mid hover:text-ink" data-theme-toggle aria-pressed="false">
+				Dark mode
+				<span class="text-ink-faint" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="dark:hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="hidden dark:block"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></svg></span>
+			</button>
+			<a href={SITE.docsMigrate} class="btn-primary mt-2 sm:hidden">Migrate</a>
+		</div>
+	</nav>
+</header>
+
+<script>
+	// Theme toggle. Base.astro sets `.dark` before paint from the saved choice
+	// or the system setting. A click flips it; a choice that matches the system
+	// clears the saved override, so the page follows the system again.
+	const root = document.documentElement;
+	const system = matchMedia('(prefers-color-scheme: dark)');
+	const themeToggles = document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]');
+	const saved = () => {
+		try {
+			return localStorage.getItem('theme');
+		} catch {
+			return null;
+		}
+	};
+	const applyTheme = (dark: boolean) => {
+		root.classList.toggle('dark', dark);
+		for (const button of themeToggles) button.setAttribute('aria-pressed', String(dark));
+	};
+	const preferred = () => saved() === 'dark' || (saved() !== 'light' && system.matches);
+	applyTheme(preferred());
+	for (const button of themeToggles)
+		button.addEventListener('click', () => {
+			const dark = !root.classList.contains('dark');
+			try {
+				if (dark === system.matches) localStorage.removeItem('theme');
+				else localStorage.setItem('theme', dark ? 'dark' : 'light');
+			} catch {
+				// Storage unavailable: the choice lasts for this page.
+			}
+			applyTheme(dark);
+		});
+	system.addEventListener('change', () => applyTheme(preferred()));
+	addEventListener('storage', (event) => {
+		if (event.key === 'theme') applyTheme(preferred());
+	});
+
+	const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+	const menu = document.querySelector<HTMLElement>('[data-menu]');
+	toggle?.addEventListener('click', () => {
+		const open = menu?.classList.toggle('hidden') === false;
+		toggle.setAttribute('aria-expanded', String(open));
+	});
+</script>

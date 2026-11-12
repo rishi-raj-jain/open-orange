@@ -1,0 +1,8 @@
+{
+	"name": "auth",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	"kv_namespaces": [{ "binding": "USERS", "id": "multi-worker-users" }],
+	"durable_objects": { "bindings": [{ "name": "SESSIONS", "class_name": "Session" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Session"] }]
+}

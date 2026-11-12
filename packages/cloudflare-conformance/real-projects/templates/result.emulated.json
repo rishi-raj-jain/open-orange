@@ -1,0 +1,80 @@
+{
+	"schemaVersion": 1,
+	"id": "templates",
+	"repo": "cloudflare/templates",
+	"commit": "dc4e76ba206abf7f06e8ac0e7a81cc10ea707c67",
+	"stars": 2163,
+	"origin": "search",
+	"directory": "durable-chat-template",
+	"ranAt": "2026-11-10T02:04:56.389Z",
+	"orange": {
+		"sha": "ee0b731",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+	"runtime": "orange",
+	"sleepGate": "emulated",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "serves the chat page and its client bundle",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "two clients in a room see each other's messages",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a later client gets the history, an update replaces the message, and rooms are separate",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a socket stays open while the room hibernates, and a message wakes it",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "a room sleeps, and the history comes back from SQLite when it wakes",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the history survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 7.7
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Chat"
+		],
+		"file": "durable-chat-template/src/server/index.ts",
+		"uses": [
+			"storage.sql",
+			"partyserver.Server",
+			"hibernate",
+			"broadcast"
+		]
+	}
+}

@@ -1,0 +1,47 @@
+{
+	"id": "nodewarden",
+	"repo": "shuaiplus/nodewarden",
+	"commit": "fbc0e65df8f405c3120887569e939d615ab68229",
+	"stars": 4093,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm run build"
+	],
+	"devVars": {
+		"JWT_SECRET": "local-only-scenario-secret-0123456789abcdef"
+	},
+	"durableObjects": {
+		"classes": [
+			"NotificationsHub",
+			"BackupTransferRunner"
+		],
+		"file": "src/durable/notifications-hub.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"setWebSocketAutoResponse",
+			"storage.put",
+			"storage.get",
+			"storage.delete",
+			"storage.list",
+			"storage.transaction",
+			"storage.setAlarm"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "a client stays connected while the hub hibernates, and the next notification reaches it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

@@ -1,0 +1,31 @@
+05:51:07 OPEN acc-idle accepted idle
+05:51:07 OPEN std-idle standard idle
+05:52:07 AGE acc-idle 60s pings=1 sent=0 replies=0
+05:52:07 AGE std-idle 60s pings=2 sent=0 replies=0
+05:53:07 AGE acc-idle 120s pings=4 sent=0 replies=0
+05:53:07 AGE std-idle 120s pings=4 sent=0 replies=0
+05:54:07 AGE acc-idle 180s pings=6 sent=0 replies=0
+05:54:07 AGE std-idle 180s pings=6 sent=0 replies=0
+05:55:07 AGE acc-idle 240s pings=8 sent=0 replies=0
+05:55:07 AGE std-idle 240s pings=8 sent=0 replies=0
+05:56:07 AGE acc-idle 300s pings=10 sent=0 replies=0
+05:56:07 AGE std-idle 300s pings=10 sent=0 replies=0
+05:57:07 AGE acc-idle 360s pings=12 sent=0 replies=0
+05:57:07 AGE std-idle 360s pings=12 sent=0 replies=0
+05:58:07 AGE acc-idle 420s pings=13 sent=0 replies=0
+05:58:07 AGE std-idle 420s pings=14 sent=0 replies=0
+05:59:07 AGE acc-idle 480s pings=16 sent=0 replies=0
+05:59:07 AGE std-idle 480s pings=16 sent=0 replies=0
+06:00:07 AGE acc-idle 540s pings=17 sent=0 replies=0
+06:00:07 AGE std-idle 540s pings=17 sent=0 replies=0
+06:01:07 AGE acc-idle 600s pings=20 sent=0 replies=0
+06:01:07 AGE std-idle 600s pings=20 sent=0 replies=0
+06:02:07 AGE acc-idle 660s pings=22 sent=0 replies=0
+06:02:07 AGE std-idle 660s pings=22 sent=0 replies=0
+06:02:42 CLOSED acc-idle accepted idle after 695s code=1012 "Service Restart" pings=23 sent=0 replies=0
+06:02:42 CLOSED std-idle standard idle after 695s code=1012 "Service Restart" pings=23 sent=0 replies=0
+06:02:43 RECONNECTED std-idle try 1 newBoot=unknown count=n/a
+06:02:43 RECONNECTED acc-idle try 1 newBoot=unknown count=1
+06:02:43 LASTCLOSE std-idle {"boot":"e26f10d7-bd23-4199-954f-ed772b34e514","lastClose":null}
+06:02:44 LASTCLOSE acc-idle {"boot":"7422486b-1aa4-48fa-9df9-8d2644260f08","lastClose":{"at":"2026-11-05T06:02:43.739Z","code":1001,"reason":"gateway disconnected","wasClean":false}}
+06:02:44 PROOFDONE

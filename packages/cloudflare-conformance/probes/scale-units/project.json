@@ -1,0 +1,18 @@
+{
+	"id": "scale-units",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"local": true,
+	"directory": ".",
+	"configs": ["wrangler.jsonc"],
+	"installDirectory": ".",
+	"install": "",
+	"durableObjects": {
+		"classes": ["Unit"],
+		"file": "worker/src/index.ts",
+		"uses": ["one actor per object id"]
+	},
+	"changes": []
+}

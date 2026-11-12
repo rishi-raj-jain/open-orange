@@ -1,0 +1,43 @@
+{
+	"id": "tldraw-sync-cloudflare",
+	"repo": "tldraw/tldraw-sync-cloudflare",
+	"commit": "1a4243e3aefd6c2a72f821b6b6c7a85af6577405",
+	"stars": 153,
+	"origin": "named",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts",
+	"build": [
+		"npm run build"
+	],
+	"durableObjects": {
+		"classes": [
+			"TldrawDurableObject"
+		],
+		"file": "worker/TldrawDurableObject.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"serializeAttachment",
+			"deserializeAttachment",
+			"setWebSocketAutoResponse",
+			"storage.sql"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "the room hibernates while a connected client pings every 5 s",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		},
+		{
+			"step": "a client stays connected while the room hibernates, and its next push commits",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

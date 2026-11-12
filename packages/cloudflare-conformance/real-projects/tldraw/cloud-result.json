@@ -1,0 +1,42 @@
+{
+	"id": "tldraw",
+	"repo": "tldraw/tldraw",
+	"commit": "aae1c5d6d099817a76ddeb6eb5e71e2014d42d7b",
+	"directory": "apps/bemo-worker",
+	"ranAt": "2026-11-05T11:13:18.712Z",
+	"plan": "Free",
+	"deployedWith": "rivet deploy",
+	"steps": [
+		{
+			"name": "an uploaded asset is stored once in R2 and comes back",
+			"kind": "binding",
+			"status": "pass"
+		},
+		{
+			"name": "a page pushed by one client reaches the other client in the room",
+			"kind": "websocket",
+			"status": "pass"
+		},
+		{
+			"name": "a client that joins while the room is live gets the page in its hydration",
+			"kind": "do-state",
+			"status": "pass"
+		},
+		{
+			"name": "a connected client keeps the room alive through an idle period, and its next push commits",
+			"kind": "websocket",
+			"status": "pass"
+		},
+		{
+			"name": "when everyone leaves the room saves to R2 and sleeps, and the page comes back from R2",
+			"kind": "sleep",
+			"status": "pass",
+			"note": "Waited about 16 s after the sockets closed, past the 10 s sleep timeout. Sleep itself is not proven on a pool."
+		},
+		{
+			"name": "a page pushed before an orange dev and engine restart is there after it",
+			"kind": "restart",
+			"status": "pass"
+		}
+	]
+}

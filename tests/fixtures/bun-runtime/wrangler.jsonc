@@ -1,0 +1,9 @@
+{
+  "name": "orange-test-bun-runtime",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "durable_objects": { "bindings": [{ "name": "COUNTER", "class_name": "Counter" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Counter"] }],
+  "kv_namespaces": [{ "binding": "KV", "id": "bun-runtime-kv" }],
+  "workflows": [{ "binding": "ECHO", "class_name": "Echo", "name": "echo" }]
+}

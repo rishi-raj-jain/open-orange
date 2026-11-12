@@ -1,0 +1,95 @@
+{
+	"schemaVersion": 1,
+	"id": "clawsweeper",
+	"repo": "openclaw/clawsweeper",
+	"commit": "1265122ec07d137740c688d90d5bf9538aa03a78",
+	"stars": 2005,
+	"origin": "search",
+	"directory": "dashboard",
+	"ranAt": "2026-11-05T02:17:10.551Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 4,
+		"command": "pnpm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "answers its health route and an empty review queue",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a workflow event needs the token, is stored in StatusStore, and shows on the status page",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.5
+		},
+		{
+			"name": "a second state writer on a branch queues until the first releases",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a cached GitHub response is stored in GithubEtagCache and found again",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the objects sleep, and the lease holder and the queue keep their places",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the event and the lease survive an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 8.2
+		},
+		{
+			"name": "a review is enqueued, claimed by a worker, and completed in ExactReviewQueue",
+			"kind": "do-state",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"GITHUB_TOKEN"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"StatusStore",
+			"ExactReviewQueue",
+			"GithubEtagCache"
+		],
+		"file": "dashboard/worker.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.delete",
+			"storage.list",
+			"storage.kv",
+			"storage.transactionSync",
+			"storage.setAlarm",
+			"storage.getAlarm",
+			"storage.deleteAlarm"
+		]
+	}
+}

@@ -1,0 +1,64 @@
+---
+// One claim of the truth table. The row shows status, what Cloudflare does,
+// what OpenOrange does, and how many recorded results pass. Opening it shows
+// why, what to do, and every result with its error.
+import Row from './Row.astro';
+import Chip from './Chip.astro';
+import ResultCount from './ResultCount.astro';
+import EvidenceList from './EvidenceList.astro';
+import { CLAIM_LABEL, inline, type Claim } from '@/data/conformance';
+
+interface Props {
+	claim: Claim;
+	/** The binding this claim belongs to; the name links to its page. */
+	binding?: { href: string; name: string };
+}
+
+const { claim, binding } = Astro.props;
+const s = CLAIM_LABEL[claim.status];
+---
+
+<Row id={claim.id}>
+	<Chip slot="status" tone={s.tone} label={s.label} />
+	{binding ? (
+		<a slot="name" href={binding.href} class="row-name link no-underline hover:underline after:ml-1 after:text-ink-faint after:content-['↗']" set:html={inline(claim.title)} />
+	) : (
+		<span slot="name" class="row-name" set:html={inline(claim.title)} />
+	)}
+	<span slot="a" class="row-text-faint" set:html={claim.cloudflare ? inline(claim.cloudflare) : ''} />
+	<span slot="b" class="row-text" set:html={inline(claim.orange)} />
+	<ResultCount slot="end" evidence={claim.evidence} />
+
+	<dl>
+		{claim.why ? (
+			<>
+				<dt>Why</dt>
+				<dd set:html={inline(claim.why)} />
+			</>
+		) : null}
+		{claim.action ? (
+			<>
+				<dt>What to do</dt>
+				<dd set:html={inline(claim.action)} />
+			</>
+		) : null}
+		{claim.drawbacks?.length ? (
+			<>
+				<dt>What to plan for</dt>
+				<dd>
+					<ul class="list-disc space-y-1.5 pl-5">
+						{claim.drawbacks.map((d) => (
+							<li set:html={inline(d)} />
+						))}
+					</ul>
+				</dd>
+			</>
+		) : null}
+		{claim.evidence.length ? (
+			<>
+				<dt>Results</dt>
+				<dd><EvidenceList evidence={claim.evidence} /></dd>
+			</>
+		) : null}
+	</dl>
+</Row>

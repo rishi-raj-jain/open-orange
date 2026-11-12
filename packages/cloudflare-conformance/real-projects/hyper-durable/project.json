@@ -1,0 +1,33 @@
+{
+	"id": "hyper-durable",
+	"repo": "ticket-bridge/hyper-durable",
+	"commit": "ad65a62464f914b88e5b5d93b380ab389f578e45",
+	"stars": 64,
+	"origin": "named",
+	"directory": "consumer",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "npm install --omit=dev --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"RubberDuck"
+		],
+		"file": "src/HyperDurable.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.deleteAll",
+			"stub.fetch",
+			"Proxy returned from the constructor"
+		]
+	},
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Adds consumer/: the README's RubberDuck class, its proxyHyperDurables Worker with routes, and a Wrangler config.",
+			"why": "library: no deployable Worker in the repository. The test fixture exports only the Counter class, and has no fetch handler."
+		}
+	]
+}

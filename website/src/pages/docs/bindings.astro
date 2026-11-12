@@ -1,0 +1,143 @@
+---
+import Docs from '@/layouts/Docs.astro';
+import Chip from '@/components/compat/Chip.astro';
+import TipScript from '@/components/compat/TipScript.astro';
+import Row from '@/components/compat/Row.astro';
+import RowHead from '@/components/compat/RowHead.astro';
+import ClaimRow from '@/components/compat/ClaimRow.astro';
+import ResultCount from '@/components/compat/ResultCount.astro';
+import MatrixRow from '@/components/compat/MatrixRow.astro';
+import { BINDINGS, bindingPage } from '@/data/bindings';
+import { PROVIDERS } from '@/data/site';
+import { CLAIM_LABEL, PRODUCT_LABEL, SUMMARY, TONE_CLASS, inline, type ProductStatus } from '@/data/conformance';
+
+const order: ProductStatus[] = ['drop-in', 'pluggable', 'partial', 'stub'];
+const counts = order.map((id) => ({ id, ...PRODUCT_LABEL[id], count: BINDINGS.filter((b) => b.product.status === id).length }));
+const working = BINDINGS.filter((b) => b.product.status !== 'stub').length;
+const stubs = BINDINGS.filter((b) => b.product.status === 'stub');
+---
+
+<Docs
+	title="Binding status"
+	description={`${working} of ${BINDINGS.length} Cloudflare bindings run on OpenOrange, with the same wrangler.jsonc and the same env. Each binding's page has how it runs, what differs, and the tests behind it.`}
+	href="/docs/bindings/"
+	prose={false}
+	wide
+>
+	<section id="overview" class="scroll-mt-20">
+		<div>
+			<dl class="flex flex-wrap gap-x-10 gap-y-4">
+				{counts.map((c) => (
+					<div class="flex items-baseline gap-2">
+						<dd class="stat text-[1.75rem]">{c.count}</dd>
+						<dt class="flex items-center gap-1.5 text-[15px] text-ink-faint"><span class={TONE_CLASS[c.tone].dot}></span>{c.label}</dt>
+					</div>
+				))}
+			</dl>
+			<p class="caption mt-4">From OpenOrange <code class="code-chip">{SUMMARY.orange.sha}</code>, {SUMMARY.date}. Scores on the <a href="/compatibility/" class="link">compatibility page</a>.</p>
+		</div>
+
+		<div class="binding-rows pt-10">
+
+			<dl class="grid gap-x-8 gap-y-2 text-[13px] sm:grid-cols-2">
+				{counts.map((c) => (
+					<div class="flex items-start gap-2">
+						<span class={`${TONE_CLASS[c.tone].dot} mt-1.5`}></span>
+						<span><dt class="inline font-medium text-ink">{c.label}.</dt> <dd class="inline text-ink-soft">{c.meaning}</dd></span>
+					</div>
+				))}
+			</dl>
+			<div class="mt-8">
+				<RowHead name="Binding" a="Config key" b="Runs on" end="" />
+				<div class="rows">
+					{BINDINGS.map((b) => {
+						const s = PRODUCT_LABEL[b.product.status];
+						return (
+							<Row>
+								<Chip slot="status" tone={s.tone} label={s.label} />
+								<a slot="name" href={`${bindingPage(b) ?? ''}#${b.slug}`} class="row-name link no-underline hover:underline">{b.product.product}</a>
+								<span slot="a" class="row-text font-mono text-[12.5px]">{b.doc.wranglerKeys.join(', ') || '—'}</span>
+								<span slot="b" class="row-text">
+									<span set:html={inline(b.product.orange)} />
+									{PROVIDERS[b.slug] ? (
+										<span class="mt-1 block text-ink-faint">Works with {PROVIDERS[b.slug].hosted.map((h) => h.name).join(', ')}</span>
+									) : null}
+								</span>
+								<span slot="end"></span>
+							</Row>
+						);
+					})}
+				</div>
+			</div>
+		</div>
+	</section>
+
+
+	<section class="rule mt-16 scroll-mt-20 pt-12" id="stubs">
+		<div>
+			<div>
+				<h2 class="text-[1.75rem] font-medium leading-tight tracking-[-0.025em]">Stubs</h2>
+				<p class="mt-5 text-[16px] leading-[1.6] text-ink-soft">
+					The Worker loads and <code class="code-chip">env.NAME</code> exists. Every call throws an error that names the binding and says what to use instead.
+				</p>
+			</div>
+			<div class="mt-10">
+				<RowHead name="Binding" a="Config key" b="On OpenOrange" end="" />
+				<div class="rows">
+					{stubs.map((b) => {
+						const s = PRODUCT_LABEL[b.product.status];
+						return (
+							<Row id={b.slug}>
+								<Chip slot="status" tone={s.tone} label={s.label} />
+								<span slot="name" class="row-name">{b.product.product}</span>
+								<span slot="a" class="row-text font-mono text-[12.5px]">{b.doc.wranglerKeys.join(', ') || '—'}</span>
+								<span slot="b" class="row-text" set:html={inline(b.product.note)} />
+								<span slot="end"></span>
+
+								<dl>
+									<dt>Runs on</dt>
+									<dd set:html={inline(b.product.orange)} />
+									{b.claims.length ? (
+										<>
+											<dt>Recorded results</dt>
+											<dd class="space-y-2">
+												{b.claims.map((c) => (
+													<span class="flex flex-wrap items-center gap-3">
+														<Chip tone={CLAIM_LABEL[c.status].tone} label={CLAIM_LABEL[c.status].label} />
+														<a href={`/compatibility/#${c.id}`} class="link text-[13.5px]" set:html={inline(c.title)} />
+														<ResultCount evidence={c.evidence} />
+													</span>
+												))}
+											</dd>
+										</>
+									) : null}
+									{b.matrix.length ? (
+										<>
+											<dt>Matrix</dt>
+											<dd class="flex flex-wrap gap-x-4 gap-y-1">
+												{b.matrix.map((e) => (
+													<a href={`/compatibility/#${e.id}`} class="link font-mono text-[12.5px]">{e.id}</a>
+												))}
+											</dd>
+										</>
+									) : null}
+								</dl>
+							</Row>
+						);
+					})}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<TipScript />
+</Docs>
+
+<style>
+	/* The docs column is narrower than a full page: give the text columns the room. */
+	@media (min-width: 768px) {
+		.binding-rows :global(.row-cols) {
+			grid-template-columns: 1.25rem 6.5rem minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.6fr) 5.5rem;
+		}
+	}
+</style>

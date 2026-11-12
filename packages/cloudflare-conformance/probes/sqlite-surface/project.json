@@ -1,0 +1,19 @@
+{
+	"id": "sqlite-surface",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"local": true,
+	"baseline": true,
+	"directory": ".",
+	"configs": ["wrangler.jsonc"],
+	"installDirectory": ".",
+	"install": "",
+	"durableObjects": {
+		"classes": ["Sql"],
+		"file": "worker/src/index.ts",
+		"uses": ["storage.sql.exec", "cursor counters", "transactionSync"]
+	},
+	"changes": []
+}

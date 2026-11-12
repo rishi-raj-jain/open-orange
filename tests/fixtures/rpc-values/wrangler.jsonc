@@ -1,0 +1,9 @@
+{
+  "name": "orange-test-rpc-values",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "durable_objects": {
+    "bindings": [{ "name": "VALUES", "class_name": "Values" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Values"] }]
+}

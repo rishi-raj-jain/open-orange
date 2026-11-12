@@ -1,0 +1,25 @@
+{
+	"id": "elatoai",
+	"repo": "akdeb/ElatoAI",
+	"commit": "c0153a2bafeac673440501480c925115871266a9",
+	"stars": 2105,
+	"origin": "search",
+	"directory": "server/cloudflare",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": "server/cloudflare",
+	"install": "npm install --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"ElatoVoiceSession"
+		],
+		"file": "server/cloudflare/models/session.ts",
+		"uses": [
+			"newUniqueId",
+			"WebSocketPair",
+			"blockConcurrencyWhile"
+		]
+	},
+	"changes": []
+}

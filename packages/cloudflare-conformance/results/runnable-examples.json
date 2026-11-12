@@ -1,0 +1,63 @@
+{
+	"orange": "e4c405f",
+	"ranAt": "2026-11-05T02:59:45.716Z",
+	"examples": {
+		"alarms": {
+			"status": "pass"
+		},
+		"assets-spa": {
+			"status": "pass"
+		},
+		"cache-api": {
+			"status": "pass"
+		},
+		"chat-hibernation": {
+			"status": "pass"
+		},
+		"collaborative-counter": {
+			"status": "pass"
+		},
+		"cron": {
+			"status": "pass"
+		},
+		"d1-migrations": {
+			"status": "pass"
+		},
+		"facets-loader": {
+			"status": "pass"
+		},
+		"hello-durable-object": {
+			"status": "pass"
+		},
+		"kv": {
+			"status": "pass"
+		},
+		"multi-worker": {
+			"status": "pass"
+		},
+		"queues": {
+			"status": "pass"
+		},
+		"r2": {
+			"status": "pass"
+		},
+		"rate-limiting": {
+			"status": "pass"
+		},
+		"rpc-entrypoints": {
+			"status": "pass"
+		},
+		"sandbox": {
+			"status": "pass"
+		},
+		"sandbox-v1": {
+			"status": "pass"
+		},
+		"workers-ai": {
+			"status": "pass"
+		},
+		"workflows": {
+			"status": "pass"
+		}
+	}
+}

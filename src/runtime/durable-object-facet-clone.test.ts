@@ -1,0 +1,161 @@
+import assert from "node:assert/strict";
+import { setTimeout as delay } from "node:timers/promises";
+import { after, before, describe, test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+import {
+	copyProject,
+	type RunningOrangeDev,
+	startOrangeDev,
+	type TemporaryProject,
+} from "../../tests/orange-dev.js";
+
+const fixtureDirectory = fileURLToPath(
+	new URL("./fixtures/durable-object-facet-clone/", import.meta.url),
+);
+
+// Expected bodies are workerd 1.20260903.1's answers to the same fixture, except where a test says
+// Orange differs.
+describe("ctx.facets.clone()", { timeout: 240_000 }, () => {
+	let project: TemporaryProject;
+	let orange: RunningOrangeDev | undefined;
+
+	before(async () => {
+		project = await copyProject(fixtureDirectory);
+		orange = await startOrangeDev(project.directory);
+	});
+
+	after(async () => {
+		await orange?.close();
+		await project.dispose();
+	});
+
+	async function call(path: string, parent: string): Promise<string> {
+		if (orange === undefined) throw new Error("orange dev did not start");
+		const url = new URL(path, orange.origin);
+		url.searchParams.set("parent", parent);
+		const response = await fetch(url);
+		const body = await response.text();
+		assert.equal(response.status, 200, `${path}: ${body}\n${orange.output()}`);
+		return body;
+	}
+
+	test("copies a facet with its children, replaces dst, and the copy survives a restart (workerd's facet cloning test)", async () => {
+		assert.equal(await call("/setup", "cloning"), "ok");
+		assert.equal(await call("/clone-basic", "cloning"), "dst=10 dst.a=100 dst.b=200");
+		assert.equal(await call("/verify-src-unchanged", "cloning"), "src=10 src.a=100 src.b=200");
+		assert.equal(await call("/mutate-dst-then-check-src", "cloning"), "src=10 src.a=100");
+		assert.equal(await call("/verify-src-unchanged", "cloning"), "src=10 src.a=100 src.b=200");
+		assert.equal(
+			await call("/clone-replaces-existing", "cloning"),
+			"target=10 target.a=100 oldChild=null",
+		);
+		assert.equal(await call("/clone-from-nonexistent-deletes-dst", "cloning"), "val=null c=null");
+		assert.equal(
+			await call("/clone-self-aborts-but-preserves", "cloning"),
+			"beforeMem=alive oldThrew=true val=7 mem=null",
+		);
+		await orange?.close();
+		orange = await startOrangeDev(project.directory);
+		assert.equal(await call("/read-restored", "cloning"), "dst=999 dst.a=888 dst.b=200");
+	});
+
+	test("facet names longer than workerd's 256 characters work, and their copies keep their state", async () => {
+		assert.equal(await call("/names", "names"), "clone-256=ok copy256=256 copy2000=2000");
+	});
+
+	test("writes to src after clone() never reach dst, even from a call started before clone() in the same turn", async () => {
+		assert.equal(await call("/snapshot-point", "snapshot"), "d=1 s=2");
+		assert.equal(await call("/call-before-clone", "call-before"), "d=1 s=2");
+	});
+
+	test("dst's in-flight and old calls fail with workerd's error, and a stub first used after clone() reaches the copy", async () => {
+		assert.deepEqual(JSON.parse(await call("/dst-stubs", "dst-stubs")), {
+			inflight: { err: "Error: Facet was cloned-over." },
+			old: { err: "Error: Facet was cloned-over." },
+			stubFirstUsedAfterClone: { ok: 1 },
+		});
+	});
+
+	test("a dst inside storage.transaction() fails that transaction with workerd's error, and then holds the copy", async () => {
+		assert.equal(
+			await call("/dst-in-transaction", "dst-in-transaction"),
+			'write={"err":"Error: Facet was cloned-over."} d=1',
+		);
+	});
+
+	test("overlapping and chained clones of one src each copy it as of their clone() call, while dst reads run during the copy", async () => {
+		assert.equal(
+			await call("/overlap", "overlap"),
+			"d1=1 d1.a=11 d2=1 d2.a=11 d3=1 d3.a=11 s=2",
+		);
+	});
+
+	test("ctx.abort() right after clone() keeps the copy", async () => {
+		if (orange === undefined) throw new Error("orange dev did not start");
+		const aborted = await fetch(new URL("/abort-after-clone?parent=abort", orange.origin));
+		assert.equal(aborted.status, 500);
+		await aborted.body?.cancel();
+		assert.equal(await call("/read-d", "abort"), "d=41");
+	});
+
+	test("copies grandchildren, and dst constructs its own class over the copy", async () => {
+		assert.equal(
+			await call("/tree", "tree"),
+			"d=3 d.a=33 d.n.g=7 seenAtConstruction=3",
+		);
+	});
+
+	test("a copy of a src that writes on its own timer is never torn, and a src inside storage.transaction() is copied after it commits", async () => {
+		assert.equal(await call("/mid-write", "mid-write"), "torn=false copied=true");
+		// Workerd copies the files before the open transaction commits and answers d=1. Orange
+		// shares one SQLite connection with the open transaction, so it copies after the commit.
+		assert.equal(await call("/in-transaction", "in-transaction"), "d=2 s=2");
+	});
+
+	test("copying a sleeping src runs none of its code, so a src whose constructor throws still copies", async () => {
+		assert.equal(await call("/flag-src", "asleep"), "ok");
+		// Facets sleep after ten idle seconds.
+		await delay(11_000);
+		assert.equal(await call("/clone-flagged", "asleep"), "d=5");
+	});
+
+	test("copies SQL exactly: rowids, AUTOINCREMENT, generated columns, triggers, views, FTS5, and value types", async () => {
+		const { after: copied, before: original } = JSON.parse(await call("/sql", "sql"));
+		assert.deepEqual(copied, original);
+		assert.deepEqual(original.types, [
+			{ q: "2.0", t: "real" },
+			{ q: "9007199254740993", t: "integer" },
+			{ q: "X''", t: "blob" },
+			{ q: "X'00FF'", t: "blob" },
+			{ q: "''", t: "text" },
+			{ q: "NULL", t: "null" },
+		]);
+	});
+
+	test("a crash while the copy runs: after a restart, dst holds the whole copy", { timeout: 180_000 }, async () => {
+		assert.equal(await call("/fill", "crash"), "ok");
+		// clone() returns before the 40 MB copy ends, and the crash stops it.
+		assert.equal(await call("/clone-and-return", "crash"), "cloned");
+		await orange?.kill();
+		orange = await startOrangeDev(project.directory);
+		// Rivet moves the crashed runtime's actors only after its lost timeout, and nothing signals
+		// that, so wait until the parent answers a call that touches no facet.
+		const deadline = Date.now() + 120_000;
+		for (;;) {
+			const ping = await fetch(new URL("/ping?parent=crash", orange.origin));
+			const body = await ping.text();
+			if (ping.status === 200 && body === "pong") break;
+			if (Date.now() > deadline) assert.fail(`the parent did not restart: ${body}\n${orange.output()}`);
+		}
+		assert.deepEqual(JSON.parse(await call("/read-blobs", "crash")), {
+			bytes: 41_943_040,
+			rows: 160,
+		});
+	});
+
+	test("clone() at the maximum facet depth does nothing", async () => {
+		// Workerd 1.20260903.1 fails here with an internal error.
+		assert.equal(await call("/depth", "depth"), "clone=ok");
+	});
+});

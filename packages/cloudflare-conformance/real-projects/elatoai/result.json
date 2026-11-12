@@ -1,0 +1,70 @@
+{
+	"schemaVersion": 1,
+	"id": "elatoai",
+	"repo": "akdeb/ElatoAI",
+	"commit": "c0153a2bafeac673440501480c925115871266a9",
+	"stars": 2105,
+	"origin": "search",
+	"directory": "server/cloudflare",
+	"ranAt": "2026-11-05T02:20:45.616Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 11,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "the health check answers, and other paths get 404",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the session object refuses a request that is not a WebSocket",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "two devices each get a session and the auth payload, and a missing LLM key ends each one cleanly",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the device hears a spoken reply and its speech is transcribed",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"OPENAI_API_KEY",
+				"Workers AI"
+			]
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"ElatoVoiceSession"
+		],
+		"file": "server/cloudflare/models/session.ts",
+		"uses": [
+			"newUniqueId",
+			"WebSocketPair",
+			"blockConcurrencyWhile"
+		]
+	}
+}

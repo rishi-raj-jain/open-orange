@@ -1,0 +1,8 @@
+// The config sits in `app/`, and its Worker code and modules in `../worker/`, as in a monorepo.
+{
+	"name": "deploy-outside-modules",
+	"main": "../worker/src/index.js",
+	"compatibility_date": "2026-09-03",
+	"find_additional_modules": true,
+	"rules": [{ "type": "Text", "globs": ["**/*.txt"] }]
+}

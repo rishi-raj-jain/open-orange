@@ -1,0 +1,29 @@
+{
+	"id": "ai",
+	"repo": "cloudflare/ai",
+	"commit": "34a8f4c00c0871883215a7114e9a7f3e7747ee1b",
+	"stars": 1212,
+	"origin": "search",
+	"directory": "demos/mcp-client",
+	"configs": [
+		"wrangler.json"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts --filter @cloudflare/agents-mcp-client-example",
+	"build": [
+		"pnpm run build"
+	],
+	"durableObjects": {
+		"classes": [
+			"MyAgent"
+		],
+		"file": "demos/mcp-client/src/server.ts",
+		"uses": [
+			"agents Agent",
+			"addMcpServer",
+			"storage.sql",
+			"WebSocket broadcast"
+		]
+	},
+	"changes": []
+}

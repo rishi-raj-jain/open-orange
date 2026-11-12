@@ -1,0 +1,37 @@
+{
+	"id": "durable-utils",
+	"repo": "lambrospetrou/durable-utils",
+	"commit": "038d378b06f320e66539d3284eff5e1dfbb95b84",
+	"stars": 97,
+	"origin": "named",
+	"directory": "test",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "npm ci --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"TenantDO",
+			"RegionPlacerDO",
+			"SQLiteDO",
+			"CASPaxosDO"
+		],
+		"file": "src/sql-migrations.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.kv",
+			"storage.transactionSync",
+			"RPC",
+			"WorkerEntrypoint",
+			"RpcTarget"
+		]
+	},
+	"changes": [
+		{
+			"kind": "code",
+			"what": "Adds the README's TenantDO class to the test fixture Worker (test/workers-test.ts), routes that use SQLSchemaMigrations, StaticShardedDO, stubByName, and tryN, and its binding and migration in test/wrangler.toml.",
+			"why": "library: no deployable Worker in the repository. The fixture Worker and the region-placer example serve only the region placer routes, and do not reach the library's state API."
+		}
+	]
+}

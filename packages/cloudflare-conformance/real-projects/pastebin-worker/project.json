@@ -1,0 +1,35 @@
+{
+	"id": "pastebin-worker",
+	"repo": "SharzyL/pastebin-worker",
+	"commit": "aae764cb29d94a5680a9140831820f09879ad29d",
+	"stars": 1070,
+	"origin": "search",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts --frozen-lockfile",
+	"build": [
+		"pnpm run build:frontend"
+	],
+	"durableObjects": {
+		"classes": [
+			"LiveChannel"
+		],
+		"file": "worker/live.ts",
+		"uses": [
+			"acceptWebSocket",
+			"getWebSockets",
+			"setWebSocketAutoResponse"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "peers stay connected across the channel's hibernation, and a frame wakes it",
+			"owner": "hibernation-not-available",
+			"note": "WebSocket hibernation is not available on Rivet 3. Orange emulates it: it drops the idle object and keeps its sockets open, but the Rivet actor does not sleep while a socket is open. This step waits for every actor to sleep, so it fails with: Some actor was still awake."
+		}
+	]
+}

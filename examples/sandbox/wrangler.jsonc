@@ -1,0 +1,12 @@
+{
+	"name": "sandbox",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-03",
+	// open-orange dev ignores the image and runs each sandbox on the provider
+	// that ORANGE_SANDBOX_PROVIDER picks. wrangler dev builds it with Docker.
+	"containers": [{ "class_name": "Sandbox", "image": "./Dockerfile", "instance_type": "lite", "max_instances": 5 }],
+	"durable_objects": {
+		"bindings": [{ "class_name": "Sandbox", "name": "Sandbox" }]
+	},
+	"migrations": [{ "new_sqlite_classes": ["Sandbox"], "tag": "v1" }]
+}

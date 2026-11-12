@@ -1,0 +1,9 @@
+05:11:50 opened acc-30s (accepted, message every 30s) room=a-acc-30s-mw3395tf
+05:11:50 opened std-idle (standard, no traffic) room=a-std-idle-mw3395tf
+05:11:50 opened acc-idle (accepted, no traffic) room=a-acc-idle-mw3395tf
+05:11:50 opened std-30s (standard, message every 30s) room=a-std-30s-mw3395tf
+05:12:49 CLOSED std-idle after 59s code=1011 clean=true reason="Durable Object generation ended" sent=0 replies=0
+05:13:55 CLOSED acc-idle after 125s code=1006 clean=false reason="" sent=0 replies=0
+05:21:50 STILL OPEN acc-30s after 601s sent=19 replies=19
+05:21:50 STILL OPEN std-30s after 601s sent=19 replies=19
+IDLEDONE

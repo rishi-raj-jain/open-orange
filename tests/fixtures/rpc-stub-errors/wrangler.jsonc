@@ -1,0 +1,9 @@
+{
+  "name": "orange-test-rpc-stub-errors",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "durable_objects": {
+    "bindings": [{ "name": "THROWER", "class_name": "Thrower" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Thrower"] }]
+}

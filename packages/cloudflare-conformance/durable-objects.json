@@ -1,0 +1,269 @@
+{
+	"version": 1,
+	"declarations": {
+		"CloudflareWorkersModule:DurableObject": {
+			"decision": "included",
+			"members": {
+				"constructor:constructor": "included",
+				"method:alarm?": "included",
+				"method:connect?": "excluded",
+				"method:fetch?": "included",
+				"method:webSocketClose?": "included",
+				"method:webSocketError?": "included",
+				"method:webSocketMessage?": "included",
+				"property:[Rpc.__DURABLE_OBJECT_BRAND]": "included",
+				"property:ctx": "included",
+				"property:env": "included"
+			}
+		},
+		"Rpc:DurableObjectBranded": {
+			"decision": "included",
+			"members": {
+				"property:[__DURABLE_OBJECT_BRAND]": "included"
+			}
+		},
+		"global:AlarmInvocationInfo": {
+			"decision": "included",
+			"members": {
+				"property:isRetry": "included",
+				"property:retryCount": "included",
+				"property:scheduledTime": "included"
+			}
+		},
+		"global:DurableObject": {
+			"decision": "included",
+			"members": {
+				"method:alarm?": "included",
+				"method:connect?": "excluded",
+				"method:fetch": "included",
+				"method:webSocketClose?": "included",
+				"method:webSocketError?": "included",
+				"method:webSocketMessage?": "included"
+			}
+		},
+		"global:DurableObjectAbortOptions": {
+			"decision": "included",
+			"members": { "property:retryAlarm?": "included" }
+		},
+		"global:DurableObjectClass": {
+			"decision": "excluded",
+			"members": {}
+		},
+		"global:DurableObjectFacets": {
+			"decision": "excluded",
+			"members": {
+				"method:abort": "excluded",
+				"method:clone": "excluded",
+				"method:delete": "excluded",
+				"method:get": "excluded"
+			}
+		},
+		"global:DurableObjectGetAlarmOptions": {
+			"decision": "included",
+			"members": { "property:allowConcurrency?": "included" }
+		},
+		"global:DurableObjectGetOptions": {
+			"decision": "included",
+			"members": {
+				"property:allowConcurrency?": "included",
+				"property:noCache?": "included"
+			}
+		},
+		"global:DurableObjectId": {
+			"decision": "included",
+			"members": {
+				"method:equals": "included",
+				"method:toString": "included",
+				"property:jurisdiction?": "included",
+				"property:name?": "included"
+			}
+		},
+		"global:DurableObjectJurisdiction": {
+			"decision": "included",
+			"members": {}
+		},
+		"global:DurableObjectListOptions": {
+			"decision": "included",
+			"members": {
+				"property:allowConcurrency?": "included",
+				"property:end?": "included",
+				"property:limit?": "included",
+				"property:noCache?": "included",
+				"property:prefix?": "included",
+				"property:reverse?": "included",
+				"property:start?": "included",
+				"property:startAfter?": "included"
+			}
+		},
+		"global:DurableObjectLocationHint": {
+			"decision": "included",
+			"members": {}
+		},
+		"global:DurableObjectNamespace": {
+			"decision": "included",
+			"members": {
+				"method:get": "included",
+				"method:getByName": "included",
+				"method:idFromName": "included",
+				"method:idFromString": "included",
+				"method:jurisdiction": "included",
+				"method:newUniqueId": "included"
+			}
+		},
+		"global:DurableObjectNamespaceGetDurableObjectOptions": {
+			"decision": "included",
+			"members": {
+				"property:locationHint?": "included",
+				"property:routingMode?": "included"
+			}
+		},
+		"global:DurableObjectNamespaceNewUniqueIdOptions": {
+			"decision": "included",
+			"members": { "property:jurisdiction?": "included" }
+		},
+		"global:DurableObjectPutOptions": {
+			"decision": "included",
+			"members": {
+				"property:allowConcurrency?": "included",
+				"property:allowUnconfirmed?": "included",
+				"property:noCache?": "included"
+			}
+		},
+		"global:DurableObjectRoutingMode": {
+			"decision": "included",
+			"members": {}
+		},
+		"global:DurableObjectSetAlarmOptions": {
+			"decision": "included",
+			"members": {
+				"property:allowConcurrency?": "included",
+				"property:allowUnconfirmed?": "included"
+			}
+		},
+		"global:DurableObjectState": {
+			"decision": "included",
+			"members": {
+				"method:abort": "included",
+				"method:acceptWebSocket": "included",
+				"method:blockConcurrencyWhile": "included",
+				"method:getHibernatableWebSocketEventTimeout": "included",
+				"method:getTags": "included",
+				"method:getWebSocketAutoResponse": "included",
+				"method:getWebSocketAutoResponseTimestamp": "included",
+				"method:getWebSockets": "included",
+				"method:setHibernatableWebSocketEventTimeout": "included",
+				"method:setWebSocketAutoResponse": "included",
+				"method:waitUntil": "included",
+				"property:container?": "excluded",
+				"property:exports": "excluded",
+				"property:facets": "excluded",
+				"property:id": "included",
+				"property:props": "excluded",
+				"property:storage": "included"
+			}
+		},
+		"global:DurableObjectStorage": {
+			"decision": "included",
+			"members": {
+				"method:delete": "included",
+				"method:deleteAlarm": "included",
+				"method:deleteAll": "included",
+				"method:get": "included",
+				"method:getAlarm": "included",
+				"method:getBookmarkForTime": "excluded",
+				"method:getCurrentBookmark": "excluded",
+				"method:list": "included",
+				"method:onNextSessionRestoreBookmark": "excluded",
+				"method:put": "included",
+				"method:setAlarm": "included",
+				"method:sync": "included",
+				"method:transaction": "included",
+				"method:transactionSync": "included",
+				"property:kv": "included",
+				"property:sql": "included"
+			}
+		},
+		"global:DurableObjectStub": {
+			"decision": "included",
+			"members": {}
+		},
+		"global:DurableObjectTransaction": {
+			"decision": "included",
+			"members": {
+				"method:delete": "included",
+				"method:deleteAlarm": "included",
+				"method:get": "included",
+				"method:getAlarm": "included",
+				"method:list": "included",
+				"method:put": "included",
+				"method:rollback": "included",
+				"method:setAlarm": "included"
+			}
+		},
+		"global:FacetStartupOptions": {
+			"decision": "excluded",
+			"members": {
+				"property:class": "excluded",
+				"property:id?": "excluded"
+			}
+		},
+		"global:LoopbackDurableObjectClass": {
+			"decision": "excluded",
+			"members": {}
+		},
+		"global:LoopbackDurableObjectNamespace": {
+			"decision": "excluded",
+			"members": {}
+		},
+		"global:SqlStorage": {
+			"decision": "included",
+			"members": {
+				"getter:databaseSize": "included",
+				"method:exec": "included",
+				"property:Cursor": "included",
+				"property:Statement": "included"
+			}
+		},
+		"global:SqlStorageCursor": {
+			"decision": "included",
+			"members": {
+				"getter:rowsRead": "included",
+				"getter:rowsWritten": "included",
+				"method:[Symbol.iterator]": "included",
+				"method:next": "included",
+				"method:one": "included",
+				"method:raw": "included",
+				"method:toArray": "included",
+				"property:columnNames": "included"
+			}
+		},
+		"global:SqlStorageStatement": {
+			"decision": "included",
+			"members": {}
+		},
+		"global:SqlStorageValue": {
+			"decision": "included",
+			"members": {}
+		},
+		"global:SyncKvListOptions": {
+			"decision": "included",
+			"members": {
+				"property:end?": "included",
+				"property:limit?": "included",
+				"property:prefix?": "included",
+				"property:reverse?": "included",
+				"property:start?": "included",
+				"property:startAfter?": "included"
+			}
+		},
+		"global:SyncKvStorage": {
+			"decision": "included",
+			"members": {
+				"method:delete": "included",
+				"method:get": "included",
+				"method:list": "included",
+				"method:put": "included"
+			}
+		}
+	}
+}

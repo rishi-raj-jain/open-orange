@@ -1,0 +1,36 @@
+---
+// Placeholder comparison pages. Each one gets its own page, like
+// vs-workerd.astro, once it is written.
+import Base from '@/layouts/Base.astro';
+import Cta from '@/components/Cta.astro';
+import { SITE } from '@/data/site';
+
+export function getStaticPaths() {
+	return [
+		{ params: { competitor: 'celld' }, props: { name: 'celld' } },
+		{ params: { competitor: 'miniflare' }, props: { name: 'Miniflare' } },
+		{ params: { competitor: 'rivet' }, props: { name: 'Rivet' } },
+	];
+}
+
+const { name } = Astro.props;
+---
+
+<Base title={`${SITE.name} vs ${name}`} description={`${SITE.name} compared with ${name}.`}>
+	<section>
+		<div class="container-x pt-20 pb-20 md:pt-28 md:pb-28">
+			<div class="relative grid gap-4 md:grid-cols-2 md:gap-6">
+				<div class="rounded-2xl bg-plate p-8 text-white md:p-10">
+					<h1 class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">{SITE.name}</h1>
+				</div>
+				<div class="card p-8 md:p-10">
+					<p class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">{name}</p>
+				</div>
+				<span class="absolute left-1/2 top-1/2 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-[13px] font-semibold md:flex" aria-hidden="true">vs</span>
+			</div>
+			<p class="lede mt-12 text-ink-faint">Comparison coming soon.</p>
+		</div>
+	</section>
+
+	<Cta />
+</Base>

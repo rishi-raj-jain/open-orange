@@ -1,0 +1,6 @@
+{
+	"name": "orange-test-uint8array-encoding",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-04",
+	"compatibility_flags": ["nodejs_compat"]
+}

@@ -1,0 +1,9 @@
+{
+	"name": "rpc-stream-pollution",
+	"main": "worker.js",
+	"compatibility_date": "2026-05-26",
+	"services": [
+		{ "binding": "LOCAL", "service": "rpc-stream-pollution", "entrypoint": "Peer" },
+		{ "binding": "REMOTE", "service": "rpc-stream-pollution-peer", "entrypoint": "Peer" }
+	]
+}

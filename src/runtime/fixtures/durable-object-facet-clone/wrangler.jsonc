@@ -1,0 +1,10 @@
+{
+	"name": "durable-object-facet-clone-e2e",
+	"main": "./worker.js",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"durable_objects": {
+		"bindings": [{ "name": "PARENT", "class_name": "Parent" }]
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Parent"] }]
+}

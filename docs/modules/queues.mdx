@@ -1,0 +1,138 @@
+---
+title: Queues
+description: Send and consume Cloudflare Queues messages with OpenOrange, backed by one Rivet Actor per queue.
+---
+
+# Queues
+
+**Status:** Supported. Runs on one Rivet Actor for each queue.
+
+## Configuration
+
+OpenOrange reads the standard Wrangler Queues configuration. No extra setup is
+needed:
+
+```jsonc
+{
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "jobs", "delivery_delay": 0 }],
+    "consumers": [
+      {
+        "queue": "jobs",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "retry_delay": 0,
+        "dead_letter_queue": "jobs-dlq"
+      }
+    ]
+  }
+}
+```
+
+The Worker sends with `env.JOBS` and consumes with its `queue()` handler:
+
+```js
+export default {
+  async fetch(request, env) {
+    await env.JOBS.send({ to: "user@example.com" });
+    return new Response("queued");
+  },
+  async queue(batch, env) {
+    for (const message of batch.messages) {
+      console.log(message.id, message.attempts, message.body);
+      message.ack();
+    }
+  },
+};
+```
+
+Consumer settings use Cloudflare's production defaults. Cloudflare's maximums
+are not copied:
+
+| Setting | Default | Range |
+| --- | --- | --- |
+| `max_batch_size` | 10 | 1 or more |
+| `max_batch_timeout` | 5 seconds | 0 or more |
+| `max_retries` | 3 | 0 or more |
+| `retry_delay` | 0 seconds | 0 or more |
+
+`wrangler dev` uses smaller defaults (5 messages, 1 second, and 2 retries). Set
+the values in the configuration to get the same batches in both.
+
+A value out of range stops `orange dev` and names the queue.
+
+## How it works
+
+Each queue is one Rivet Actor, `openorange:queue`, with the queue name as its
+key. Producers in any Worker that name the same queue share it. Messages are
+rows in the actor's SQLite database, so they persist across `orange dev`
+restarts in the project's `.open-orange` directory. A message row is deleted
+only after the consumer acks it, sends it to the dead-letter queue, or drops it.
+
+- `send()` and `sendBatch()` store messages with the `text`, `bytes`, `json`,
+  or `v8` content type. `json` is the default. A body of `undefined` and a
+  body that does not match its content type throw a `TypeError`, like workerd.
+- `delaySeconds` and the producer's `delivery_delay` set the time at which a
+  message becomes available. The delay can be any whole number of seconds,
+  0 or more; Cloudflare's 24-hour maximum is not copied. A Rivet
+  schedule wakes the actor at the earliest pending time.
+- The consumer delivers one batch at a time to the Worker's `queue()` handler.
+  `ack()`, `retry()`, `ackAll()`, and `retryAll()` follow Cloudflare's rules:
+  the first call wins, a call on one message wins over a batch call, and an
+  explicit `ack()` holds even when the handler throws.
+- A batch completes only after `queue()` and its `waitUntil()` promises
+  settle. If the handler throws, every message that was not acked is retried.
+  If `orange dev` stops or crashes during `queue()`, the batch is delivered
+  again after the restart. Delivery is at least once.
+- A message gets `max_retries + 1` deliveries. Then it goes to the
+  `dead_letter_queue`, with its ID, timestamp, and body, or it is dropped with
+  a warning.
+
+## Conformance
+
+An end-to-end `orange dev` test covers retries up to `max_retries` and the
+dead-letter queue, `retry({ delaySeconds })`, batches from concurrent
+producers, a 128,000-byte message, send validation errors, a crash during
+`queue()`, and a delayed message across a restart. The upstream workerd Queues
+tests use a mock queue service that the conformance runner does not configure.
+
+## Limits and deviations
+
+- OpenOrange does not copy Cloudflare's limits of 128 KB per message, and 100
+  messages and 256 KB per `sendBatch()`. The limit is Rivet's: one `send()` or
+  `sendBatch()` is one message to the Rivet Engine, which takes at most 32 MiB.
+  Messages over that in one call fail at once with a `RangeError` that names
+  the limit. A 31 MiB message was measured to work.
+- A `sendBatch()` call is stored in one transaction, so a rejected message
+  stores none of the batch.
+- Each queue runs one batch at a time. `max_concurrency` is ignored.
+- A queue is shared by name across the Workers of one `orange dev` session.
+  A consumer in another Worker of the session receives the batches. With no
+  consumer in the session, messages wait in the queue, like a Cloudflare queue
+  that has no consumer. `wrangler dev` drops them.
+- A batch that is delivered again after a crash keeps its `attempts` value.
+- `metrics()` and the `metadata` that `send()` returns count the messages that
+  are due, and they never include `oldestMessageTimestamp`.
+
+### Throughput
+
+Each queue is one actor, and one actor is the single writer for its storage.
+Every `send()`, `sendBatch()`, and batch delivery on a queue goes through that
+actor, so one queue's throughput is bounded by what one actor can do.
+Use `sendBatch()` to carry more messages per call, or more than one queue to
+spread load. Sharding a queue across actors, or backing Queues with a Rivet
+Service, may lift this limit later.
+
+### Registry message size
+
+Orange raises the RivetKit registry option `maxIncomingMessageSize` from its
+64 KiB default to 32 MiB, the most the Rivet Engine takes in one message from
+a runner. RivetKit checks this limit on each action request, each queue send
+over HTTP, and each message on an actor-connect WebSocket. `send()` and
+`sendBatch()` reach the queue actor as one action request.
+
+The option applies to every actor in the registry, including Durable Objects,
+facets, and the Workflows and cron actors. Durable Object and facet `fetch()`,
+RPC, and WebSocket traffic do not use RivetKit actions, so the limit does not
+change them.

@@ -1,0 +1,24 @@
+---
+import { SITE } from '@/data/site';
+
+interface Props {
+	title?: string;
+	body?: string;
+}
+const {
+	title = 'Keep the platform. Lose the walls.',
+	body = 'Your Cloudflare project in your datacenter.',
+} = Astro.props;
+---
+
+<section class="rule">
+	<div class="container-x section">
+		<h2 class="h-section max-w-3xl">{title}</h2>
+		<p class="lede mt-6 max-w-xl">{body}</p>
+		<p class="lede mt-3 max-w-xl">Built for serious scale.</p>
+		<div class="mt-9 flex flex-col gap-3 sm:flex-row">
+			<a href={SITE.docsMigrate} class="btn-primary">Start migrating</a>
+			<a href={SITE.talkToEngineer} class="btn-secondary">Talk to an engineer</a>
+		</div>
+	</div>
+</section>

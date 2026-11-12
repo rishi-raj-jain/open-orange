@@ -1,0 +1,20 @@
+{
+  "name": "orange-example-do-websocket-hibernation-server",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": [],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "WEBSOCKET_HIBERNATION_SERVER",
+        "class_name": "WebSocketHibernationServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["WebSocketHibernationServer"]
+    }
+  ]
+}

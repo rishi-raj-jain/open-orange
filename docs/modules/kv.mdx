@@ -1,0 +1,76 @@
+---
+title: KV
+description: Use Workers KV namespaces with OpenOrange, backed by a local Rivet Actor.
+---
+
+# KV
+
+**Status:** Supported. Runs on one Rivet Actor for each namespace.
+
+## Configuration
+
+OpenOrange reads the standard Wrangler KV binding. No extra setup is needed:
+
+```jsonc
+{
+  "kv_namespaces": [{ "binding": "CACHE", "id": "<NAMESPACE_ID>" }]
+}
+```
+
+Like `wrangler dev`, OpenOrange uses `preview_id` when it is set, then `id`,
+then the binding name. Bindings with the same ID share data.
+
+## How it works
+
+Each namespace is one internal Durable Object, which runs as a Rivet Actor with
+SQLite storage. Data persists across `orange dev` restarts in the project's
+`.open-orange` directory, next to Durable Object storage.
+
+The binding implements the Workers KV API:
+
+- `get()` and `getWithMetadata()` with `text`, `json`, `arrayBuffer`, and
+  `stream` types, and bulk reads with an array of keys.
+- `put()` with string, `ArrayBuffer`, `ArrayBufferView`, and `ReadableStream`
+  values, plus `expiration`, `expirationTtl`, and `metadata`.
+- `delete()`.
+- `list()` with `prefix`, `limit`, and `cursor`. Keys list in UTF-8 byte order.
+
+Argument checks and error messages follow workerd and the local KV backend of
+`wrangler dev`. `cacheTtl` is validated and otherwise ignored.
+
+OpenOrange does not copy Cloudflare's KV quotas: 512-byte keys, 1,024-byte
+metadata, 25 MiB values, 100 keys per bulk read, 1,000 keys per `list()`, and
+TTLs of at least 60 seconds. A `list()` page still holds 1,000 keys by default.
+The limit that applies is Rivet's: one write stores at most 128 MiB of changed
+SQLite pages, so a `put()` of a key, value, and metadata of 128 MiB or more
+fails at once with a `RangeError` that names that limit.
+
+## Conformance
+
+An end-to-end `orange dev` test covers every value and result type, metadata,
+bulk reads, listing with pagination, error text, shared and separate namespace
+IDs, overlapping writes, and persistence across restarts. The same Worker
+returns identical results under `wrangler dev`. The upstream workerd KV tests
+use a mock KV server that the conformance runner does not configure.
+
+## Limits and deviations
+
+- KV is strongly consistent locally. Cloudflare KV is eventually consistent, so
+  a read in another location can return an older value for up to 60 seconds.
+- Expired keys read as absent immediately at their expiration second.
+- `put()` buffers the whole value before it stores it.
+- In a test on Rivet 3.0.6, a 64 MiB value stored and read back, but a 100 MiB
+  value made the Engine fence the namespace's storage, and the `put()` did not
+  return. That is a Rivet issue under one large write, not a limit.
+- `cacheStatus` is always `null`.
+- There is no `orange kv` command to manage keys from the CLI.
+
+### Throughput
+
+Each namespace is one actor, and one actor is the single writer for its
+storage. Every `get()`, `put()`, `delete()`, and `list()` on a namespace goes
+through that actor, so one namespace's throughput is bounded by what one actor
+can do. Cloudflare KV spreads reads across its edge and has no such
+per-namespace bound. To spread load today, use more than one namespace.
+Sharding a namespace across actors, or backing KV with a Rivet Service, may
+lift this limit later.

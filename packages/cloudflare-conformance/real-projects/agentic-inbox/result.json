@@ -1,0 +1,125 @@
+{
+	"schemaVersion": 1,
+	"id": "agentic-inbox",
+	"repo": "cloudflare/agentic-inbox",
+	"commit": "48039bb6785af34e592c2966f87cde2b255c4c80",
+	"stars": 8589,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-06T22:23:15.359Z",
+	"orange": {
+		"sha": "09b4d1d",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 29,
+		"command": "npm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 21,
+		"command": "npm run build && sed -i s/\"legacy_env\":true,// build/server/wrangler.json"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 8
+	},
+	"steps": [
+		{
+			"name": "the app page renders, behind Access",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a mailbox is created, and a draft is kept in its Durable Object",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "a sent email lands in Sent, and a custom folder and search see it",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "an MCP client lists the same mailbox through the EmailMCP object",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "an inbound email goes through the Worker's email() handler into the inbox",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.6
+		},
+		{
+			"name": "a sent email and a threaded reply are delivered over SMTP through the send_email binding",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.5
+		},
+		{
+			"name": "the agent side panel opens its WebSocket and gets its state",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the mailbox survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the mailbox survives a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 9.9
+		},
+		{
+			"name": "the agent reads the inbox and drafts a reply with Workers AI",
+			"kind": "websocket",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"OPENROUTER_API_KEY"
+			]
+		}
+	],
+	"changes": [
+		{
+			"kind": "config",
+			"what": "Sets POLICY_AUD and TEAM_DOMAIN in wrangler.jsonc vars, with TEAM_DOMAIN pointing at a local JWKS server that the scenario runs",
+			"why": "The production build refuses every request without Cloudflare Access settings. The scenario signs real Access JWTs, and the Worker verifies them through its own jose code. The Vite build writes build/server/wrangler.json, so .dev.vars written after the build cannot reach it."
+		},
+		{
+			"kind": "config",
+			"what": "A build step removes \"legacy_env\":true from the generated build/server/wrangler.json",
+			"why": "Orange's wrangler 4.129.0 refuses the field that the project's Vite plugin 1.29.0 writes, and orange dev exits at boot. Removing it shows what lies behind that error. Repro: repros/generated-legacy-env."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"MailboxDO",
+			"EmailAgent",
+			"EmailMCP"
+		],
+		"file": "workers/durableObject/index.ts",
+		"uses": [
+			"storage.sql",
+			"RPC methods",
+			"agents Agent",
+			"McpAgent",
+			"AIChatAgent",
+			"WebSocket"
+		]
+	}
+}

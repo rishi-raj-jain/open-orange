@@ -1,0 +1,30 @@
+{
+	"id": "kody",
+	"repo": "kody-hq/kody",
+	"commit": "762a7397cf31f7a0dad7262342fd93f0b6a7894c",
+	"stars": 903,
+	"origin": "named",
+	"directory": "packages/status",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "npm install --ignore-scripts --force -w @kody/status",
+	"devVars": {
+		"PRIMARY_ORIGIN": "http://127.0.0.1:38919",
+		"PACKAGE_APP_ORIGIN": "http://127.0.0.1:38919"
+	},
+	"durableObjects": {
+		"classes": [
+			"StatusStore"
+		],
+		"file": "packages/status/status-store.ts",
+		"uses": [
+			"storage.sql.exec",
+			"blockConcurrencyWhile",
+			"RPC methods",
+			"scheduled() into the object"
+		]
+	},
+	"changes": []
+}

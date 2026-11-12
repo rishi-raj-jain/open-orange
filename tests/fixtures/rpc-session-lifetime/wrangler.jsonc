@@ -1,0 +1,8 @@
+{
+	"name": "orange-test-rpc-session-lifetime",
+	"main": "src/index.js",
+	"compatibility_date": "2026-09-03",
+	"durable_objects": { "bindings": [{ "name": "OBJ", "class_name": "Obj" }] },
+	"worker_loaders": [{ "binding": "LOADER" }],
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Obj"] }]
+}

@@ -1,0 +1,64 @@
+{
+	"schemaVersion": 1,
+	"id": "stub-bindings",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-06T22:23:11.322Z",
+	"orange": {
+		"sha": "09b4d1d",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "fails",
+	"install": null,
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 3
+	},
+	"steps": [
+		{
+			"name": "Vectorize: query() runs",
+			"kind": "binding",
+			"status": "fail",
+			"seconds": 0,
+			"error": "Vectorize binding \"VECTORIZE\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+		},
+		{
+			"name": "Images: info() runs",
+			"kind": "binding",
+			"status": "fail",
+			"seconds": 0,
+			"error": "Images binding \"IMAGES\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+		},
+		{
+			"name": "Pipelines: send() runs",
+			"kind": "binding",
+			"status": "fail",
+			"seconds": 0,
+			"error": "Pipelines binding \"PIPELINE\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+		},
+		{
+			"name": "mTLS certificates: fetch() runs",
+			"kind": "binding",
+			"status": "fail",
+			"seconds": 0,
+			"error": "mTLS certificate binding \"CERT\" is not supported by OpenOrange. See the OpenOrange bindings documentation for supported bindings.\n\nfalse !== true\n"
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Empty"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"none: this probe checks other bindings"
+		]
+	}
+}

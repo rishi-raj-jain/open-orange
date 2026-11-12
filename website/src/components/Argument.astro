@@ -1,0 +1,52 @@
+---
+// One argument. Stacked: heading left, one sentence right, an optional figure
+// full width below. Split: heading, lede and the `aside` slot on one side, the
+// figure on the other, like a feature row; `flip` puts the figure first.
+interface Props {
+	id?: string;
+	heading: string;
+	/** Plain text; the `lede` slot takes rich text instead (split only). */
+	lede?: string;
+	link?: { label: string; href: string };
+	caption?: string;
+	split?: boolean;
+	flip?: boolean;
+}
+const { id, heading, lede, link, caption, split = false, flip = false } = Astro.props;
+const hasFigure = Astro.slots.has('default');
+const linkEl = link ? { href: link.href, label: link.label } : null;
+---
+
+<section id={id} class="scroll-mt-20 rule">
+	{split ? (
+		<div class={`container-x section-tight grid gap-10 lg:items-center lg:gap-16 ${flip ? 'lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]' : 'lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]'}`}>
+			<div class={flip ? 'lg:order-2' : undefined}>
+				<h2 class="text-balance text-[1.75rem] font-medium leading-[1.1] tracking-[-0.03em] md:text-[2.25rem]">{heading}</h2>
+				<p class="lede mt-4">{Astro.slots.has('lede') ? <slot name="lede" /> : lede}</p>
+				<slot name="aside" />
+				{linkEl ? <p class="mt-6 text-[15px]"><a href={linkEl.href} class="link">{linkEl.label} <span aria-hidden="true">→</span></a></p> : null}
+			</div>
+			<figure class={flip ? 'lg:order-1' : undefined}>
+				<slot />
+				{caption ? <figcaption class="caption mt-3">{caption}</figcaption> : null}
+			</figure>
+		</div>
+	) : (
+		<div class="container-x section">
+			<div class="split-head">
+				<h2 class="h-section">{heading}</h2>
+				<div class="lg:max-w-md">
+					<p class="lede">{lede}</p>
+					{linkEl ? <p class="mt-4 text-[15px]"><a href={linkEl.href} class="link">{linkEl.label} <span aria-hidden="true">→</span></a></p> : null}
+				</div>
+			</div>
+
+			{hasFigure ? (
+				<figure class="mt-12 md:mt-16">
+					<slot />
+					{caption ? <figcaption class="caption mt-4">{caption}</figcaption> : null}
+				</figure>
+			) : null}
+		</div>
+	)}
+</section>

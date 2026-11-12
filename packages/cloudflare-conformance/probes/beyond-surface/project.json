@@ -1,0 +1,26 @@
+{
+	"id": "beyond-surface",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"local": true,
+	"baseline": true,
+	"directory": ".",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "",
+	"durableObjects": {
+		"classes": [
+			"Surface"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.put"
+		]
+	},
+	"changes": []
+}

@@ -1,0 +1,35 @@
+{
+	"id": "cloudflare-os",
+	"repo": "cloudflare/cloudflare-os",
+	"commit": "b533f8aa1a64ecfce29e43d29f1d925b9d57c10c",
+	"stars": 11666,
+	"origin": "official",
+	"directory": "packages/workshop-backend",
+	"configs": [
+		"wrangler.jsonc"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts --frozen-lockfile",
+	"durableObjects": {
+		"classes": [
+			"UserDurableObject",
+			"OverseerDurableObject",
+			"AdminSettings",
+			"PendingLogin",
+			"UserDirectoryDurableObject"
+		],
+		"file": "packages/workshop-backend/src/user.ts",
+		"uses": [
+			"storage.sql",
+			"RPC",
+			"ctx.exports",
+			"getByName",
+			"RPC callbacks"
+		]
+	},
+	"build": [
+		"node scripts/build-bundled-blueprints.ts",
+		"pnpm --dir ../.. exec vp run --cache @gadgets/typed-storage#build"
+	],
+	"changes": []
+}

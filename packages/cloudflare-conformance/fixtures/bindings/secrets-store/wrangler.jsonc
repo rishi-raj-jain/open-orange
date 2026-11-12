@@ -1,0 +1,18 @@
+{
+	"name": "orange-secrets-store-conformance",
+	"main": "../types-worker.ts",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"secrets_store_secrets": [
+		{
+			"binding": "MISSING_SECRET",
+			"store_id": "fixture-store",
+			"secret_name": "missing-secret"
+		},
+		{
+			"binding": "PRESENT_SECRET",
+			"store_id": "fixture-store",
+			"secret_name": "present-secret"
+		}
+	]
+}

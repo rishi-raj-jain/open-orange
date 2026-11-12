@@ -1,0 +1,85 @@
+{
+	"schemaVersion": 1,
+	"id": "beyond-surface",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:50:16.349Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": null,
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 5
+	},
+	"steps": [
+		{
+			"name": "SQLite: a 5 MiB BLOB",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "SQLite: a 300 KB statement",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "SQLite: 200 bound parameters",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "SQLite: a table with 200 columns",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "KV storage API: a 1.5 MiB value",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.3
+		},
+		{
+			"name": "node:child_process runs a host command",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "node:fs writes and reads a real file",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "node:net listens on a port",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Surface"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.put"
+		]
+	}
+}

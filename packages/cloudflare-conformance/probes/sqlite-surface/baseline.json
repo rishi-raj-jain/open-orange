@@ -1,0 +1,249 @@
+{
+	"schemaVersion": 1,
+	"id": "sqlite-surface",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:51:59.980Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "workerd",
+	"node": "v24.21.0",
+	"status": "partial",
+	"install": null,
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 1
+	},
+	"steps": [
+		{
+			"name": "sqlite_version() runs",
+			"kind": "do-state",
+			"status": "fail",
+			"seconds": 0,
+			"error": "not authorized to use function: sqlite_version at offset 7: SQLITE_ERROR"
+		},
+		{
+			"name": "math: cos() runs",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "math: sqrt() and pow() run",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "math: floor() and ceil() run",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "math: abs() and round() run (core SQLite)",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "DELETE ... LIMIT runs",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "UPDATE ... LIMIT runs",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "workaround: DELETE WHERE rowid IN (SELECT ... LIMIT n) deletes n rows",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "counters: rowsRead counts scanned rows, not returned rows",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "counters: rowsWritten counts index writes",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "counters: rowsWritten counts a plain insert",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "authorizer: PRAGMA journal_mode = DELETE is rejected",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "authorizer: ATTACH is rejected",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "authorizer: sqlite_compileoption_used() is rejected",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "authorizer: blocked function in a DEFAULT expression is rejected",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "reserved names: reading _cf_KV is rejected",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "reserved names: the _cf_KV error names the column",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "reserved names: sqlite_master lists no _rivet_ table",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "dump: every table sqlite_master lists can be read",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "multi-statement: bindings apply to the last statement",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "multi-statement: only the last statement's rows return",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "empty result keeps columnNames",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "BEGIN in SQL is rejected, as on Cloudflare",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "JSON: json_extract and ->> run",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "JSON: json_each runs",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "FTS5: a full-text table can be created and searched",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "RETURNING and UPSERT run",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "window functions, CTEs, STRICT, and generated columns run",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "foreign keys are enforced by default",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "D1: cos() runs",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "D1: DELETE ... LIMIT runs",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "D1: batch() runs statements in order",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "D1: meta.rows_read counts scanned rows",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "rows survive the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 11.2
+		},
+		{
+			"name": "rows survive a restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 1.3
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"Sql"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"cursor counters",
+			"transactionSync"
+		]
+	}
+}

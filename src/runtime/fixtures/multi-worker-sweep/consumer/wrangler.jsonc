@@ -1,0 +1,9 @@
+{
+	"name": "sweep-consumer",
+	"main": "worker.js",
+	"compatibility_date": "2025-09-01",
+	"queues": {
+		"producers": [{ "binding": "JOBS", "queue": "jobs" }],
+		"consumers": [{ "queue": "jobs", "max_batch_size": 1, "max_batch_timeout": 0 }]
+	}
+}

@@ -1,0 +1,46 @@
+diff --git a/build/index.html b/build/index.html
+new file mode 100644
+index 0000000..f0bd992
+--- /dev/null
++++ b/build/index.html
+@@ -0,0 +1 @@
++<!doctype html><title>Infinite Mac</title>
+diff --git a/worker/index.ts b/worker/index.ts
+index 6e1ebc3..2d806fb 100644
+--- a/worker/index.ts
++++ b/worker/index.ts
+@@ -2,7 +2,6 @@ import * as varz from "./varz";
+ import * as cdrom from "./cd-rom";
+ import * as disk from "./disk";
+ import * as library from "./library";
+-import {canRenderSSR, renderSSR} from "./ssr";
+ 
+ export type Assets = {
+     fetch: typeof fetch;
+@@ -62,13 +61,6 @@ async function handleRequest(
+         });
+     }
+ 
+-    if (canRenderSSR(url)) {
+-        const ssrResponse = await renderSSR(request, env, url);
+-        if (ssrResponse) {
+-            return applyCommonHeaders(ssrResponse, url.pathname);
+-        }
+-    }
+-
+     try {
+         let assetRequest: RequestInfo | URL = request;
+         if (url.pathname.includes("%2F")) {
+diff --git a/wrangler.jsonc b/wrangler.jsonc
+index b67256a..ab453e0 100644
+--- a/wrangler.jsonc
++++ b/wrangler.jsonc
+@@ -128,8 +128,5 @@
+     "observability": {
+         "enabled": true,
+         "head_sampling_rate": 0.1,
+-        "issues": {
+-            "enabled": true,
+-        },
+     },
+ }

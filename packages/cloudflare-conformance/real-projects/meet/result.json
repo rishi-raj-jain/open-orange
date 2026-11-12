@@ -1,0 +1,114 @@
+{
+	"schemaVersion": 1,
+	"id": "meet",
+	"repo": "cloudflare/meet",
+	"commit": "314d42405e4d2b0fbdc8c7dafeca999e431a50ce",
+	"stars": 2317,
+	"origin": "search",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:32:48.044Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "needs-secrets",
+	"install": {
+		"ok": true,
+		"seconds": 47,
+		"command": "npm ci --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 3,
+		"command": "npm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 6
+	},
+	"steps": [
+		{
+			"name": "a display name gets a session, and the home page renders",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a socket with no session is refused",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a reconnecting user gets their stored state back after the room sleeps",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.2
+		},
+		{
+			"name": "two users see each other, and updates, direct messages, and mute reach them",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the room's alarm drops a user who stops sending heartbeats",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 30.1
+		},
+		{
+			"name": "rooms sleep once their users are gone and their alarms have ended",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 40
+		},
+		{
+			"name": "a stored session and its alarm survive a restart: the overdue alarm drops the silent user",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 15.4
+		},
+		{
+			"name": "a call goes through the Realtime SFU",
+			"kind": "binding",
+			"status": "needs-secrets",
+			"seconds": 0,
+			"secrets": [
+				"CALLS_APP_ID",
+				"CALLS_APP_SECRET"
+			]
+		}
+	],
+	"changes": [
+		{
+			"kind": "config",
+			"what": "wrangler.toml: [site] bucket becomes [assets] directory",
+			"why": "Orange rejects Workers Sites at config load: `Unsupported Wrangler configuration: site` (repros/workers-sites-unsupported)."
+		},
+		{
+			"kind": "code",
+			"what": "server.ts: removes the __STATIC_CONTENT_MANIFEST import and the Workers Sites asset handler",
+			"why": "With no [site], that module does not exist. Static files are served by the assets directory instead."
+		}
+	],
+	"durableObjects": {
+		"classes": [
+			"ChatRoom"
+		],
+		"file": "app/durableObjects/ChatRoom.server.ts",
+		"uses": [
+			"storage.get",
+			"storage.put",
+			"storage.list",
+			"storage.delete",
+			"storage.deleteAll",
+			"setAlarm",
+			"getAlarm",
+			"alarm"
+		]
+	}
+}

@@ -1,0 +1,187 @@
+---
+title: Email
+description: Send email from a Worker through an SMTP server that you configure, and receive email in its email() handler.
+---
+
+# Email
+
+**Status:** Supported. Needs a service: set `ORANGE_EMAIL_SMTP_URL` to your SMTP server.
+
+## Choose a provider
+
+Set `ORANGE_EMAIL_SMTP_URL` to your provider's SMTP server. `smtp://` uses STARTTLS when the
+server offers it. `smtps://` uses TLS from the start. URL-encode the user name and password,
+for example `/` as `%2F`, `+` as `%2B`, and `=` as `%3D`.
+
+| Provider | `ORANGE_EMAIL_SMTP_URL` | User name and password |
+| --- | --- | --- |
+| [Amazon SES](https://docs.aws.amazon.com/ses/latest/dg/smtp-connect.html) | `smtp://<SMTP user name>:<SMTP password>@email-smtp.<region>.amazonaws.com:587` | [SES SMTP credentials](https://docs.aws.amazon.com/ses/latest/dg/smtp-credentials.html) for that region. The password is not your AWS secret access key. Use `smtps://` with port `465` for TLS from the start. [SMTP endpoints](https://docs.aws.amazon.com/general/latest/gr/ses.html#ses_smtp_endpoints) |
+| [Resend](https://resend.com/docs/send-with-smtp) | `smtps://resend:<API key>@smtp.resend.com:465` | `resend` and your API key. Port `587` with `smtp://` also works. |
+| [Postmark](https://postmarkapp.com/developer/user-guide/send-email-with-smtp) | `smtp://<server API token>:<server API token>@smtp.postmarkapp.com:587` | The server API token for both, or an SMTP token's access key and secret key. Postmark has no port `465`. |
+| [SendGrid](https://www.twilio.com/docs/sendgrid/for-developers/sending-email/integrating-with-the-smtp-api) | `smtps://apikey:<API key>@smtp.sendgrid.net:465` | The word `apikey` and your API key. Port `587` with `smtp://` also works. |
+| [Mailgun](https://documentation.mailgun.com/docs/mailgun/user-manual/sending-messages/send-smtp) | `smtp://<SMTP login>:<SMTP password>@smtp.mailgun.org:587` | The SMTP credentials of your sending domain. For an EU domain, use `smtp.eu.mailgun.org`. |
+| Any other SMTP server | `smtp://<user>:<password>@<host>:587` | Most providers have an SMTP endpoint. |
+
+To pick a Postmark message stream, add the `X-PM-Message-Stream` header to the message.
+
+For a local SMTP server that catches mail, such as [Mailpit](https://mailpit.axllent.org/),
+see [Test with a local SMTP server](#test-with-a-local-smtp-server).
+
+## Send email
+
+A Send Email binding sends through an SMTP server that you set. Use the standard
+Wrangler binding:
+
+```jsonc
+{
+  "send_email": [{ "name": "EMAIL", "allowed_destination_addresses": ["team@example.com"] }]
+}
+```
+
+Then point OpenOrange at your SMTP server with one variable:
+
+| Variable | Value |
+| --- | --- |
+| `ORANGE_EMAIL_SMTP_URL` | `smtp://user:password@smtp.example.com:587` uses STARTTLS when the server offers it. `smtps://user:password@smtp.example.com:465` uses TLS from the start. URL-encode special characters in the user name and password. |
+
+```sh
+# .dev.vars
+ORANGE_EMAIL_SMTP_URL="smtps://resend:<API key>@smtp.resend.com:465"
+```
+
+OpenOrange reads the variable from the shell environment, `.dev.vars`, or `.env`,
+like the [R2 S3 settings](./r2#store-a-bucket-in-s3-instead). A value from the shell
+wins. On a cluster, set it on the runner pool as a secret, with
+[`orange deploy --secrets-file`](../deploy#variables-and-secrets). See
+[Choose a provider](#choose-a-provider) for the value of each provider.
+
+### Both forms of `send()`
+
+```js
+import { EmailMessage } from "cloudflare:email";
+
+// Your own MIME message, sent as it is.
+await env.EMAIL.send(new EmailMessage("me@example.com", "team@example.com", rawMime));
+
+// A message object, as in Cloudflare's Email Service. OpenOrange builds the MIME.
+const { messageId } = await env.EMAIL.send({
+  from: { email: "me@example.com", name: "Me" },
+  to: "team@example.com",
+  cc: ["lead@example.com"],
+  bcc: "archive@example.com",
+  replyTo: "help@example.com",
+  subject: "Report",
+  text: "The report is attached.",
+  html: "<p>The report is attached.</p>",
+  headers: { "X-Report": "weekly" },
+  attachments: [{ content: base64Pdf, filename: "report.pdf", type: "application/pdf", disposition: "attachment" }],
+});
+```
+
+Both forms return `{ messageId }`. For an `EmailMessage`, `messageId` is its
+`Message-ID` header, or `""` when it has none. Bcc recipients get the message through
+the SMTP envelope, so the message carries no `Bcc` header.
+
+### Address limits
+
+As on Cloudflare, the binding refuses a message before it sends anything when an
+address breaks its limits:
+
+| Field | Effect |
+| --- | --- |
+| `destination_address` | Every recipient, including Cc and Bcc, must be this address. |
+| `allowed_destination_addresses` | Every recipient must be in the list. |
+| `allowed_sender_addresses` | The sender must be in the list. |
+
+### Errors
+
+| Situation | What `send()` does |
+| --- | --- |
+| `ORANGE_EMAIL_SMTP_URL` is not set | Throws `Send Email binding "EMAIL" is not supported by OpenOrange. Set ORANGE_EMAIL_SMTP_URL to your SMTP server, ...` |
+| The SMTP server is down or refuses the message | Throws `Sending email through smtp://smtp.example.com:587 failed: ...`. The message never names the user name or password. |
+| An address breaks a limit | Throws, and names the address and the field. |
+| A message object has no `from`, `to`, `subject`, or `text`/`html` | Throws a `TypeError`. |
+
+OpenOrange does not check sender domains or verified destinations, which Cloudflare
+does. Your SMTP provider does its own checks.
+
+### Test with a local SMTP server
+
+A local server that catches mail, such as [Mailpit](https://mailpit.axllent.org/), sends
+nothing out. Mailpit listens for SMTP on port `1025` and shows the mail at
+`http://127.0.0.1:8025`:
+
+```sh
+ORANGE_EMAIL_SMTP_URL=smtp://127.0.0.1:1025 orange dev
+```
+
+## Receive email
+
+A Worker's `email()` handler runs when a message is POSTed to
+`/cdn-cgi/handler/email`, the route that `wrangler dev` also serves. Point your email
+provider's inbound webhook, or any script that can POST a raw message, at it.
+
+| Setting | Effect |
+| --- | --- |
+| `ORANGE_EMAIL_INBOUND_SECRET` | Required by `orange serve`, which serves the route only when it is set. `orange dev` serves the route without it, as `wrangler dev` does, and checks it when it is set. |
+
+Send the secret in one of two ways:
+
+- `Authorization: Bearer <secret>`.
+- As the Basic auth password, which most providers allow in the webhook URL:
+  `https://inbound:<secret>@worker.example.com/cdn-cgi/handler/email`.
+
+A wrong or missing secret gets `401 Unauthorized`, and `email()` does not run.
+
+### What the route accepts
+
+| Body | Envelope |
+| --- | --- |
+| A raw MIME message, any content type | `?from=<sender>&to=<recipient>` in the URL |
+| `multipart/form-data` from SendGrid Inbound Parse with **POST the raw, full MIME message** on: the `email` field | The `envelope` field, or the URL |
+| `multipart/form-data` from Mailgun with the raw MIME: the `body-mime` field | The `sender` and `recipient` fields, or the URL |
+
+### Inbound providers
+
+| Provider | Set up |
+| --- | --- |
+| [SendGrid Inbound Parse](https://www.twilio.com/docs/sendgrid/for-developers/parsing-email/setting-up-the-inbound-parse-webhook) | Set the destination URL to `https://inbound:<secret>@<your host>/cdn-cgi/handler/email`, and turn on **POST the raw, full MIME message**. |
+| [Mailgun routes](https://documentation.mailgun.com/docs/mailgun/user-manual/receive-forward-store/receive-http) | Forward to `https://inbound:<secret>@<your host>/cdn-cgi/handler/email?format=mime`. Mailgun sends `body-mime` only when the URL ends in `mime`. |
+| Amazon SES, Postmark, Resend | Not directly. They POST JSON, which the route does not read. Use a small relay that gets the raw message and POSTs it with `?from=&to=`. |
+
+```sh
+curl -X POST "https://worker.example.com/cdn-cgi/handler/email?from=alice@example.org&to=inbox@example.com" \
+  -H "Authorization: Bearer $ORANGE_EMAIL_INBOUND_SECRET" \
+  --data-binary @message.eml
+```
+
+| Response | When |
+| --- | --- |
+| `200 Worker successfully processed email` | `email()` returned |
+| `400` | No envelope, a message over 25 MiB, a message without a `Message-ID`, or `message.setReject()` |
+| `401` | A wrong or missing secret |
+| `500` | `email()` threw. The body has the error |
+
+`email()` gets a `ForwardableEmailMessage` with `from`, `to`, `headers`, `raw`,
+`rawSize`, and `setReject()`. As on Cloudflare, `headers` and `raw` have no `Bcc`
+header.
+
+### `forward()` and `reply()`
+
+Both send through `ORANGE_EMAIL_SMTP_URL`, and both throw when it is not set:
+
+```js
+export default {
+  async email(message) {
+    await message.forward("team@example.com", new Headers({ "X-Seen": "yes" }));
+    await message.reply(new EmailMessage(message.to, message.from, replyMime));
+  },
+};
+```
+
+- `forward(rcptTo, headers)` sends the message as it arrived, from the address it was
+  sent to, as a relay does. `headers` may add only `X-` headers, as on Cloudflare.
+- `reply(message)` sends the `EmailMessage` that you build, including its
+  `In-Reply-To` header.
+- When the SMTP server is down, both throw `Sending email through ... failed`, so the
+  POST gets `500` and your provider can retry it.

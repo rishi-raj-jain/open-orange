@@ -1,0 +1,32 @@
+{
+	"id": "chidori",
+	"repo": "ThousandBirdsInc/chidori",
+	"commit": "0a0aba5ce0d8b65e5924bf749b9e4cbba4199d2e",
+	"stars": 1372,
+	"origin": "search",
+	"directory": "integrations/cloudflare-durable-objects",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": "integrations/cloudflare-durable-objects",
+	"install": "npm install --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"ChidoriRun"
+		],
+		"file": "integrations/cloudflare-durable-objects/src/index.ts",
+		"uses": [
+			"storage.sql.exec",
+			"cursor.toArray",
+			"cursor.one"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "of many writers racing for one lease, exactly one wins",
+			"owner": "project",
+			"note": "src/index.ts:172 awaits request.arrayBuffer() between its check and its insert, and workerd does not hold other requests across that await. Measured on wrangler dev and Orange, 10 trials each: 8 winners in every trial, on both. The README claim that writes cannot interleave does not hold on workerd either."
+		}
+	]
+}

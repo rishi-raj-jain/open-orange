@@ -1,0 +1,11 @@
+{
+	"name": "session-connect",
+	"main": "worker.js",
+	"compatibility_date": "2026-05-26",
+	"services": [
+		{ "binding": "ECHO", "service": "session-connect-peer", "entrypoint": "Echo" },
+		{ "binding": "NO_HANDLER", "service": "session-connect-peer", "entrypoint": "NoHandler" },
+		{ "binding": "THROWS", "service": "session-connect-peer", "entrypoint": "Throws" },
+		{ "binding": "STOPPED", "service": "session-connect-not-running" }
+	]
+}

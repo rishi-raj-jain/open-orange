@@ -1,0 +1,96 @@
+{
+	"schemaVersion": 1,
+	"id": "starbasedb",
+	"repo": "outerbase/starbasedb",
+	"commit": "bb227352135051a0dd50190d67c3e82b03f8e485",
+	"stars": 1169,
+	"origin": "named",
+	"directory": ".",
+	"ranAt": "2026-11-05T02:34:43.158Z",
+	"orange": {
+		"sha": "e4c405f",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "works",
+	"install": {
+		"ok": true,
+		"seconds": 6,
+		"command": "pnpm install --ignore-scripts"
+	},
+	"build": {
+		"ok": true,
+		"seconds": 13,
+		"command": "pnpm run build"
+	},
+	"boot": {
+		"ok": true,
+		"seconds": 9
+	},
+	"steps": [
+		{
+			"name": "a request without a token gets 401",
+			"kind": "http",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "a client creates a table, inserts rows, and reads them back",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "the README's $1 query and transaction return their rows",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "the REST API writes a row, and the JSON export sees it",
+			"kind": "do-state",
+			"status": "pass",
+			"seconds": 0.9
+		},
+		{
+			"name": "a WebSocket client queries the same database",
+			"kind": "websocket",
+			"status": "pass",
+			"seconds": 0
+		},
+		{
+			"name": "a cron task's alarm calls the task's callback host",
+			"kind": "alarm",
+			"status": "pass",
+			"seconds": 46.9
+		},
+		{
+			"name": "the table survives the object's sleep",
+			"kind": "sleep",
+			"status": "pass",
+			"seconds": 10.1
+		},
+		{
+			"name": "the table survives an orange dev and engine restart",
+			"kind": "restart",
+			"status": "pass",
+			"seconds": 11.6
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"StarbaseDBDurableObject"
+		],
+		"file": "src/do.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.setAlarm",
+			"storage.getAlarm",
+			"alarm",
+			"rpc"
+		]
+	}
+}

@@ -1,0 +1,34 @@
+{
+	"id": "tubatools",
+	"repo": "luolangaga/tubatools",
+	"commit": "15dcb42c095c496e5dd68820faa6a0434475c411",
+	"stars": 6035,
+	"origin": "search",
+	"directory": "cloudflare-worker",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": "cloudflare-worker",
+	"install": "npm install --ignore-scripts",
+	"durableObjects": {
+		"classes": [
+			"GroupRoom"
+		],
+		"file": "cloudflare-worker/src/index.ts",
+		"uses": [
+			"storage.list",
+			"storage.put",
+			"storage.deleteAll",
+			"acceptWebSocket",
+			"WebSocket.addEventListener"
+		]
+	},
+	"changes": [],
+	"knownFailures": [
+		{
+			"step": "an SDP offer sent on one device's socket reaches the other device",
+			"owner": "project",
+			"note": "GroupRoom accepts with acceptWebSocket but listens with addEventListener and defines no webSocketMessage, so the frame is never relayed. Read from the code and the hibernation API contract, not run on Cloudflare."
+		}
+	]
+}

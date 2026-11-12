@@ -1,0 +1,9 @@
+{
+	"name": "@open-orange-examples/r2",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"open-orange": "workspace:*",
+		"wrangler": "4.129.0"
+	}
+}

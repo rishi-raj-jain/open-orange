@@ -1,0 +1,64 @@
+{
+	"schemaVersion": 1,
+	"id": "browser-rendering",
+	"repo": "rivet-dev/open-orange",
+	"commit": "local",
+	"stars": 0,
+	"origin": "probe",
+	"directory": ".",
+	"ranAt": "2026-11-06T22:22:56.426Z",
+	"orange": {
+		"sha": "09b4d1d",
+		"dirty": null
+	},
+	"rivetkit": "0.0.0-sqlite-sync-3-0-1-final.5663d2f",
+	"runtime": "orange",
+	"node": "v24.21.0",
+	"status": "not-run",
+	"install": {
+		"ok": true,
+		"seconds": 4,
+		"command": "pnpm install --frozen-lockfile --ignore-scripts"
+	},
+	"build": null,
+	"boot": {
+		"ok": true,
+		"seconds": 3
+	},
+	"steps": [
+		{
+			"name": "launch() opens a page in the configured browser, reads it, and takes a PNG screenshot",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "two requests at once each read their own page",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.1
+		},
+		{
+			"name": "browser.close() ends the session, and the next launch still works",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0.2
+		},
+		{
+			"name": "connect() to a session that is in use is refused",
+			"kind": "binding",
+			"status": "pass",
+			"seconds": 0
+		}
+	],
+	"changes": [],
+	"durableObjects": {
+		"classes": [
+			"none"
+		],
+		"file": "worker/src/index.ts",
+		"uses": [
+			"none: this probe checks Browser Rendering"
+		]
+	}
+}

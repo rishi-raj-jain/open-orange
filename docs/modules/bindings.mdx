@@ -1,0 +1,131 @@
+---
+title: Bindings
+description: Which Wrangler bindings run on OpenOrange as is, which need a service that you supply, and which are not supported.
+---
+
+# Bindings
+
+OpenOrange reads bindings from the same Wrangler configuration as `wrangler dev`.
+Each binding is one of three kinds:
+
+- **Runs as is:** OpenOrange implements the Cloudflare API. You set nothing.
+- **Needs a service:** OpenOrange implements the Cloudflare API on a service
+  that you supply, such as your SMTP server. You set one variable that points
+  to it.
+- **Not supported:** the binding loads, but Orange has no backend for it. The
+  Worker loads, and `env.NAME` exists. Each method call throws an error that
+  names the binding and suggests an alternative. Analytics Engine is the
+  exception: `writeDataPoint()` accepts data points and drops them, as
+  `wrangler dev` does.
+
+`orange doctor` reports each binding of your project as one of these kinds. It does not
+list variables (`vars`, `.dev.vars`, and `.env`), because they need nothing on Rivet.
+
+Where a binding stores data depends on the command. Under `orange dev`, Rivet
+Actors run on a local Rivet Engine, and data stays on your machine. Under
+`orange deploy`, they run on your Rivet cluster. A service binding sends data
+to the service that you set.
+
+## Matrix
+
+| Binding | Wrangler key | Kind | Runs on | Notes |
+| --- | --- | --- | --- | --- |
+| Variables | `vars` | Runs as is | The Worker process | Strings and JSON values. |
+| Local secrets | `.dev.vars`, `.env` | Runs as is | The Worker process | Loaded like `wrangler dev`. See [Variables and secrets](#variables-and-secrets). |
+| Secrets Store | `secrets_store_secrets` | Runs as is | The Worker process | Local values come from `.dev.vars` or the process environment. See [Secrets Store](./secrets-store). |
+| Version metadata | `version_metadata` | Runs as is | The Worker process | See [Version metadata](./version-metadata). |
+| `unsafe_eval` | `unsafe.bindings` | Runs as is | The Worker process | |
+| Static assets | `assets` | Runs as is | Local files | See [Static assets](./assets). |
+| Durable Objects | `durable_objects` | Runs as is | One Rivet Actor for each object | Partial. Same-Worker classes from `new_sqlite_classes` and `new_classes` migrations. See [Durable Objects](./durable-objects). |
+| Durable Objects from another Worker | `durable_objects` with `script_name` | Runs as is | The other Worker's Rivet Actors | Both Workers run in one `orange dev`. See [Multiple Workers](./multi-worker). |
+| Service bindings to this Worker | `services` | Runs as is | The Worker process | `fetch()`, JS RPC, named entrypoints, `props`, and `ctx.exports`. |
+| Service bindings to another Worker | `services` | Runs as is | The other Worker's process | Partial. Run both Workers in one `orange dev` with repeated `-c`. `connect()` and WebSocket upgrades throw. See [Multiple Workers](./multi-worker). |
+| Dispatch namespaces | `dispatch_namespaces` | Runs as is | The Workers of the `orange dev` session | Partial. See [Multiple Workers](./multi-worker). |
+| KV | `kv_namespaces` | Runs as is | One Rivet Actor for each namespace | See [KV](./kv). |
+| D1 | `d1_databases` | Runs as is | One Rivet Actor for each database | See [D1](./d1). |
+| Rate Limiting | `ratelimits`, `unsafe.bindings` | Runs as is | One Rivet Actor for each namespace | See [Rate Limiting](./rate-limiting). |
+| R2 | `r2_buckets` | Runs as is | One Rivet Actor for each bucket, or your S3-compatible store | Set `ORANGE_R2_<BUCKET>_S3_*` to use Amazon S3, Cloudflare R2, Google Cloud Storage, or Backblaze B2. See [R2](./r2). |
+| Queues | `queues.producers`, `queues.consumers` | Runs as is | One Rivet Actor for each queue | See [Queues](./queues). |
+| Workflows | `workflows` | Runs as is | Cloudflare's own Workflows engine, with one Rivet Actor for each instance | Partial. See [Workflows](./workflows). |
+| Tail Workers | `tail_consumers` | Runs as is | Rivet Durable Streams | Partial. See [Tail Workers](./tail-workers). |
+| Worker Loader | `worker_loaders` | Runs as is | One Node.js process for each dynamic Worker, in an agentOS VM | Partial. See [Worker Loader](./worker-loader). |
+| Workers AI | `ai` | Needs a service | An OpenAI-compatible provider | Set `OPENROUTER_API_KEY`, or `ORANGE_AI_BASE_URL` for OpenAI, Groq, Together AI, or Fireworks AI. See [Workers AI](./workers-ai). |
+| Send Email | `send_email` | Needs a service | Your SMTP server | Set `ORANGE_EMAIL_SMTP_URL` to Amazon SES, Resend, Postmark, SendGrid, or Mailgun. Without it, the binding throws. See [Email](./email). |
+| Browser Rendering | `browser` | Needs a service | A hosted browser or your Chrome, through its DevTools Protocol endpoint | Set `ORANGE_BROWSER_CDP_URL` to Browserbase, Browserless, or Steel. Without it, the binding throws. See [Browser Rendering](./browser-rendering). |
+| Hyperdrive | `hyperdrive` | Needs a service | Your database, with a direct connection | Set the local connection string, as for `wrangler dev`, such as PlanetScale, Amazon RDS, Neon, or Supabase. No pooling or query cache. See [Hyperdrive](./hyperdrive). |
+| Analytics Engine | `analytics_engine_datasets` | Not supported | Nothing | `writeDataPoint()` accepts data points and drops them, as `wrangler dev` does. |
+| Vectorize | `vectorize` | Not supported | Nothing | See [Other bindings](#other-bindings). |
+| Images, Media, Stream | `images`, `media`, `stream` | Not supported | Nothing | See [Other bindings](#other-bindings). |
+| Pipelines | `pipelines` | Not supported | Nothing | |
+| AI Search | `ai_search` | Not supported | Nothing | |
+| mTLS certificates | `mtls_certificates` | Not supported | Nothing | |
+| VPC | `vpc_networks`, `vpc_services` | Not supported | Nothing | Use `fetch()` to reach the host network directly. |
+| Legacy blobs | `text_blobs`, `data_blobs`, `wasm_modules` | Not supported | Nothing | Import the file from the Worker source instead. |
+| Other binding types | | Not supported | Nothing | Includes other `unsafe` binding types. |
+
+- Configuration that changes how the Worker runs, not what `env` contains, still stops `orange dev`
+  with `Unsupported Wrangler configuration`.
+- Examples are `streaming_tail_consumers` and `triggers.events`.
+- `orange dev` accepts `containers` with a warning and runs `@cloudflare/sandbox` classes on a
+  sandbox provider, such as E2B, Daytona, or Freestyle (see [Sandbox](./sandbox)).
+- `orange dev` runs `triggers.crons` (see [Cron Triggers](./cron-triggers)) and delivers
+  `queues.consumers` to the Worker's `queue()` handler (see [Queues](./queues)).
+
+## Bindings that are not supported
+
+`orange dev` marks each binding that is not supported in its binding table at startup, with what to use
+instead on the next line:
+
+```text
+  Binding        Resource            Runs on
+! env.IMAGES     Images              stub · calls throw
+                                     See the OpenOrange bindings documentation for supported bindings.
+```
+
+The binding is a stub, and it is safe to pass around. `typeof env.IMAGES` is `"object"`, reading a
+property returns a function, and awaiting the stub does not call it. Calling any
+method throws an `Error` with the same message:
+
+```js
+await env.IMAGES.info(stream);
+// Error: Images binding "IMAGES" is not supported by OpenOrange. ...
+```
+
+## What to use instead
+
+Most bindings that are not supported have a replacement. Most replacements
+use `fetch()` to an external service, or a Durable Object, which OpenOrange
+runs as a Rivet Actor with SQLite storage and alarms.
+
+### Other bindings
+
+OpenOrange does not support these bindings. Change the Worker to call one of these
+services instead:
+
+| Binding | Service to use instead | How the Worker reaches it |
+| --- | --- | --- |
+| Vectorize | [pgvector](https://github.com/pgvector/pgvector) on [Neon](https://neon.com/docs/extensions/pgvector) or [Supabase](https://supabase.com/docs/guides/database/extensions/pgvector) | A [Hyperdrive](./hyperdrive) binding and a Postgres driver |
+| Vectorize | [Qdrant Cloud](https://qdrant.tech/documentation/cloud/authentication/) | `fetch()` to `https://<cluster host>:6333`, with the `api-key` header |
+| Vectorize | [Pinecone](https://docs.pinecone.io/guides/get-started/quickstart) | `fetch()` to the index host, with the `Api-Key` header |
+| Vectorize, a few thousand vectors | SQLite in a Durable Object | Store the embeddings, and rank them by cosine similarity in JavaScript |
+| Images | [Cloudinary](https://cloudinary.com/documentation/image_transformations) | `fetch()` to its upload and transformation URLs |
+| Images | [imgproxy](https://imgproxy.net/) that you run | `fetch()` to its processing URLs |
+| Analytics Engine | Your analytics store | `fetch()` to its ingest API |
+
+## Variables and secrets
+
+`orange dev` resolves variables with Wrangler's own `wrangler dev` logic:
+
+1. It starts with `vars` from the Wrangler configuration.
+2. It loads `.dev.vars.<env>` or `.dev.vars` next to the configuration file.
+3. If neither file exists, it loads `.env`, `.env.local`, `.env.<env>`, and
+   `.env.<env>.local`. Set `CLOUDFLARE_INCLUDE_PROCESS_ENV=true` to also load
+   the process environment.
+4. Loaded values become string bindings that replace `vars` with the same name.
+5. If `secrets.required` is set, only the listed keys load, and `orange dev`
+   warns about missing keys.
+
+A `.dev.vars` entry named after another binding, such as a Secrets Store
+binding, stays that binding's local value and does not replace it.
+
+Secret values never become part of the version metadata ID.

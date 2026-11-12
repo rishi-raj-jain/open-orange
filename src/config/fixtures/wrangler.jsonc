@@ -1,0 +1,27 @@
+{
+	// JSONC comments are intentionally part of this parser fixture.
+	"name": "orange-config-jsonc",
+	"main": "./worker.ts",
+	"compatibility_date": "2026-09-03",
+	"compatibility_flags": [],
+	"secrets_store_secrets": [
+		{
+			"binding": "ROOT_SECRET",
+			"store_id": "root-store",
+			"secret_name": "root-secret"
+		}
+	],
+	"version_metadata": { "binding": "ROOT_VERSION" },
+	"env": {
+		"staging": {
+			"secrets_store_secrets": [
+				{
+					"binding": "STAGING_SECRET",
+					"store_id": "staging-store",
+					"secret_name": "staging-secret"
+				}
+			],
+			"version_metadata": { "binding": "STAGING_VERSION" }
+		}
+	}
+}

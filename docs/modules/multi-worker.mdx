@@ -1,0 +1,126 @@
+---
+title: Multiple Workers
+description: Service bindings, cross-Worker Durable Objects, and dispatch namespaces in one orange dev session.
+---
+
+# Multiple Workers
+
+**Status:** Partial
+
+## Configuration
+
+Pass one Wrangler configuration per Worker, like `wrangler dev -c a.toml -c b.toml`:
+
+```sh
+orange dev -c api/wrangler.jsonc -c auth/wrangler.jsonc
+```
+
+- The first Worker is the primary Worker. Only it serves `--port`.
+- Every Worker must set `name`. Bindings address other Workers by name.
+- All Workers store data in the primary Worker's `.open-orange/` directory.
+
+```jsonc
+// api/wrangler.jsonc
+{
+	"name": "api",
+	"services": [
+		{ "binding": "AUTH", "service": "auth" },
+		{ "binding": "ADMIN", "service": "auth", "entrypoint": "Admin" }
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "SESSIONS", "class_name": "Session", "script_name": "auth" }]
+	},
+	"dispatch_namespaces": [{ "binding": "DISPATCHER", "namespace": "customers" }]
+}
+```
+
+## Implementation
+
+- Each Worker runs in its own runtime process. All runtimes use one Rivet
+  Engine. Each Worker serves its actors from its own envoy pool, so a Durable
+  Object with `script_name` runs in the Worker that exports its class.
+- Service `fetch()` and JS RPC go over loopback HTTP to the callee runtime.
+  RPC uses the same transport as Durable Object RPC. Errors keep their type,
+  message, and own properties, and are marked `remote`.
+- `env.DISPATCHER.get(name)` returns a Fetcher for the session Worker with that
+  `name`. Pass user Workers with more `-c` options.
+- A Workflow binding with `script_name` creates and reads instances in the
+  Worker that exports the class. A missing Worker throws
+  `Worker "<name>" not found. Make sure it is running locally.`
+- Queues and Workflows are shared by name across the session, as across a
+  Cloudflare account. A message that any Worker sends goes to the Worker that
+  declares the queue consumer. A Workflow instance runs in the Worker that
+  defines the Workflow.
+- D1 databases, KV namespaces, R2 buckets, and rate limiters are shared by ID
+  across the session, as in a multi-Worker `wrangler dev`. The ID is
+  `database_id`, `id`, or `bucket_name`, and the binding name when the config
+  has none. A Worker reads what another Worker wrote. Tested in
+  `tests/session-shared-storage.test.ts`.
+- Each Worker keeps its own cron triggers. Orange adds the Worker name to the
+  cron actor key. A Worker that runs alone keeps its old key, so its local data
+  stays.
+- `orange dev` fails at startup when two Workers declare a consumer for one
+  queue, or define a Workflow with the same name.
+
+## Several Workers in one deployment
+
+`orange serve` takes `-c` more than once, as `orange dev` does. One image then
+runs every Worker, each in its own runtime. All runtimes join the cluster's one
+envoy pool, because a cluster's Engine accepts only the pools its operator
+created. The Engine sends an actor only to an envoy that serves the actor's
+name, and each Worker's actors have their own names. The Workers reach each
+other as in `orange dev`.
+
+```sh
+orange serve -c app/wrangler.json -c api/wrangler.json -c jobs/wrangler.json
+```
+
+- The serve port answers with the Worker whose `routes` match the request's
+  host and path. The most specific pattern wins: an exact host before a
+  `*.` host, then the longer path, then an exact path before a `*` path. A
+  `custom_domain` route matches every path of its host. A request that no
+  route matches goes to the first Worker.
+- A route may use `*` only at the start of its host and the end of its path.
+  `orange serve` refuses any other pattern at startup and names it.
+- A cluster has one hostname. To serve another host through it, a forwarder
+  in front of the cluster sends `x-orange-forwarded-host` and
+  `x-orange-forwarded-host-signature`, an HMAC-SHA256 of the host with the
+  secret in `ORANGE_FORWARDED_HOST_SECRET`. With a matching signature, the
+  request is routed and seen as that host. Without the secret or with another
+  signature, the headers are ignored. A Worker never sees either header.
+- One Worker exiting stops the deployment, so the cluster starts the image
+  again.
+- Only the first Worker's runtime serves `RIVETKIT_METRICS_PORT`, so the
+  cluster's metrics cover that Worker's actors only.
+- Tested in `tests/orange-serve.test.ts` against a standalone Engine.
+
+## Workers that are not running
+
+Orange follows Wrangler's dev registry:
+
+- `fetch()` on a service binding or Durable Object stub answers `503` with
+  `Worker "<name>" not found. Make sure it is running locally.`
+- RPC calls throw an `Error` with the same message.
+- A dispatch namespace throws `Worker not found. Worker "<name>" is not running in this orange dev session.` The message starts like Cloudflare's.
+
+## Conformance
+
+- `src/runtime/multi-worker.test.ts` runs two Workers through `orange dev` and
+  checks service `fetch()`, RPC, error types, shared Durable Object state, and
+  missing Workers. It also checks that each Worker gets its own cron ticks, that a
+  queue that one Worker produces to reaches the consumer in the other, and
+  that two consumers for one queue fail at startup.
+
+## Known differences
+
+- `connect()` and WebSocket upgrades through a service binding to another
+  Worker throw an error. Connect to the other Worker's URL instead.
+- Workers in separate `orange dev` processes do not find each other. Run them
+  in one `orange dev`.
+- Dispatch namespaces ignore `args`, `limits`, and outbound Workers. Orange
+  does not check that a user Worker belongs to the namespace.
+- `tail_consumers` can name another Worker of the session. See
+  [Tail Workers](./tail-workers).
+- `orange d1` reaches the session's databases only with the primary Worker's
+  configuration, the first `-c`. With another Worker's configuration it opens a
+  separate, empty database.

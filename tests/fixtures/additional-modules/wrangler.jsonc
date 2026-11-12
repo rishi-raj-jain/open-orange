@@ -1,0 +1,8 @@
+{
+	"name": "additional-modules",
+	"main": "src/index.js",
+	"compatibility_date": "2026-05-26",
+	"compatibility_flags": ["nodejs_compat"],
+	"find_additional_modules": true,
+	"rules": [{ "type": "Data", "globs": ["skills/**/*"], "fallthrough": true }]
+}

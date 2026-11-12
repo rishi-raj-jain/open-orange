@@ -1,0 +1,8 @@
+{
+	"name": "deploy-monorepo",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-08-01",
+	"rules": [{ "type": "Text", "globs": ["**/*.txt"] }],
+	"durable_objects": { "bindings": [{ "name": "COUNTER", "class_name": "Counter" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["Counter"] }]
+}

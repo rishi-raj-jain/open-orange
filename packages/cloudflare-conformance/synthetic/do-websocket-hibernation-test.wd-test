@@ -1,0 +1,22 @@
+using Workerd = import "/workerd/workerd.capnp";
+
+const config :Workerd.Config = (
+  services = [
+    (name = "main", worker = .mainWorker),
+    (name = "TEST_TMPDIR", disk = (writable = true)),
+  ],
+);
+
+const mainWorker :Workerd.Worker = (
+  compatibilityFlags = ["nodejs_compat"],
+  modules = [
+    (name = "worker", esModule = embed "do-websocket-hibernation-test.js"),
+  ],
+  durableObjectNamespaces = [
+    (className = "TestDurableObject", uniqueKey = "39a95b939bf846138c23f53b7d8c1347", enableSql = true),
+  ],
+  durableObjectStorage = (localDisk = "TEST_TMPDIR"),
+  bindings = [
+    (name = "ns", durableObjectNamespace = "TestDurableObject"),
+  ],
+);

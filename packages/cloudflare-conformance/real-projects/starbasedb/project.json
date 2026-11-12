@@ -1,0 +1,30 @@
+{
+	"id": "starbasedb",
+	"repo": "outerbase/starbasedb",
+	"commit": "bb227352135051a0dd50190d67c3e82b03f8e485",
+	"stars": 1169,
+	"origin": "named",
+	"directory": ".",
+	"configs": [
+		"wrangler.toml"
+	],
+	"installDirectory": ".",
+	"install": "pnpm install --ignore-scripts",
+	"build": [
+		"pnpm run build"
+	],
+	"durableObjects": {
+		"classes": [
+			"StarbaseDBDurableObject"
+		],
+		"file": "src/do.ts",
+		"uses": [
+			"storage.sql.exec",
+			"storage.setAlarm",
+			"storage.getAlarm",
+			"alarm",
+			"rpc"
+		]
+	},
+	"changes": []
+}

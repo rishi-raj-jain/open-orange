@@ -1,0 +1,6 @@
+{
+	"name": "email",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-01",
+	"send_email": [{ "name": "MAIL", "allowed_destination_addresses": ["inbox@example.com", "copy@example.com", "hidden@example.com"] }]
+}
