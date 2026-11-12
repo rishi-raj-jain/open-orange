@@ -11,8 +11,6 @@
 // - Durable Object storage: workerd.capnp durableObjectStorage. localDisk is
 //   "EXPERIMENTAL; SUBJECT TO BACKWARDS-INCOMPATIBLE CHANGE"; inMemory is
 //   "intended for local testing purposes".
-// - One process owns every object: cloudflare/workerd#6780 ("only within the
-//   scope of a single instance running on a single thread").
 // - Self-hosting stateless Workers and `wrangler dev`: README "As an
 //   application server", "Serving in production", "Local Worker development
 //   with wrangler".
@@ -26,7 +24,7 @@
 export const WORKERD_AS_OF = { iso: '2026-11-12', label: 'November 12, 2026' } as const;
 
 export const WORKERD_COMPARE = {
-	headline: 'workerd runs a Worker. OpenOrange runs your app.',
+	headline: 'OpenOrange runs your app. workerd runs a Worker.',
 	workerd:
 		"Cloudflare's core runtime: it executes a Worker, and it's what `wrangler dev` runs on your laptop. It doesn't run Durable Objects across machines, it has no KV, D1, Queues or Workflows of its own, and it isn't a production storage system.",
 	openorange:
@@ -43,7 +41,7 @@ export const WORKERD_COMPARE = {
 		'Your Worker is a stateless fetch handler and needs nothing else.',
 	],
 	footnote:
-		"Compared with workerd's stable features as of November 12, 2026. Features behind workerd's `--experimental` flag aren't covered.",
+		"Compared with workerd's default configuration as of November 12, 2026.",
 } as const;
 
 /** yes: it does this. no: it doesn't. partial: only part of it. Unset: a plain fact. */

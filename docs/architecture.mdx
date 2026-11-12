@@ -1,0 +1,70 @@
+---
+title: Architecture
+description: "How OpenOrange runs your Cloudflare project: standard Docker containers in any cloud, scaled by the Rivet control plane, with state in S3 behind an SSD layer."
+---
+
+# Architecture
+
+OpenOrange is powered by [Rivet](https://rivet.dev), a scalable control plane
+that runs your Cloudflare workloads. Your code ships as standard Docker
+containers, so it runs anywhere Docker runs.
+
+<ArchitectureFigure />
+
+## Powered by Rivet, backed by S3
+
+Rivet is an open-source control plane. Each Durable Object runs as a Rivet
+Actor: Rivet finds it, wakes it on one of your containers, and routes each
+request to it.
+
+Rivet keeps state in S3, which is cheap, durable and scalable, with an SSD
+layer in front so reads and writes stay fast. Scaling out is a matter of adding
+machines. See [Rivet Actors](https://rivet.dev/docs/actors/).
+
+## Standard Docker containers, in any cloud
+
+`orange deploy` builds your Worker and the OpenOrange runtime into a standard
+Docker image, so it runs anywhere Docker runs.
+
+Each container holds your Workers, Durable Objects, Workflows and the rest of
+your Cloudflare code. The containers connect out to Rivet, which spreads the
+load across them. To add capacity, add containers.
+
+<DeployTargets />
+
+See [Deploy and self-host](./deploy).
+
+## Each binding maps to the best-fit service
+
+Your bindings and your code stay the same. Stateful bindings run on Rivet
+Actors. The rest plug into services you already use.
+
+<BindingRoutes />
+
+Each binding's page has how it runs and what differs: see the
+[bindings overview](./modules/index.mdx).
+
+## Real Node.js, not the Workers runtime
+
+Your Worker runs in a Node.js process, so you're not limited to the part of
+Node.js that the Workers runtime supports. Node.js APIs are always on, without
+`nodejs_compat`, and the machines you choose set the memory and CPU time.
+
+That opens up the Node.js ecosystem: npm packages that need Node.js APIs the
+Workers runtime doesn't have. See [OpenOrange vs workerd](/vs-workerd/).
+
+<AiContext summary="Full service map and runtime limits">
+
+#### Full service map
+
+Every Cloudflare service, with its status and what differs.
+
+<ServiceTable />
+
+#### Runtime limits, compared
+
+OpenOrange next to Cloudflare's Workers Paid plan.
+
+<RuntimeLimits />
+
+</AiContext>

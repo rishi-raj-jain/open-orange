@@ -1,0 +1,16 @@
+---
+// Where `orange deploy` can put your containers, from DEPLOY_TARGETS
+// (src/data/site.ts). A plain table, so it takes the docs table style.
+import { DEPLOY_TARGETS } from '@/data/site';
+---
+
+<table>
+	<thead>
+		<tr><th>Deploy to</th><th>Runs on</th></tr>
+	</thead>
+	<tbody>
+		{DEPLOY_TARGETS.map((target) => (
+			<tr><td><strong>{target.label}</strong></td><td>{target.runsOn}</td></tr>
+		))}
+	</tbody>
+</table>

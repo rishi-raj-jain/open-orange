@@ -1,0 +1,21 @@
+---
+// The runtime limits that compare OpenOrange with Cloudflare directly, from
+// WORKERD_LIMITS (src/data/site.ts). A plain table, so it takes the docs
+// table style.
+import { SITE, WORKERD_LIMITS } from '@/data/site';
+
+const RUNTIME_ROWS = ['Memory per Worker', 'CPU time per request', 'Subrequests per request', 'Alarm wall time', 'Node.js APIs', 'Native npm modules'];
+const limits = WORKERD_LIMITS.filter((row) => RUNTIME_ROWS.includes(row.label));
+---
+
+<table>
+	<thead>
+		<tr><th>Limit</th><th>{SITE.name}</th><th>Cloudflare (Workers Paid)</th></tr>
+	</thead>
+	<tbody>
+		{limits.map((row) => (
+			<tr><td><strong>{row.label}</strong></td><td>{row.openorange}</td><td>{row.cloudflare}</td></tr>
+		))}
+	</tbody>
+</table>
+<p>Cloudflare figures checked {SITE.verified}.</p>

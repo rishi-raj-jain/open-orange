@@ -7,6 +7,11 @@ import { NO_PAGE } from '@/components/docs/routes';
 import BindingDetail from '@/components/docs/BindingDetail.astro';
 import TipScript from '@/components/compat/TipScript.astro';
 import AiContext from '@/components/docs/AiContext.astro';
+import ArchitectureFigure from '@/components/docs/ArchitectureFigure.astro';
+import BindingRoutes from '@/components/docs/BindingRoutes.astro';
+import DeployTargets from '@/components/docs/DeployTargets.astro';
+import RuntimeLimits from '@/components/docs/RuntimeLimits.astro';
+import ServiceTable from '@/components/ServiceTable.astro';
 import BindingEvidence from '@/components/docs/BindingEvidence.astro';
 import BindingStatus from '@/components/docs/BindingStatus.astro';
 import Step from '@/components/docs/Step.astro';
@@ -14,7 +19,8 @@ import Steps from '@/components/docs/Steps.astro';
 import { bindingsForDoc } from '@/data/bindings';
 
 // Components every doc can use without an import (CLAUDE.md, "Binding page format").
-const components = { AiContext, BindingEvidence, BindingStatus, Step, Steps };
+// The architecture ones render site data on docs/architecture.mdx.
+const components = { AiContext, ArchitectureFigure, BindingEvidence, BindingRoutes, BindingStatus, DeployTargets, RuntimeLimits, ServiceTable, Step, Steps };
 
 type MdxModule = { Content: (props: Record<string, unknown>) => unknown; getHeadings: () => MarkdownHeading[] };
 

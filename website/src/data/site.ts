@@ -549,7 +549,7 @@ export const FAQ = [
 	{
 		q: 'Why not just run workerd directly?',
 		a: "workerd is Cloudflare's runtime, not its platform. It runs your fetch handler, but KV, D1, R2, Queues, Workflows and the Cache API are bindings that call services you have to build, and Durable Objects keep their data on one machine with nothing to place, replicate or scale them. It also keeps limits designed around Cloudflare's network rather than your servers: only the nodejs_compat subset of Node.js, no native npm modules, and alarms capped at 15 minutes. OpenOrange runs your Worker on Node.js with real SQLite, and Rivet provides the services, so your code keeps working on infrastructure you control.",
-		more: { label: 'Compare workerd and OpenOrange', href: '/vs-workerd/' },
+		more: { label: 'Compare OpenOrange and workerd', href: '/vs-workerd/' },
 	},
 	{
 		q: 'Do I need to learn Rivet?',
@@ -588,7 +588,7 @@ export const CREDITS_TOTAL = CREDITS.reduce((sum, c) => sum + c.amount, 0);
 // release below, mostly src/workerd/server/workerd.capnp (the config schema)
 // and src/workerd/server/factory/worker-factory.c++ (the limit enforcers).
 // Claims cover the default configuration only: features behind
-// --experimental are out of scope (the page footnote says so). First read at
+// --experimental are out of scope. First read at
 // eed7c37 on 2026-10-31; re-checked at v1.20261112.1 on 2026-11-12. Re-check
 // against a newer release before changing `verified`. Page copy and the
 // comparison matrix are in compare-workerd.ts.

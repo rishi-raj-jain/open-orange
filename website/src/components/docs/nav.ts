@@ -11,7 +11,7 @@ export type DocGroup = { title: string; links: DocLink[]; groups?: DocGroup[] };
 type Section = { title: string; ids: string[]; groups?: { title: string; ids: string[] }[] };
 
 const SECTIONS: Section[] = [
-	{ title: 'Getting started', ids: ['/docs/', 'deploy', 'migrate'] },
+	{ title: 'Getting started', ids: ['/docs/', 'architecture', 'deploy', 'migrate'] },
 	{
 		title: 'Bindings',
 		ids: ['/docs/bindings/', 'modules/bindings'],

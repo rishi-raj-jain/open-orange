@@ -1,94 +1,96 @@
 @reference '../../styles/global.css';
 
-/* Typography for the rendered docs (src/layouts/Docs.astro). */
+/* Typography for the rendered docs (src/layouts/Docs.astro). A component that
+   brings its own layout, such as the architecture diagram, opts out with
+   `not-prose`: these rules skip it and everything inside it. */
 .docs-prose {
 	@apply text-[15.5px] leading-[1.7] text-ink-soft;
 }
 .docs-prose > :first-child {
 	margin-top: 0;
 }
-.docs-prose :where(h2, h3, h4) {
+.docs-prose :where(h2, h3, h4):not(:where(.not-prose, .not-prose *)) {
 	@apply scroll-mt-24 font-medium text-ink;
 }
-.docs-prose h2 {
+.docs-prose h2:not(:where(.not-prose, .not-prose *)) {
 	@apply mt-14 mb-4 text-[1.5rem] leading-[1.25] tracking-[-0.02em];
 }
-.docs-prose h3 {
+.docs-prose h3:not(:where(.not-prose, .not-prose *)) {
 	@apply mt-10 mb-3 text-[1.125rem] leading-[1.35] tracking-[-0.01em];
 }
-.docs-prose h4 {
+.docs-prose h4:not(:where(.not-prose, .not-prose *)) {
 	@apply mt-8 mb-2 text-[1rem];
 }
-.docs-prose :where(p, ul, ol, pre, table, blockquote, figure, picture) {
+.docs-prose :where(p, ul, ol, pre, table, blockquote, figure, picture):not(:where(.not-prose, .not-prose *)) {
 	@apply my-5;
 }
-.docs-prose a {
+.docs-prose a:not(:where(.not-prose, .not-prose *)) {
 	@apply font-medium text-ink underline decoration-ink/25 underline-offset-[3px] transition-colors hover:decoration-orange motion-reduce:transition-none;
 }
-.docs-prose strong {
+.docs-prose strong:not(:where(.not-prose, .not-prose *)) {
 	@apply font-semibold text-ink;
 }
-.docs-prose :where(ul, ol) {
+.docs-prose :where(ul, ol):not(:where(.not-prose, .not-prose *)) {
 	@apply pl-6;
 }
-.docs-prose ul {
+.docs-prose ul:not(:where(.not-prose, .not-prose *)) {
 	@apply list-disc;
 }
-.docs-prose ol {
+.docs-prose ol:not(:where(.not-prose, .not-prose *)) {
 	@apply list-decimal;
 }
-.docs-prose li {
+.docs-prose li:not(:where(.not-prose, .not-prose *)) {
 	@apply my-1.5 pl-1;
 }
-.docs-prose li::marker {
+.docs-prose li:not(:where(.not-prose, .not-prose *))::marker {
 	@apply text-ink-faint;
 }
-.docs-prose li > :where(ul, ol, p, pre) {
+.docs-prose li > :where(ul, ol, p, pre):not(:where(.not-prose, .not-prose *)) {
 	@apply my-2;
 }
-.docs-prose :not(pre) > code {
+.docs-prose :not(pre) > code:not(:where(.not-prose, .not-prose *)) {
 	@apply rounded-md border border-line bg-paper-mid px-1.5 py-px font-mono text-[0.84em] text-ink;
 	overflow-wrap: anywhere;
 	-webkit-box-decoration-break: clone;
 	box-decoration-break: clone;
 }
-.docs-prose a code {
+.docs-prose a code:not(:where(.not-prose, .not-prose *)) {
 	@apply text-inherit;
 }
-.docs-prose pre {
+.docs-prose pre:not(:where(.not-prose, .not-prose *)) {
 	@apply overflow-x-auto rounded-xl border border-line px-5 py-4 font-mono text-[13px] leading-[1.65];
 	/* Shiki sets a white background inline; keep it. */
 }
-.docs-prose pre code {
+.docs-prose pre code:not(:where(.not-prose, .not-prose *)) {
 	@apply font-mono;
 }
-.docs-prose table {
+.docs-prose table:not(:where(.not-prose, .not-prose *)) {
 	@apply block w-full max-w-full overflow-x-auto rounded-xl border border-line bg-surface text-[14px] leading-[1.5];
 	border-collapse: separate;
 	border-spacing: 0;
 }
-.docs-prose :where(th, td) {
+.docs-prose :where(th, td):not(:where(.not-prose, .not-prose *)) {
 	@apply border-b border-line px-4 py-2.5 text-left align-top;
 }
-.docs-prose tr:last-child > td {
+.docs-prose tr:last-child > td:not(:where(.not-prose, .not-prose *)) {
 	@apply border-b-0;
 }
-.docs-prose th {
+.docs-prose th:not(:where(.not-prose, .not-prose *)) {
 	@apply bg-paper-mid text-[13px] font-semibold whitespace-nowrap text-ink;
 }
-.docs-prose td code {
+.docs-prose td code:not(:where(.not-prose, .not-prose *)) {
 	@apply text-[0.82em];
 }
-.docs-prose blockquote {
+.docs-prose blockquote:not(:where(.not-prose, .not-prose *)) {
 	@apply rounded-r-xl border-l-2 border-orange bg-orange-soft/60 px-5 py-3 text-ink-soft;
 }
-.docs-prose blockquote > :where(p, ul, ol) {
+.docs-prose blockquote > :where(p, ul, ol):not(:where(.not-prose, .not-prose *)) {
 	@apply my-2;
 }
-.docs-prose hr {
+.docs-prose hr:not(:where(.not-prose, .not-prose *)) {
 	@apply my-12 border-line;
 }
-.docs-prose img {
+.docs-prose img:not(:where(.not-prose, .not-prose *)) {
 	@apply h-auto max-w-full;
 }
 /* A doc's <picture> becomes a light and a dark image (see remark-docs.ts). */
@@ -99,7 +101,7 @@
 .dark .docs-prose .docs-dark {
 	display: block;
 }
-.docs-prose figure {
+.docs-prose figure:not(:where(.not-prose, .not-prose *)) {
 	@apply rounded-2xl border border-line bg-surface p-4 md:p-6;
 }
 

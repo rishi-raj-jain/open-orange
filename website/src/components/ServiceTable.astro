@@ -1,6 +1,7 @@
 ---
-// The full Cloudflare → OpenOrange mapping. Lives on /architecture/; the
-// homepage shows only the diagram and links here.
+// The full Cloudflare → OpenOrange mapping, in the AI context of
+// /docs/architecture/ (docs/architecture.mdx). `not-prose` keeps the docs
+// typography off it.
 import ProviderList from '@/components/ProviderList.astro';
 import { SERVICE_MAP, STATUS_LABEL, type ServiceStatus } from '@/data/site';
 
@@ -12,7 +13,7 @@ const statusClass: Record<ServiceStatus, string> = {
 };
 ---
 
-<div class="card overflow-hidden">
+<div class="not-prose card my-5 overflow-hidden leading-normal">
 	<div class="overflow-x-auto">
 		<table class="w-full min-w-[800px] border-collapse text-left text-[14px]">
 			<thead>

@@ -4,7 +4,7 @@
 //
 // Every claim about another project is sourced, and the page lists its
 // sources. celld claims come from celld v0.6.3 (8702f6d, 2026-10-21), its
-// docs, issues and releases, and the October 2026 announcements, as read on
+// docs, issues and releases, and press coverage of the acquisition, as read on
 // 2026-11-12. Miniflare claims come from Cloudflare's Miniflare docs, read on
 // 2026-11-12. Rivet claims come from rivet.dev. Re-check them before changing
 // AS_OF.
@@ -76,9 +76,9 @@ const celld: Comparison = {
 	name: 'celld',
 	title: `${SITE.name} vs celld`,
 	description:
-		'celld has had no release since Cloudflare acquired its developer. OpenOrange runs your Cloudflare project in production on Rivet, with storage that runs at SSD speed and stays online through S3 outages.',
-	headline: 'celld was an experiment. OpenOrange is built for production.',
-	lede: 'Both run Cloudflare Workers and Durable Objects on your own servers. celld went quiet after Cloudflare acquired its developer. OpenOrange runs on Rivet, which keeps shipping.',
+		'OpenOrange runs your Cloudflare project in production on Rivet, with storage that runs at SSD speed and stays online through S3 outages. celld has had no release since Cloudflare acquired its developer.',
+	headline: 'OpenOrange is built for production. celld was an experiment.',
+	lede: 'Both run Cloudflare Workers and Durable Objects on your own servers. OpenOrange runs on Rivet, which keeps shipping. celld went quiet after Cloudflare acquired its developer.',
 	them: {
 		name: 'celld',
 		badge: { text: 'No release since Oct 21, 2026', tone: 'muted' },
@@ -189,11 +189,11 @@ const celld: Comparison = {
 				us: { text: 'Apache 2.0' },
 			},
 		],
-		caption: 'celld v0.6.3, its last release. Storage figures for OpenOrange are WarpDrive’s, Rivet’s storage engine.',
+		caption: 'Storage figures for OpenOrange are WarpDrive’s, Rivet’s storage engine. celld as of v0.6.3, its last release.',
 	},
 	timeline: {
 		title: 'What happened to celld',
-		lede: 'Cloudflare acquired Deno, celld’s developer. celld has been silent since its last release, and its engineers now build the same ideas into Cloudflare’s workerd.',
+		lede: 'Cloudflare acquired Deno, celld’s developer. celld has been silent since its last release.',
 		events: [
 			{
 				date: 'Aug 5, 2026',
@@ -204,8 +204,7 @@ const celld: Comparison = {
 			{
 				date: 'Oct 9, 2026',
 				iso: '2026-10-09',
-				text: 'Cloudflare announces that Deno is joining it: “we’re merging workerd and celld!”',
-				href: 'https://blog.cloudflare.com/deno-joins-cloudflare/',
+				text: 'Cloudflare announces that Deno, celld’s developer, is joining it.',
 			},
 			{
 				date: 'Oct 12, 2026',
@@ -222,7 +221,7 @@ const celld: Comparison = {
 			{
 				date: 'Since',
 				iso: '2026-11-12',
-				text: 'No commits and no releases. 22 new issues, none answered. celld’s engineers commit to workerd, where PRs describe the work as “merging celld into workerd”.',
+				text: 'No commits and no releases. 22 new issues, none answered.',
 				href: 'https://github.com/denoland/celld/issues',
 			},
 		],
@@ -233,12 +232,11 @@ const celld: Comparison = {
 		items: [
 			{ value: '0.6 ms', label: 'Storage latency', body: 'S3 takes 50–200 ms. WarpDrive’s SSD tier answers in 0.6 ms.' },
 			{ value: 'Bottomless', label: 'Database size', body: 'SQLite isn’t capped by the disk of the machine it runs on.' },
-			{ value: '99.9%', label: 'S3’s uptime SLA', body: 'That allows almost 9 hours of downtime a year. Hot and new Actors stay online through it.' },
+			{ value: 'Beyond S3’s 99.9%', label: 'Availability', body: 'The SSD layer keeps hot and new Actors online when S3 is down.' },
 			{ value: 'Orders of magnitude', label: 'Lower S3 request cost', body: 'SSD tiering spreads each S3 request across many writes.' },
 		],
 	},
 	sources: [
-		{ label: 'Cloudflare: Deno is joining Cloudflare (Oct 9, 2026)', href: 'https://blog.cloudflare.com/deno-joins-cloudflare/' },
 		{ label: 'TechCrunch: Cloudflare acquires Deno (Oct 10, 2026)', href: 'https://techcrunch.com/2026/10/10/cloudflare-acquires-deno-to-improve-its-workers-programming-model/' },
 		{ label: 'celld v0.6.3 release', href: 'https://github.com/denoland/celld/releases/tag/v0.6.3' },
 		{ label: 'celld issues', href: 'https://github.com/denoland/celld/issues' },
@@ -246,7 +244,6 @@ const celld: Comparison = {
 		{ label: 'celld limitations', href: `${CELLD_DOCS}/limitations.md` },
 		{ label: 'celld guarantees', href: `${CELLD_DOCS}/guarantees.md` },
 		{ label: 'celld Cloudflare compatibility', href: `${CELLD_DOCS}/cloudflare-compat.md` },
-		{ label: 'workerd #7994: merging celld into workerd', href: 'https://github.com/cloudflare/workerd/pull/7994' },
 	],
 	cta: {
 		title: 'Same Wrangler project. Built for production.',
@@ -261,9 +258,9 @@ const rivet: Comparison = {
 	name: 'Rivet',
 	title: `${SITE.name} vs Rivet`,
 	description:
-		'OpenOrange is powered by Rivet. Starting from scratch? Use Rivet. Already have Cloudflare code? Use OpenOrange. Or keep your Workers on OpenOrange and add Rivet Actors.',
+		'OpenOrange is powered by Rivet. Already have Cloudflare code? Use OpenOrange. Starting from scratch? Use Rivet. Or keep your Workers on OpenOrange and add Rivet Actors.',
 	headline: 'OpenOrange is powered by Rivet.',
-	lede: 'Starting from scratch? Use Rivet. Already have Cloudflare code? Use OpenOrange. You can also use both.',
+	lede: 'Already have Cloudflare code? Use OpenOrange. Starting from scratch? Use Rivet. You can also use both.',
 	them: {
 		name: 'Rivet',
 		badge: { text: 'Recommended for new projects', tone: 'good' },
@@ -276,6 +273,17 @@ const rivet: Comparison = {
 	},
 	picks: [
 		{
+			title: 'Use OpenOrange when…',
+			highlight: true,
+			lead: 'Your Workers and Durable Objects run as they are.',
+			items: [
+				'You already have Workers, Durable Objects or other Cloudflare bindings.',
+				'You want off Cloudflare without a rewrite.',
+				'You’re moving a live app and can’t take downtime.',
+				'Your team knows Wrangler: wrangler dev becomes orange dev.',
+			],
+		},
+		{
 			title: 'Use Rivet when…',
 			lead: 'Its API is cleaner, more modern and more flexible than Cloudflare’s, with more features.',
 			items: [
@@ -284,16 +292,6 @@ const rivet: Comparison = {
 				'You want schedules and workflows inside every Actor.',
 				'You want to fork an Actor and its SQLite database.',
 				'You write Rust as well as TypeScript.',
-			],
-		},
-		{
-			title: 'Use OpenOrange when…',
-			lead: 'Your Workers and Durable Objects run as they are.',
-			items: [
-				'You already have Workers, Durable Objects or other Cloudflare bindings.',
-				'You want off Cloudflare without a rewrite.',
-				'You’re moving a live app and can’t take downtime.',
-				'Your team knows Wrangler: wrangler dev becomes orange dev.',
 			],
 		},
 		{
@@ -372,9 +370,9 @@ const rivet: Comparison = {
 	],
 	cta: {
 		title: 'Start with the one that fits.',
-		body: 'New project: build on Rivet. Cloudflare code: bring it to OpenOrange.',
-		primary: { label: 'Start with Rivet', href: `${SITE.rivet}/docs/` },
-		secondary: { label: 'Run your Cloudflare code', href: SITE.docs },
+		body: 'Cloudflare code: bring it to OpenOrange. New project: build on Rivet.',
+		primary: { label: 'Run your Cloudflare code', href: SITE.docs },
+		secondary: { label: 'Start with Rivet', href: `${SITE.rivet}/docs/` },
 	},
 };
 
@@ -383,9 +381,9 @@ const miniflare: Comparison = {
 	name: 'Miniflare',
 	title: `${SITE.name} vs Miniflare`,
 	description:
-		'Miniflare simulates Workers on your machine so you can ship to Cloudflare. OpenOrange runs your Cloudflare project in production on your own cloud.',
-	headline: 'Miniflare tests Workers. OpenOrange runs them in production.',
-	lede: 'Miniflare simulates Workers on your machine so you can ship to Cloudflare. OpenOrange runs your Cloudflare project in production, on your own cloud.',
+		'OpenOrange runs your Cloudflare project in production on your own cloud. Miniflare simulates Workers on your machine so you can ship to Cloudflare.',
+	headline: 'OpenOrange runs Workers in production. Miniflare tests them.',
+	lede: 'OpenOrange runs your Cloudflare project in production, on your own cloud. Miniflare simulates Workers on your machine so you can ship to Cloudflare.',
 	them: {
 		name: 'Miniflare',
 		badge: { text: 'Development and testing', tone: 'muted' },

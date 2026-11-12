@@ -14,6 +14,10 @@ const NOINDEX = new Set(PLACEHOLDER_COMPARISONS.map(({ slug }) => `https://openo
 export default defineConfig({
 	site: 'https://openorange.dev',
 	trailingSlash: 'always',
+	// Old routes that moved. Static builds write a page that sends the browser on.
+	redirects: {
+		'/architecture/': '/docs/architecture/',
+	},
 	// Dev only: let the Amp orb portal proxy reach the dev server. This must be
 	// Astro's `server`, not `vite.server`: Astro overwrites Vite's allowedHosts
 	// with its own (default `[]`).

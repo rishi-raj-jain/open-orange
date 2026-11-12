@@ -1,5 +1,6 @@
-// The architecture page's short binding → service map. One row per service a
-// binding lands on, grouped so the page reads in a glance. Each claim follows
+// The short binding → service map on /docs/architecture/ (BindingRoutes).
+// One row per service a binding lands on, grouped so the page reads in a
+// glance. Each claim follows
 // the binding's docs/modules/*.mdx page and its `orange` field in
 // packages/cloudflare-conformance/compat/products.json; the full table with
 // statuses is SERVICE_MAP in site.ts. Provider names come from PROVIDERS, so
