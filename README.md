@@ -80,7 +80,9 @@ See the [deploy guide](https://openorange.dev/docs/deploy/), or [self-host it](#
 
 Durable Objects move with zero downtime: after you point your domain at OpenOrange, each object copies itself from Cloudflare on its first request, and a backfill copies the rest. A D1 database takes no writes while it moves, about 3 minutes per GB in a test.
 
-[![The cutover: all traffic moves from Cloudflare to OpenOrange while each Durable Object copies itself](https://releases.rivet.dev/openorange/migrate.gif)](https://releases.rivet.dev/openorange/migrate.mp4)
+<p align="center">
+  <a href="https://releases.rivet.dev/openorange/migrate.mp4"><img src="https://releases.rivet.dev/openorange/migrate.gif" width="480" alt="The cutover: all traffic moves from Cloudflare to OpenOrange while each Durable Object copies itself"></a>
+</p>
 
 See the [migration guide](https://openorange.dev/docs/migrate/) for every step, rollback, and what cannot move.
 
