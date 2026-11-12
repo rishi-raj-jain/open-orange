@@ -437,20 +437,20 @@ export const STATUS_LABEL: Record<ServiceStatus, string> = {
 export const GET_STARTED = [
 	{
 		title: 'Install',
-		body: 'Add OpenOrange to your Worker project. Your code and your Wrangler configuration do not change.',
-		commands: ['git clone https://github.com/rivet-dev/open-orange', 'cd my-worker && pnpm add -D ../open-orange'],
+		body: 'Install the `orange` CLI globally, then run it in your Worker project. Your code and your Wrangler configuration do not change.',
+		commands: ['pnpm add -g open-orange'],
 		output: null,
 	},
 	{
 		title: 'Run your Worker',
 		body: 'Reads your Wrangler configuration. Each Durable Object runs as a Rivet Actor with its own SQLite database.',
-		commands: ['pnpm orange dev'],
+		commands: ['orange dev'],
 		output: { status: 'ready', detail: 'http://127.0.0.1:8787' },
 	},
 	{
 		title: 'Deploy',
 		body: 'Builds an image of your Worker and rolls it out to your own cloud (AWS, GCP, Azure) or on-prem servers. Or use Rivet Cloud: fully managed, on a dedicated cluster in the provider and region you choose.',
-		commands: ['pnpm orange login', 'pnpm orange link --cluster <name>', 'pnpm orange deploy'],
+		commands: ['orange login', 'orange link --cluster <name>', 'orange deploy'],
 		output: { status: 'live', detail: 'https://api.example.com' },
 	},
 ] as const;

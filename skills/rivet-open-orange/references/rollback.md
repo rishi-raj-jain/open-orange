@@ -4,7 +4,7 @@
 
 | Last step done | How to go back |
 |---|---|
-| 3, deploy to Rivet | Nothing serves from Orange yet. To undo a bad deploy, roll the pool back: `pnpm orange deploy --pool <pool> --build <earlier-build-id>`. |
+| 3, deploy to Rivet | Nothing serves from Orange yet. To undo a bad deploy, roll the pool back: `orange deploy --pool <pool> --build <earlier-build-id>`. |
 | 4, prepare | Delete `wrangler.migrate.jsonc` and `.open-orange/migrate/`. |
 | 4, wrapped Worker deployed | The user deploys the original config with `wrangler deploy`. |
 | 5, migration on in Orange | No action for users: Orange has no user traffic. An object that a test started on the deployed Orange before step 5 fails its calls and its backfill. See "Test the deployed Orange" in `references/migrate.md`. |

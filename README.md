@@ -46,21 +46,21 @@ code --add-mcp '{"name":"rivet","type":"http","url":"https://mcp.rivet.dev/mcp"}
 
 For other clients, see [Rivet MCP](https://rivet.dev/mcp). The Rivet dashboard shows the same commands under **Settings > MCP**.
 
-After you [install OpenOrange](#step-1-install), `pnpm orange mcp` says whether your coding agent has the Rivet MCP. If it does not, it prints the one command for the agent you use, pinned to your linked cluster:
+After you [install OpenOrange](#step-1-install), `orange mcp` says whether your coding agent has the Rivet MCP. If it does not, it prints the one command for the agent you use, pinned to your linked cluster:
 
 ```text
 ! Rivet MCP is not set up. Connect Claude Code:
   claude mcp add --transport http rivet "https://mcp.rivet.dev/mcp?cluster=prod"
 ```
 
-`pnpm orange mcp --json` gives the command for every agent. Orange does not change your agent's configuration.
+`orange mcp --json` gives the command for every agent. Orange does not change your agent's configuration.
 
 ## Check compatibility
 
 After you [install OpenOrange](#step-1-install), run `orange doctor` in your Worker project:
 
 ```sh
-pnpm orange doctor
+orange doctor
 ```
 
 `orange doctor` reads your Wrangler configuration. It skips variables (`vars`, `.dev.vars`, and `.env`), because they need nothing on Rivet. It reports each other binding as one of three kinds:
@@ -115,31 +115,13 @@ You need:
   <img alt="OpenOrange reads the wrangler.jsonc and source files that your Worker already has" src="docs/images/step-1-install.svg">
 </picture>
 
-Clone OpenOrange next to your project. The install also builds the CLI.
+Install the CLI globally:
 
 ```sh
-git clone https://github.com/rivet-dev/open-orange
-cd open-orange
-pnpm install
+pnpm add -g open-orange
 ```
 
-Then add it to your Worker project:
-
-```sh
-cd ../my-worker
-pnpm add -D ../open-orange
-```
-
-<!--
-  NPM INSTALL: off until `open-orange` is published.
-  After you publish, delete the two blocks above and this comment, and use:
-
-  ```sh
-  pnpm add -D open-orange
-  ```
--->
-
-Your project now has the `orange` command. Your code and your Wrangler configuration did not change.
+You now have the `orange` command. Run it in your Worker project. Your code and your Wrangler configuration did not change.
 
 ### Step 2: Run your Worker
 
@@ -149,7 +131,7 @@ Your project now has the `orange` command. Your code and your Wrangler configura
 </picture>
 
 ```sh
-pnpm orange dev
+orange dev
 ```
 
 For a Worker with one Durable Object binding, it prints:
@@ -175,9 +157,9 @@ Your Worker now answers on `http://localhost:8787`. Its data is in `.open-orange
 </picture>
 
 ```sh
-pnpm orange login
-pnpm orange link --cluster <cluster-name>
-pnpm orange deploy
+orange login
+orange link --cluster <cluster-name>
+orange deploy
 ```
 
 The command prints the public URL of the runner pool. Your Worker now serves from your Rivet cluster.
@@ -191,11 +173,11 @@ Pass variables and secrets with flags:
 | `--secrets-file .dev.vars` | Rolls out each entry of a JSON or `.env` file as a cluster secret |
 
 ```sh
-pnpm orange deploy --secrets-file .dev.vars --var LOG_LEVEL:debug
+orange deploy --secrets-file .dev.vars --var LOG_LEVEL:debug
 ```
 
 > [!TIP]
-> `pnpm orange deploy --dry-run` writes the build and prints the plan. It calls no API.
+> `orange deploy --dry-run` writes the build and prints the plan. It calls no API.
 
 See the [deploy guide](docs/deploy.mdx) for every flag, rollback, and CI tokens.
 
@@ -209,13 +191,13 @@ See the [deploy guide](docs/deploy.mdx) for every flag, rollback, and CI tokens.
 `orange serve` runs your Worker against the Rivet Engine in `RIVET_ENDPOINT`. It connects out to the Engine, so the Engine does not need to reach your server.
 
 ```sh
-RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> pnpm orange serve
+RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> orange serve
 ```
 
 To run it as a container, write the image that `orange deploy` builds:
 
 ```sh
-pnpm orange deploy --dry-run --outdir out
+orange deploy --dry-run --outdir out
 docker build --platform linux/amd64 -f out/Dockerfile -t my-worker out/context
 docker run --rm -p 8080:8080 -e RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> my-worker
 ```
@@ -229,11 +211,11 @@ docker run --rm -p 8080:8080 -e RIVET_ENDPOINT=https://<namespace>:<token>@<engi
   <img alt="Check with orange doctor, prepare the Worker, deploy it to Cloudflare, deploy to Rivet, move D1, point DNS at Rivet, run the backfill, then clean up. Traffic moves when you point DNS" src="docs/images/readme-migrate-path.svg">
 </picture>
 
-1. **Check.** Run `pnpm orange doctor`.
+1. **Check.** Run `orange doctor`.
 2. **Prepare.** Wrap your Cloudflare Worker. Your code does not change.
 
    ```sh
-   pnpm orange migrate prepare
+   orange migrate prepare
    ```
 
 3. **Deploy to Cloudflare.** Deploy the prepared Worker. Your users see no change.
@@ -243,18 +225,18 @@ docker run --rm -p 8080:8080 -e RIVET_ENDPOINT=https://<namespace>:<token>@<engi
    pnpm wrangler deploy --config wrangler.migrate.jsonc
    ```
 
-4. **Deploy to Rivet.** Run `pnpm orange deploy` with two more settings: `ORANGE_MIGRATE_WORKER_URL`, set to your `workers.dev` URL, and `WORKER_MIGRATOR_TOKEN`, set to the same token.
+4. **Deploy to Rivet.** Run `orange deploy` with two more settings: `ORANGE_MIGRATE_WORKER_URL`, set to your `workers.dev` URL, and `WORKER_MIGRATOR_TOKEN`, set to the same token.
 5. **Move D1.** Run this command for each D1 database. Use the URL that `orange deploy` prints. Its writes fail until the move ends.
 
    ```sh
-   pnpm orange migrate d1 <database> --url <orange-url>
+   orange migrate d1 <database> --url <orange-url>
    ```
 
 6. **Point DNS.** Point your domain at OpenOrange. Each Durable Object now copies itself from Cloudflare on its first request.
 7. **Backfill.** Wait a few minutes, then copy the Durable Objects that got no requests. Run the command again after a few more minutes, because Cloudflare lists new objects late.
 
    ```sh
-   pnpm orange migrate backfill --url https://app.example.com
+   orange migrate backfill --url https://app.example.com
    ```
 
 8. **Clean up.** Remove `ORANGE_MIGRATE_WORKER_URL` after a backfill reports 0 failed. OpenOrange never deletes data on Cloudflare.

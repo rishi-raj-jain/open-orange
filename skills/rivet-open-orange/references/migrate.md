@@ -63,7 +63,7 @@ CLOUDFLARE_ACCOUNT_ID=...
 Load it for one command without reading it:
 
 ```sh
-(set -a; . ~/.orange-migrate/<worker>.env; set +a; pnpm orange migrate backfill --url https://<app-domain>)
+(set -a; . ~/.orange-migrate/<worker>.env; set +a; orange migrate backfill --url https://<app-domain>)
 ```
 
 `orange migrate d1` and `backfill` read these names from the shell, then from the Worker's variables, such as `.dev.vars`. Keep them out of `.dev.vars` (see `references/deploy.md`).
@@ -71,7 +71,7 @@ Load it for one command without reading it:
 ## 4. Prepare the Cloudflare Worker
 
 ```sh
-pnpm orange migrate prepare
+orange migrate prepare
 ```
 
 It prints `✓ Prepared <classes and D1 bindings>. Your code did not change.` and the two commands below. A `Not moved: <binding> (<type>), ...` line names each binding whose data stays on Cloudflare, such as KV namespaces, R2 buckets, and Vectorize indexes: tell the user, because that data needs its own copy. It writes two files and changes no code:
@@ -124,7 +124,7 @@ Set both on the pool. Put `WORKER_MIGRATOR_TOKEN` in a secrets file that holds o
 **Stop and ask**, then:
 
 ```sh
-pnpm orange deploy \
+orange deploy \
   --var ORANGE_MIGRATE_WORKER_URL:https://<worker>.<subdomain>.workers.dev \
   --secrets-file ~/.orange-migrate/<worker>.secrets
 ```
@@ -151,7 +151,7 @@ Move every D1 database before step 7. Until a database moves, its copy on Orange
 Then:
 
 ```sh
-(set -a; . ~/.orange-migrate/<worker>.env; set +a; pnpm orange migrate d1 <binding> --url <orange-url>)
+(set -a; . ~/.orange-migrate/<worker>.env; set +a; orange migrate d1 <binding> --url <orange-url>)
 ```
 
 - `<binding>` is the D1 binding or database name. `<orange-url>` is the pool URL from the deploy.
@@ -173,7 +173,7 @@ Then:
 After the move, `wrangler d1 migrations apply --remote` fails on Cloudflare, because the triggers that refuse writes also cover `d1_migrations`. Many templates run it in a `predeploy` script, so tell the user to remove that command from `predeploy` before they deploy to Cloudflare again. The database now lives on Orange, and the applied migrations moved with it in `d1_migrations`. Apply new migrations there:
 
 ```sh
-RIVET_ENDPOINT=... pnpm orange d1 migrations apply <DB> --remote
+RIVET_ENDPOINT=... orange d1 migrations apply <DB> --remote
 ```
 
 `RIVET_ENDPOINT` is the Rivet Engine of the deployment (see `references/deploy.md`). The user supplies it, because it holds a token. Run it from the project, with the Worker name and `--env` of the deployment.
@@ -241,13 +241,13 @@ The backfill moves the objects that got no request. Cloudflare lists a new objec
 Show the user how many objects will move. This moves nothing and needs only the Cloudflare API settings:
 
 ```sh
-(set -a; . ~/.orange-migrate/<worker>.env; set +a; pnpm orange migrate backfill --dry-run)
+(set -a; . ~/.orange-migrate/<worker>.env; set +a; orange migrate backfill --dry-run)
 ```
 
 It prints `<class>: <n> objects on Cloudflare, including any that already moved to Orange. Dry run: nothing moved.` for each class. The count includes the objects that the app already moved after the cutover, so it is the most that the backfill moves, not the number left. **Stop and ask**, then:
 
 ```sh
-(set -a; . ~/.orange-migrate/<worker>.env; set +a; pnpm orange migrate backfill --url https://<app-domain>)
+(set -a; . ~/.orange-migrate/<worker>.env; set +a; orange migrate backfill --url https://<app-domain>)
 ```
 
 - `--url` is any URL that reaches Orange: the app domain after step 7, or the pool URL.

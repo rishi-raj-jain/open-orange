@@ -18,8 +18,8 @@ const steps = [
 		image: image('step-1-install.svg'),
 		darkImage: darkImage('step-1-install.svg'),
 		alt: 'OpenOrange reads the wrangler.jsonc and source files that your Worker already has',
-		body: 'Clone OpenOrange next to your project, then add it to your Worker project. Your code and your Wrangler configuration do not change.',
-		code: 'git clone https://github.com/rivet-dev/open-orange\ncd open-orange && pnpm install\ncd ../my-worker && pnpm add -D ../open-orange',
+		body: 'Install the `orange` CLI globally, then run it in your Worker project. Your code and your Wrangler configuration do not change.',
+		code: 'pnpm add -g open-orange',
 	},
 	{
 		title: 'Run your Worker',
@@ -27,7 +27,7 @@ const steps = [
 		darkImage: darkImage('step-2-dev.svg'),
 		alt: 'orange dev serves your Worker on localhost, and each Durable Object runs as a Rivet Actor with its own SQLite database',
 		body: 'Your Worker answers on `http://localhost:8787`. Each Durable Object runs as a Rivet Actor with its own SQLite database, kept in `.open-orange/`.',
-		code: 'pnpm orange dev',
+		code: 'orange dev',
 	},
 	{
 		title: 'Deploy',
@@ -35,7 +35,7 @@ const steps = [
 		darkImage: darkImage('step-3-deploy.svg'),
 		alt: 'orange deploy builds an image of your Worker, uploads it, and rolls a runner pool out to it on a Rivet cluster',
 		body: '`orange deploy` builds an image of your Worker and rolls it out to a Rivet cluster, then prints its public URL.',
-		code: 'pnpm orange login\npnpm orange link --cluster <cluster-name>\npnpm orange deploy',
+		code: 'orange login\norange link --cluster <cluster-name>\norange deploy',
 		more: { label: 'Deploy guide', href: docHref('deploy') },
 	},
 	{
@@ -44,7 +44,7 @@ const steps = [
 		darkImage: darkImage('step-4-migrate.svg'),
 		alt: 'Prepare the Cloudflare Worker, deploy to OpenOrange, point DNS at it, then run the backfill',
 		body: '`orange migrate` moves Durable Objects and D1 databases while your app serves. Skip this step if your app has no data on Cloudflare.',
-		code: 'pnpm orange migrate prepare\npnpm orange migrate backfill --url https://app.example.com',
+		code: 'orange migrate prepare\norange migrate backfill --url https://app.example.com',
 		more: { label: 'Migration guide', href: docHref('migrate') },
 	},
 ];
