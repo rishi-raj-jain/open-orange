@@ -295,8 +295,9 @@ The default backend:
 The S3 backend:
 
 - `version` is the S3 version ID when bucket versioning is on. Otherwise, it is
-  the ETag. Neon Object Storage returns the version ID `null` for every
-  object, so there `version` is the string `"null"`.
+  the ETag. A version ID of `null`, which S3 gives objects written while
+  versioning is suspended and Neon Object Storage gives every object, also
+  becomes the ETag.
 - `uploaded` has one-second precision.
 - S3 returns custom metadata keys in lowercase. Orange keeps the original case
   of keys that have capital letters in one extra metadata entry,
