@@ -132,10 +132,12 @@ export function discoverInstalledRivetKitBuild(): InstalledRivetKitBuild {
 	const engineEntrypoint = requireFromRivetKit.resolve(enginePackageName);
 	const nativePlatformName = nativePlatformPackageName();
 	const enginePlatformName = enginePlatformPackageName();
-	const nativePlatformManifestPath = requireFromRivetKit.resolve(
+	// Each platform package is an optional dependency of its wrapper, not of rivetkit. Resolve it
+	// from the wrapper: pnpm's global install does not hoist it where rivetkit can see it.
+	const nativePlatformManifestPath = createRequire(napiEntrypoint).resolve(
 		`${nativePlatformName}/package.json`,
 	);
-	const enginePlatformManifestPath = requireFromRivetKit.resolve(
+	const enginePlatformManifestPath = createRequire(engineEntrypoint).resolve(
 		`${enginePlatformName}/package.json`,
 	);
 	const enginePlatformBinaryPath = join(

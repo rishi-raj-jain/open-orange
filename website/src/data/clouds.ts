@@ -10,14 +10,14 @@ import server from '@/assets/migrator/server.svg?raw';
 export type Cloud = {
 	name: string;
 	svg: string;
-	/** Show the name next to the logo. AWS's logo is its name. */
+	/** Show the name next to the logo. */
 	label: boolean;
 	/** The color in the SVG that follows the text color, if any. */
 	ink?: string;
 };
 
 export const CLOUDS: Cloud[] = [
-	{ name: 'AWS', svg: aws, label: false, ink: '#252F3E' },
+	{ name: 'AWS', svg: aws, label: true, ink: '#252F3E' },
 	{ name: 'Google Cloud', svg: gcp, label: true },
 	{ name: 'Azure', svg: azure, label: true },
 	{ name: 'Rivet Cloud', svg: rivet, label: true },
