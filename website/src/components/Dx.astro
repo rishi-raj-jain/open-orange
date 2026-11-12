@@ -1,9 +1,11 @@
 ---
 // Same commands, new name. The terminal types each Wrangler command, and a
 // mouse pointer double-clicks "wrangler" so it is retyped as "orange". After
-// `orange dev` and `orange deploy`, the pointer clicks the printed URL and the
-// app pops out over the section: Pied Piper, the coding agent from the launch
-// demo (each agent is a Durable Object), streaming its tool calls on OpenOrange.
+// `orange dev` and `orange deploy`, the pointer clicks the printed URL and a
+// browser window opens over the section: Pied Piper, the coding agent from the
+// launch demo, where a prompt is typed and the agent starts on it. Then the
+// pointer closes the window. Visitors can click a URL themselves to open the
+// window, and its red button to close it; each open replays from the start.
 // With reduced motion or without JS it shows the finished session, with the
 // deployed app overlapping the terminal.
 import Argument from '@/components/Argument.astro';
@@ -14,23 +16,23 @@ import { DX_COMMANDS } from '@/data/site';
 type SceneId = 'dev' | 'staging';
 
 // Output lines as the orange CLI prints them (src/commands/dev-output.ts,
-// deploy.ts). A row's `scene` is the app its link opens.
+// deploy.ts). A link's `data-link` names the scene it opens.
 const OUTPUT: { html: string; scene?: SceneId }[] = [
 	{
 		scene: 'dev',
-		html: '<p><span class="text-orange">●</span> <span class="font-semibold text-white">Ready</span> <span class="text-cream/50">in 1.4s</span></p><p>  <span class="text-cream/50">Local</span>   <span class="dx-link" data-link>http://127.0.0.1:8787</span></p>',
+		html: '<p><span class="text-orange">●</span> <span class="font-semibold text-white">Ready</span> <span class="text-cream/50">in 1.4s</span></p><p>  <span class="text-cream/50">Local</span>   <span class="dx-link" data-link="dev">http://127.0.0.1:8787</span></p>',
 	},
 	{
 		scene: 'staging',
-		html: '<p><span class="text-[#4ade80]">✓</span> Deployed pied-piper to staging</p><p>  <span class="text-cream/50">URL</span>     <span class="dx-link" data-link>https://staging.piedpiper.com</span></p>',
+		html: '<p><span class="text-[#4ade80]">✓</span> Deployed pied-piper to staging</p><p>  <span class="text-cream/50">URL</span>     <span class="dx-link" data-link="staging">https://staging.piedpiper.com</span></p>',
 	},
 	{ html: '<p class="font-semibold">Dry run. Nothing was built or sent to Rivet Cloud.</p>' },
 ];
 const rows = DX_COMMANDS.map((row, i) => ({ rest: row.orange.replace(/^orange/, ''), ...OUTPUT[i] }));
 
 // The app behind each URL, copied from the Pied Piper demo's UI (sidebar of
-// agents, transcript with tool-call rows, composer, runtime badge). The
-// threads and prompts are the ones recorded for the launch video.
+// agents, transcript with tool-call rows, composer). Richard types the prompt;
+// the markup is the finished run, which is what shows without the animation.
 interface Scene {
 	id: SceneId;
 	url: string;
@@ -39,15 +41,11 @@ interface Scene {
 	host: string;
 	agents: string[];
 	agent: string;
-	viewers: string[];
-	author: string;
 	prompt: string;
 	/** Tool calls in order, each with what it printed, if anything. */
 	tools: { name: string; arg: string; out?: string }[];
 	/** Paragraphs, with `code` and **bold**. */
 	answer: string[];
-	/** The pointer types the prompt. Otherwise someone else sent it and the run is under way. */
-	typed: boolean;
 }
 const SCENES: Scene[] = [
 	{
@@ -57,15 +55,12 @@ const SCENES: Scene[] = [
 		host: 'localhost',
 		agents: ['Anton'],
 		agent: 'Anton',
-		viewers: ['Richard'],
-		author: 'Richard',
 		prompt: 'Write fib.py that prints the first 15 Fibonacci numbers, run it, and tell me their sum.',
 		tools: [
 			{ name: 'write', arg: 'fib.py' },
 			{ name: 'bash', arg: 'python3 fib.py', out: '0 1 1 2 3 5 8 13 21 34 55 89 144 233 377\nsum: 986' },
 		],
 		answer: ['Richard, I wrote `fib.py` and ran it. It printed the first 15 Fibonacci numbers, starting from 0.', 'Their sum is **986**.'],
-		typed: true,
 	},
 	{
 		id: 'staging',
@@ -74,15 +69,12 @@ const SCENES: Scene[] = [
 		host: 'Rivet Cloud',
 		agents: ['Anton', 'Middle-out', 'Hooli audit'],
 		agent: 'Middle-out',
-		viewers: ['Richard', 'Gilfoyle'],
-		author: 'Gilfoyle',
 		prompt: 'Run middle-out on season-finale.mov and report the Weissman score.',
 		tools: [
 			{ name: 'read', arg: 'compress.toml' },
 			{ name: 'bash', arg: './middle-out season-finale.mov', out: 'season-finale.mov  4.2 GB → 806 MB\nweissman score     5.2' },
 		],
-		answer: ['Gilfoyle, middle-out took `season-finale.mov` from 4.2 GB to 806 MB.', 'The Weissman score is **5.2**.'],
-		typed: false,
+		answer: ['Richard, middle-out took `season-finale.mov` from 4.2 GB to 806 MB.', 'The Weissman score is **5.2**.'],
 	},
 ];
 // This browser is Richard's.
@@ -129,7 +121,14 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		     layout, sized in em so the whole window scales with its width. -->
 		<div class="dx-win dx-browser theme-light" data-browser aria-hidden="true">
 			<div class="dx-bar">
-				<span class="dx-lights" data-lights><i data-close></i><i></i><i></i></span>
+				<span class="dx-lead">
+					<span class="dx-lights" data-lights><i data-close></i><i></i><i></i></span>
+					<span class="dx-nav">
+						<svg viewBox="0 0 20 20"><rect width="15" height="12" x="2.5" y="4" rx="2.5" /><path d="M7.5 4v12" /></svg>
+						<svg viewBox="0 0 20 20"><path d="M12 4.5 6.5 10l5.5 5.5" /></svg>
+						<svg class="dx-off" viewBox="0 0 20 20"><path d="m8 4.5 5.5 5.5L8 15.5" /></svg>
+					</span>
+				</span>
 				<span class="dx-addr">
 					<svg class="dx-lock" data-lock viewBox="0 0 24 24"><rect width="16" height="11" x="4" y="11" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.4" /></svg>
 					<span data-url>staging.piedpiper.com</span>
@@ -142,7 +141,6 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 						data-scene={scene.id}
 						data-url={scene.url}
 						data-secure={scene.secure ? '' : undefined}
-						data-typed={scene.typed ? '' : undefined}
 						data-active={scene.id === 'staging' ? '' : undefined}
 					>
 						<header class="pp-top">
@@ -153,16 +151,8 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 							</svg>
 							<svg class="pp-word" viewBox="3 1 121 33"><use href="#dx-pp-wordmark" /></svg>
 							<span class="pp-crumb">/<b>{scene.agent}</b></span>
-							<span class="pp-pill">Working</span>
-							<span class="pp-presence">
-								{scene.viewers.map((name) => <span class="pp-av" style={`--s:1.57;background:${colorFor(name)}`}><i>{name[0]}</i></span>)}
-								<span class="pp-count">{scene.viewers.length} viewing</span>
-							</span>
+							<span class="pp-on"><Logo size={64} /><span>OpenOrange</span></span>
 						</header>
-						<div class="pp-badge">
-							<Logo size={64} />
-							<span>Running on <b>OpenOrange</b></span>
-						</div>
 						<div class="pp-main">
 							<aside class="pp-side">
 								<p class="pp-side-head"><span>Agents<span class="pp-n">{scene.agents.length}</span></span><span class="pp-new">New</span></p>
@@ -173,11 +163,6 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 											<span class="pp-name">{name}</span>
 											<span class="pp-sub"><span class="pp-idle">Idle</span><span class="pp-busy">Working…</span></span>
 										</span>
-										{name === scene.agent && (
-											<span class="pp-row-viewers">
-												{scene.viewers.map((viewer) => <span class="pp-av" style={`--s:1.14;background:${colorFor(viewer)}`}><i>{viewer[0]}</i></span>)}
-											</span>
-										)}
 										{name === scene.agent && <span class="pp-dot" />}
 									</p>
 								))}
@@ -186,17 +171,15 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 							<section class="pp-chat">
 								<div class="pp-msgs">
 									<div class="pp-flow">
-										{scene.typed && (
-											<div class="pp-empty" data-empty hidden>
-												<span class="pp-bot-av pp-big"><i>{scene.agent[0]}</i></span>
-												<p class="pp-empty-name">{scene.agent}</p>
-												<p>Ask for code. The agent works in its own VM, and everyone in this thread sees it live.</p>
-											</div>
-										)}
+										<div class="pp-empty" data-empty hidden>
+											<span class="pp-bot-av pp-big"><i>{scene.agent[0]}</i></span>
+											<p class="pp-empty-name">{scene.agent}</p>
+											<p>Ask for code. The agent works in its own VM, and everyone in this thread sees it live.</p>
+										</div>
 										<div class="pp-msg" data-user>
-											<span class="pp-av" style={`--s:2;background:${colorFor(scene.author)}`}><i>{scene.author[0]}</i></span>
+											<span class="pp-av" style={`--s:2;background:${colorFor(ME)}`}><i>{ME[0]}</i></span>
 											<div>
-												<p class="pp-who"><b>{scene.author}</b></p>
+												<p class="pp-who"><b>{ME}</b></p>
 												<p class="pp-bubble" data-prompt>{scene.prompt}</p>
 											</div>
 										</div>
@@ -272,20 +255,36 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		overflow: hidden;
 	}
 
-	/* macOS windows: traffic lights, a centered title, a soft gradient bar. */
+	/* macOS windows: 10px corners, 12px traffic lights 8px apart, a centered
+	   13px semibold title over a faint gradient with a hairline under it, and a
+	   deep soft shadow. A window behind the active one keeps its colors but
+	   loses them in its lights and title, and its shadow gets shallower. */
 	.dx .dx-win {
 		border: 0;
-		border-radius: 12px;
+		border-radius: 10px;
 		overflow: hidden;
+		transition: box-shadow 0.25s;
+	}
+	/* The light hairline macOS draws just inside a dark window's edge. */
+	.dx-win::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 5;
+		border-radius: inherit;
+		box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+		pointer-events: none;
 	}
 	.dx-bar {
 		position: relative;
 		display: grid;
-		grid-template-columns: minmax(3.75rem, 1fr) minmax(0, 22rem) minmax(3.75rem, 1fr);
+		grid-template-columns: minmax(3.5rem, 1fr) minmax(0, 22rem) minmax(3.5rem, 1fr);
 		align-items: center;
-		height: 2.25rem;
-		padding: 0 0.75rem;
-		font: 500 12px/1 var(--font-sans);
+		height: 28px;
+		padding: 0 8px;
+		font: 600 13px/1 -apple-system, BlinkMacSystemFont, var(--font-sans);
+		letter-spacing: -0.005em;
+		user-select: none;
 	}
 	.dx-lights {
 		display: flex;
@@ -297,7 +296,8 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		height: 12px;
 		border-radius: 50%;
 		background: #ff5f57;
-		box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.22);
+		box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.18);
+		transition: background-color 0.2s;
 	}
 	.dx-lights i:nth-child(2) {
 		background: #febc2e;
@@ -306,18 +306,22 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		background: #28c840;
 	}
 	/* Hovering the buttons shows their glyphs, as on macOS. */
-	.dx-lights[data-hover] i::after {
+	.dx-browser .dx-lights:is(:hover, [data-hover]) i::after {
 		content: '';
 		position: absolute;
 		inset: 0;
 		background: center / 100% no-repeat
 			url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.75 3.75l4.5 4.5M8.25 3.75l-4.5 4.5' stroke='%234d0000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
 	}
-	.dx-lights[data-hover] i:nth-child(2)::after {
+	.dx-browser .dx-lights:is(:hover, [data-hover]) i:nth-child(2)::after {
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6h6' stroke='%23995700' stroke-width='1.3' stroke-linecap='round'/%3E%3C/svg%3E");
 	}
-	.dx-lights[data-hover] i:nth-child(3)::after {
+	.dx-browser .dx-lights:is(:hover, [data-hover]) i:nth-child(3)::after {
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 3v6M3 6h6' stroke='%23006500' stroke-width='1.3' stroke-linecap='round'/%3E%3C/svg%3E");
+	}
+	/* A pressed button darkens, as on macOS. */
+	.dx-browser .dx-lights i:active {
+		filter: brightness(0.82);
 	}
 	.dx-title {
 		grid-column: 2;
@@ -325,47 +329,52 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		text-align: center;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		transition: color 0.2s;
 	}
 
-	/* The terminal. */
+	/* The terminal: a dark window, so a dark title bar. */
 	.dx .dx-term {
 		position: relative;
 		box-shadow:
-			0 0 0 0.5px rgb(0 0 0 / 0.5),
-			0 2px 4px rgb(0 0 0 / 0.08),
-			0 16px 32px -12px rgb(0 0 0 / 0.32),
-			0 32px 64px -24px rgb(0 0 0 / 0.3);
+			0 0 0 0.5px rgb(0 0 0 / 0.55),
+			0 4px 12px rgb(0 0 0 / 0.1),
+			0 22px 50px -8px rgb(0 0 0 / 0.38);
+	}
+	.dx .dx-term[data-inactive] {
+		box-shadow:
+			0 0 0 0.5px rgb(0 0 0 / 0.45),
+			0 2px 6px rgb(0 0 0 / 0.07),
+			0 12px 28px -8px rgb(0 0 0 / 0.24);
 	}
 	.dark .dx .dx-term {
 		box-shadow:
-			0 0 0 1px rgb(255 255 255 / 0.08),
-			0 24px 56px -16px rgb(0 0 0 / 0.8);
+			0 0 0 0.5px #000,
+			0 22px 56px -10px rgb(0 0 0 / 0.75);
+	}
+	.dark .dx .dx-term[data-inactive] {
+		box-shadow:
+			0 0 0 0.5px #000,
+			0 12px 30px -10px rgb(0 0 0 / 0.55);
 	}
 	.dx-term .dx-bar {
-		background: linear-gradient(#3a3735, #2b2927);
-		border-bottom: 1px solid #0f0e0e;
-		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
-		color: rgb(245 245 244 / 0.55);
+		background: linear-gradient(#3a3735, #312e2c);
+		border-bottom: 1px solid #0c0b0b;
+		color: rgb(245 245 244 / 0.8);
+		transition: background-color 0.2s;
 	}
 	.dark .dx-term .dx-bar {
-		background: linear-gradient(#45413e, #36322f);
+		background: linear-gradient(#45413e, #3b3835);
 	}
-	/* While the app is in front, the terminal is the inactive window. */
-	.dx-term::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: rgb(0 0 0 / 0.28);
-		opacity: 0;
-		pointer-events: none;
-		transition: opacity 0.4s;
+	.dx-term[data-inactive] .dx-bar {
+		background: #2c2a28;
+		color: rgb(245 245 244 / 0.38);
 	}
-	.dx-term[data-dim]::after {
-		opacity: 1;
+	.dark .dx-term[data-inactive] .dx-bar {
+		background: #363330;
 	}
-	.dx-term[data-dim] .dx-lights i {
-		background: rgb(255 255 255 / 0.16);
-		box-shadow: none;
+	.dx-term[data-inactive] .dx-lights i {
+		background: rgb(255 255 255 / 0.15);
+		box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.2);
 	}
 	.dx-body {
 		position: relative;
@@ -401,11 +410,14 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			opacity: 0;
 		}
 	}
+	/* A block cursor covers the cell after the last character, as in a real
+	   terminal: the negative margin cancels its width, so typing never pushes
+	   the rest of the line along by an extra cell. */
 	.dx-caret {
 		display: inline-block;
-		width: 0.55em;
+		width: 1ch;
 		height: 1.1em;
-		margin-bottom: -0.2em;
+		margin: 0 -1ch -0.2em 0;
 		background: currentColor;
 		animation: dx-caret 1s steps(1) infinite;
 	}
@@ -414,9 +426,18 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		text-decoration-color: rgb(245 245 244 / 0.35);
 		text-underline-offset: 3px;
 	}
-	.dx-link[data-hover] {
+	.dx[data-interactive] .dx-link {
+		cursor: pointer;
+	}
+	.dx-link[data-hover],
+	.dx[data-interactive] .dx-link:hover {
 		color: #fff;
 		text-decoration-color: #fff;
+	}
+	.dx-link:focus-visible {
+		border-radius: 2px;
+		outline: 2px solid #f26b1d;
+		outline-offset: 2px;
 	}
 	/* A double-clicked word, in the site's terminal selection color. */
 	.dx-sel {
@@ -439,37 +460,84 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		background: #fff;
 		color: #16191d;
 		box-shadow:
-			0 0 0 0.5px rgb(0 0 0 / 0.28),
-			0 2px 6px rgb(0 0 0 / 0.06),
-			0 24px 48px -12px rgb(0 0 0 / 0.34),
-			0 56px 110px -28px rgb(0 0 0 / 0.38);
+			0 0 0 0.5px rgb(0 0 0 / 0.3),
+			0 4px 12px rgb(0 0 0 / 0.08),
+			0 26px 64px -10px rgb(0 0 0 / 0.4);
 	}
 	.dark .dx-browser {
 		box-shadow:
-			0 0 0 0.5px rgb(0 0 0 / 0.6),
-			0 28px 64px -12px rgb(0 0 0 / 0.75);
+			0 0 0 0.5px #000,
+			0 26px 64px -10px rgb(0 0 0 / 0.8);
 	}
 	.dx-browser[data-open] {
 		visibility: visible;
 	}
+	/* Safari's toolbar: the lights, the sidebar and history buttons, and the
+	   address field centered in the window. The page stays light; the toolbar
+	   follows the system appearance. */
 	.dx-browser .dx-bar {
 		flex: none;
-		background: linear-gradient(#f8f7f6, #e8e6e4);
-		border-bottom: 1px solid #d3d0cd;
-		box-shadow: inset 0 1px 0 #fff;
-		color: #44403c;
+		grid-template-columns: minmax(10.5rem, 1fr) minmax(0, 22rem) minmax(10.5rem, 1fr);
+		height: 40px;
+		padding: 0 12px 0 14px;
+		background: linear-gradient(#f9f8f7, #efedeb);
+		border-bottom: 1px solid rgb(0 0 0 / 0.12);
+		color: #33302e;
+	}
+	.dx-browser::after {
+		box-shadow: none;
+	}
+	.dark .dx-browser .dx-bar {
+		background: linear-gradient(#3b3836, #32302e);
+		border-bottom-color: #000;
+		color: #e7e5e4;
+	}
+	.dark .dx-browser::after {
+		box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+	}
+	.dx-lead {
+		display: flex;
+		align-items: center;
+		gap: 20px;
+	}
+	.dx-nav {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		color: #7c7875;
+	}
+	.dark .dx-nav {
+		color: #a8a29e;
+	}
+	.dx-nav svg {
+		width: 17px;
+		height: 17px;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 1.5;
+	}
+	.dx-nav .dx-off {
+		opacity: 0.4;
 	}
 	.dx-addr {
 		grid-column: 2;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.375rem;
+		gap: 5px;
 		min-width: 0;
-		padding: 0.3rem 0.75rem;
+		height: 26px;
+		padding: 0 10px;
 		border-radius: 7px;
-		background: rgb(0 0 0 / 0.055);
+		background: rgb(0 0 0 / 0.06);
+		font-size: 12.5px;
+		font-weight: 500;
 		white-space: nowrap;
+	}
+	.dark .dx-addr {
+		background: rgb(255 255 255 / 0.09);
 	}
 	.dx-addr span {
 		overflow: hidden;
@@ -480,7 +548,17 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		width: 10px;
 		height: 10px;
 		fill: currentColor;
-		color: #78716c;
+		opacity: 0.6;
+	}
+	@media (max-width: 639px) {
+		.dx-browser .dx-bar {
+			grid-template-columns: minmax(4.25rem, 1fr) minmax(0, 22rem) minmax(4.25rem, 1fr);
+			height: 36px;
+			padding-left: 12px;
+		}
+		.dx-nav {
+			display: none;
+		}
 	}
 	.dx-page {
 		position: relative;
@@ -544,7 +622,7 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		align-items: center;
 		gap: 0.65em;
 		overflow: hidden;
-		padding: 0 20em 0 1.3em;
+		padding: 0 1em 0 1.3em;
 		background: var(--pp-brand);
 		color: #fff;
 		white-space: nowrap;
@@ -574,45 +652,23 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		color: #fff;
 		font-weight: 600;
 	}
-	.pp-pill {
-		display: none;
-		align-items: center;
-		gap: 0.45em;
-		padding: 0 0.75em 0 0.6em;
-		border-radius: 999px;
-		background: rgb(0 40 30 / 0.25);
-		font-size: 0.86em;
-		font-weight: 500;
-		line-height: 1.7;
-	}
-	.pp-pill::before {
-		content: '';
-		width: 0.45em;
-		height: 0.45em;
-		border-radius: 50%;
-		background: #5ff0c0;
-		animation: pp-pulse 1.6s ease-in-out infinite;
-	}
-	.pp[data-busy] .pp-pill {
+	/* OpenOrange's mark, quiet in the header's corner. */
+	.pp-on {
 		display: inline-flex;
-	}
-	.pp-presence {
-		display: flex;
 		align-items: center;
+		gap: 0.4em;
 		margin-left: auto;
-		padding: 0.2em 0.75em 0.2em 0.25em;
+		padding: 0.15em 0.75em 0.15em 0.3em;
 		border-radius: 999px;
-		background: rgb(0 40 30 / 0.22);
-	}
-	.pp-presence .pp-av {
-		margin-right: -0.4em;
-		box-shadow: 0 0 0 0.14em #037557;
-	}
-	.pp-count {
-		margin-left: 0.95em;
-		color: rgb(255 255 255 / 0.85);
+		background: rgb(0 40 30 / 0.2);
+		color: rgb(255 255 255 / 0.82);
 		font-size: 0.86em;
 		font-weight: 500;
+		line-height: 1.6;
+	}
+	.pp-on img {
+		width: 1.45em;
+		height: 1.45em;
 	}
 	.pp-av {
 		display: inline-grid;
@@ -627,37 +683,6 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 	}
 	.pp-av i {
 		font-size: calc(var(--s) * 0.5em);
-	}
-
-	/* The demo's "Running on OpenOrange" badge: big on purpose. */
-	.pp-badge {
-		position: absolute;
-		top: 0.5em;
-		right: 0.8em;
-		z-index: 3;
-		display: flex;
-		align-items: center;
-		gap: 0.7em;
-		padding: 0.45em 1.1em 0.45em 0.55em;
-		border: 0.15em solid #f26b1d;
-		border-radius: 0.95em;
-		background: #fff;
-		color: #16191d;
-		box-shadow:
-			0 0.55em 1.9em rgb(16 24 40 / 0.18),
-			0 1px 3px rgb(16 24 40 / 0.12);
-		white-space: nowrap;
-	}
-	.pp-badge img {
-		width: 2.6em;
-		height: 2.6em;
-	}
-	.pp-badge span {
-		font-size: 1.2em;
-		line-height: 1.1;
-	}
-	.pp-badge b {
-		font-weight: 700;
 	}
 
 	.pp-main {
@@ -765,21 +790,12 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		display: inline;
 		color: var(--pp-ink);
 	}
-	.pp-row-viewers {
-		display: inline-flex;
-		margin-left: auto;
-		padding-left: 0.3em;
-	}
-	.pp-row-viewers .pp-av {
-		margin-left: -0.35em;
-		box-shadow: 0 0 0 0.14em #fff;
-	}
 	.pp-dot {
 		display: none;
 		flex: none;
 		width: 0.5em;
 		height: 0.5em;
-		margin-left: 0.6em;
+		margin-left: auto;
 		border-radius: 50%;
 		background: var(--pp-brand);
 		box-shadow: 0 0 0 0.21em rgb(2 142 107 / 0.18);
@@ -1112,20 +1128,16 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		display: grid;
 	}
 
-	/* A phone-sized window: no sidebar, tighter margins, a smaller badge. */
+	/* A phone-sized window: no sidebar, tighter margins. */
 	@container (max-width: 520px) {
 		.pp-main {
 			grid-template-columns: minmax(0, 1fr);
 		}
-		.pp-side,
-		.pp-presence {
+		.pp-side {
 			display: none;
 		}
 		.pp-top {
-			padding-right: 1em;
-		}
-		.pp-badge {
-			font-size: 0.78em;
+			padding-right: 0.7em;
 		}
 		.pp-flow {
 			gap: 1.2em;
@@ -1229,46 +1241,49 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		const body = root.querySelector<HTMLElement>('[data-dx-body]')!;
 		const browser = root.querySelector<HTMLElement>('[data-browser]')!;
 		const lights = browser.querySelector<HTMLElement>('[data-lights]')!;
+		const closeButton = browser.querySelector<HTMLElement>('[data-close]')!;
+		const address = browser.querySelector<HTMLElement>('[data-url]')!;
+		const lock = browser.querySelector<SVGElement>('[data-lock]')!;
 		const rows = JSON.parse(root.querySelector('[data-dx-rows]')!.textContent!) as Row[];
+		root.setAttribute('data-interactive', '');
 
-		// The animation runs only while the terminal is on screen.
+		// Waits run only while the terminal is on screen.
 		let visible = false;
-		let wake: (() => void) | null = null;
+		const waiting = new Set<() => void>();
 		new IntersectionObserver(
 			([entry]) => {
 				visible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
-				if (visible && wake) {
-					const resume = wake;
-					wake = null;
-					resume();
+				if (visible) {
+					for (const resume of waiting) resume();
+					waiting.clear();
 				}
 			},
 			{ threshold: [0, 0.3] },
 		).observe(term);
-		// Waits `ms`, and longer while the terminal is off screen.
-		const sleep = (ms: number) => new Promise<void>((done) => setTimeout(() => (visible ? done() : (wake = done)), ms));
-		const span = (cls = '', text = '') => Object.assign(document.createElement('span'), { className: cls, textContent: text });
-		const type = async (el: HTMLElement, text: string, ms = 40, jitter = 36) => {
+		const sleep = (ms: number) => new Promise<void>((done) => setTimeout(() => (visible ? done() : waiting.add(done)), ms));
+
+		// A job is something that can be called off: the demo loop, or one play
+		// of the app. Once it is over, its next wait throws STOP, which unwinds it.
+		const STOP = new Error('stopped');
+		type Job = { live: boolean };
+		const wait = async (job: Job, ms: number) => {
+			await sleep(ms);
+			if (!job.live) throw STOP;
+		};
+		const type = async (job: Job, el: HTMLElement, text: string, ms = 40, jitter = 36) => {
 			for (const ch of text) {
 				el.textContent += ch;
-				await sleep(ms + Math.random() * jitter);
+				await wait(job, ms + Math.random() * jitter);
 			}
 		};
+		const span = (cls = '', text = '') => Object.assign(document.createElement('span'), { className: cls, textContent: text });
 		const show = (el: HTMLElement) => {
 			el.hidden = false;
-			el.animate([{ opacity: 0, translate: '0 0.4em' }, { opacity: 1, translate: '0 0' }], { duration: 260, easing: 'ease-out' });
+			el.animate([{ opacity: 0, translate: '0 0.4em' }, { opacity: 1, translate: '0 0' }], { duration: 240, easing: 'ease-out' });
 		};
-		// A damped spring as a CSS linear() easing: quick, with one soft overshoot.
-		const SPRING = (() => {
-			if (!CSS.supports('animation-timing-function', 'linear(0, 1)')) return 'cubic-bezier(0.3, 1.3, 0.5, 1)';
-			const zeta = 0.66, omega = 17, damped = omega * Math.sqrt(1 - zeta * zeta);
-			const points = Array.from({ length: 41 }, (_, i) => {
-				const t = (i / 40) * 0.7;
-				return (1 - Math.exp(-zeta * omega * t) * (Math.cos(damped * t) + ((zeta * omega) / damped) * Math.sin(damped * t))).toFixed(3);
-			});
-			points[40] = '1';
-			return `linear(${points.join(', ')})`;
-		})();
+
+		// The demo runs until the visitor clicks a URL or the close button.
+		const demo: Job = { live: true };
 
 		// The pointer lives in the section, in its coordinates, so it scrolls
 		// with the page. Its position is the `translate` property and a click
@@ -1297,6 +1312,7 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			new Promise<void>((done) => {
 				const from = { ...cur }, t0 = performance.now(), bend = (Math.random() - 0.5) * 0.5;
 				const tick = (now: number) => {
+					if (!demo.live) return done();
 					const k = Math.min(1, (now - t0) / ms), e = ease(k), end = to();
 					// A slight arc, like a hand moving a mouse.
 					const c = { x: (from.x + end.x) / 2 - (end.y - from.y) * bend, y: (from.y + end.y) / 2 + (end.x - from.x) * bend };
@@ -1313,6 +1329,7 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			gliding = true;
 			await glide(() => at(el, fx, fy), ms);
 			gliding = false;
+			if (!demo.live) throw STOP;
 			pinned = { el, fx, fy };
 		};
 		// From the side of the page away from the terminal.
@@ -1343,7 +1360,7 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			for (let i = 0; i < times; i++) {
 				ripple();
 				icon.animate([{ scale: '1' }, { scale: '0.82' }, { scale: '1' }], { duration: 150, easing: 'ease-out' });
-				await sleep(times > 1 ? 120 : 170);
+				await wait(demo, times > 1 ? 120 : 170);
 			}
 		};
 
@@ -1383,8 +1400,7 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 					el,
 					url: el.dataset.url!,
 					secure: el.hasAttribute('data-secure'),
-					typed: el.hasAttribute('data-typed'),
-					empty: el.querySelector<HTMLElement>('[data-empty]'),
+					empty: q('[data-empty]'),
 					user: q('[data-user]'),
 					bot: q('[data-bot]'),
 					prompt: q('[data-prompt]').textContent!,
@@ -1393,7 +1409,6 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 					steps: [...q('[data-tools]').children] as HTMLElement[],
 					count: q('[data-count]'),
 					paragraphs,
-					agentRow: q('.pp-agent.sel'),
 					input: q('[data-input]'),
 					draft: q('[data-draft]'),
 					send: q('[data-send]'),
@@ -1404,9 +1419,9 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 		type Scene = NonNullable<ReturnType<typeof scenes.get>>;
 
 		const reset = (s: Scene) => {
-			s.el.toggleAttribute('data-busy', !s.typed);
-			if (s.empty) s.empty.hidden = false;
-			s.user.hidden = s.bot.hidden = s.typed;
+			s.el.removeAttribute('data-busy');
+			s.empty.hidden = false;
+			s.user.hidden = s.bot.hidden = true;
 			s.thinking.hidden = false;
 			s.tools.hidden = true;
 			for (const step of s.steps) {
@@ -1416,6 +1431,7 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			s.count.textContent = '';
 			for (const { p, texts } of s.paragraphs) {
 				p.hidden = true;
+				p.classList.remove('pp-cur');
 				for (const [node] of texts) node.data = '';
 			}
 			s.draft.textContent = '';
@@ -1423,95 +1439,109 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			s.send.removeAttribute('data-ready');
 		};
 
-		const play = async (s: Scene) => {
-			if (s.typed) {
-				// Richard types the prompt and sends it.
-				await moveTo(s.input, 0.45, 0.55, 700);
-				await click();
+		// Richard types the prompt and sends it, and the agent gets to work.
+		// `started` settles once its first tool call is running.
+		const play = (job: Job, s: Scene) => {
+			let started: () => void = () => {};
+			const progress = new Promise<void>((done) => (started = () => done()));
+			const run = async () => {
+				await wait(job, 360);
 				s.input.setAttribute('data-focus', '');
-				await sleep(200);
-				await type(s.draft, s.prompt, 11, 12);
+				await wait(job, 200);
+				await type(job, s.draft, s.prompt, 10, 12);
 				s.send.setAttribute('data-ready', '');
-				await sleep(250);
-				await moveTo(s.send, 0.5, 0.5, 420);
-				hand(true);
-				await sleep(120);
-				await click();
+				await wait(job, 300);
+				s.send.animate([{ scale: '1' }, { scale: '0.88' }, { scale: '1' }], { duration: 160, easing: 'ease-out' });
 				s.draft.textContent = '';
 				s.send.removeAttribute('data-ready');
 				s.input.removeAttribute('data-focus');
-				if (s.empty) s.empty.hidden = true;
+				s.empty.hidden = true;
 				show(s.user);
 				s.el.setAttribute('data-busy', '');
-				await sleep(350);
+				await wait(job, 300);
 				show(s.bot);
-				hand(false);
-			} else {
-				// Gilfoyle's run is already under way; the pointer watches it.
-				const row = s.agentRow.getBoundingClientRect().width > 0 ? s.agentRow : s.input;
-				void moveTo(row, 0.6, 0.6, 800);
-			}
-			await sleep(650);
-			s.thinking.hidden = true;
-			s.tools.hidden = false;
-			let tools = 0;
-			for (const step of s.steps) {
-				show(step);
-				if (!step.hasAttribute('data-tool')) {
-					await sleep(350);
-					continue;
-				}
-				tools++;
-				s.count.textContent = `${tools} tool${tools === 1 ? '' : 's'}`;
-				await sleep(550 + Math.random() * 450);
-				step.setAttribute('data-done', '');
-			}
-			await sleep(300);
-			// The answer streams in a word at a time.
-			for (const { p, texts } of s.paragraphs) {
-				p.hidden = false;
-				p.classList.add('pp-cur');
-				for (const [node, text] of texts) {
-					for (const word of text.match(/\S+\s*|\s+/g) ?? []) {
-						node.data += word;
-						await sleep(26 + Math.random() * 34);
+				await wait(job, 500);
+				s.thinking.hidden = true;
+				s.tools.hidden = false;
+				let tools = 0;
+				for (const step of s.steps) {
+					show(step);
+					if (!step.hasAttribute('data-tool')) {
+						await wait(job, 300);
+						continue;
 					}
+					tools++;
+					s.count.textContent = `${tools} tool${tools === 1 ? '' : 's'}`;
+					started();
+					await wait(job, 550 + Math.random() * 350);
+					step.setAttribute('data-done', '');
 				}
-				p.classList.remove('pp-cur');
-			}
-			s.el.removeAttribute('data-busy');
+				await wait(job, 250);
+				// The answer streams in a word at a time.
+				for (const { p, texts } of s.paragraphs) {
+					p.hidden = false;
+					p.classList.add('pp-cur');
+					for (const [node, text] of texts) {
+						for (const word of text.match(/\S+\s*|\s+/g) ?? []) {
+							node.data += word;
+							await wait(job, 24 + Math.random() * 30);
+						}
+					}
+					p.classList.remove('pp-cur');
+				}
+				s.el.removeAttribute('data-busy');
+			};
+			const done = run().catch((error) => {
+				if (error !== STOP) console.error(error);
+			});
+			return { progress, done };
 		};
 
-		const open = async (s: Scene, link: HTMLElement) => {
+		// macOS brings a new window in by fading it in as it scales up from 90%,
+		// quickly and without overshoot. Here it scales from the clicked link,
+		// and closing runs the same in reverse.
+		const SMALL = { opacity: 0, transform: 'scale(0.9)' };
+		let motion: Animation | null = null;
+		let playing: Job = { live: false };
+		let turn = 0;
+		const openApp = (s: Scene, link: HTMLElement) => {
+			turn++;
+			playing.live = false;
+			motion?.cancel();
 			for (const other of scenes.values()) other.el.toggleAttribute('data-active', other === s);
-			browser.querySelector('[data-url]')!.textContent = s.url;
-			browser.querySelector<SVGElement>('[data-lock]')!.style.display = s.secure ? '' : 'none';
+			address.textContent = s.url;
+			lock.style.display = s.secure ? '' : 'none';
+			lights.removeAttribute('data-hover');
 			reset(s);
 			place();
-			// It grows out of the link that was clicked.
 			const b = browser.getBoundingClientRect(), l = link.getBoundingClientRect();
-			browser.style.transformOrigin = `${l.left + l.width * 0.3 - b.left}px ${l.top + l.height / 2 - b.top}px`;
+			const clamp = (v: number, max: number) => Math.round(Math.max(0, Math.min(max, v)));
+			browser.style.transformOrigin = `${clamp(l.left + l.width / 2 - b.left, b.width)}px ${clamp(l.top + l.height / 2 - b.top, b.height)}px`;
 			browser.setAttribute('data-open', '');
-			term.setAttribute('data-dim', '');
-			await browser.animate([{ transform: 'scale(0.04)', opacity: 0 }, { opacity: 1, offset: 0.2 }, { transform: 'none', opacity: 1 }], { duration: 700, easing: SPRING }).finished;
-		};
-		const close = async () => {
-			await moveTo(browser.querySelector('[data-close]')!, 0.5, 0.5, 650);
-			lights.setAttribute('data-hover', '');
-			await sleep(260);
-			await click();
-			// And shrinks back into it.
-			const shrink = browser.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(0.04)', opacity: 0 }], {
-				duration: 320,
-				easing: 'cubic-bezier(0.55, 0, 0.8, 0.4)',
-				fill: 'forwards',
+			term.setAttribute('data-inactive', '');
+			motion = browser.animate([SMALL, { opacity: 1, offset: 0.6 }, { opacity: 1, transform: 'none' }], {
+				duration: 280,
+				easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
 			});
-			term.removeAttribute('data-dim');
-			await shrink.finished;
+			playing = { live: true };
+			return play(playing, s);
+		};
+		const closeApp = async () => {
+			if (!browser.hasAttribute('data-open')) return;
+			const mine = ++turn;
+			playing.live = false;
+			// From wherever an opening got to, so a quick close never jumps.
+			const now = getComputedStyle(browser);
+			const from = { opacity: now.opacity, transform: now.transform };
+			motion?.cancel();
+			const shrink = (motion = browser.animate([from, SMALL], { duration: 180, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' }));
+			term.removeAttribute('data-inactive');
+			await shrink.finished.catch(() => {});
+			if (mine !== turn) return;
 			browser.removeAttribute('data-open');
 			lights.removeAttribute('data-hover');
 			shrink.cancel();
-			pinned = null;
+			motion = null;
 		};
 
 		// The live session types over the finished one.
@@ -1531,10 +1561,10 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			block.append(line);
 			live.append(block);
 			caret.hidden = false;
-			await sleep(first ? 500 : 350);
-			await type(word, 'wrangler');
-			await type(rest, row.rest);
-			await sleep(220);
+			await wait(demo, first ? 500 : 350);
+			await type(demo, word, 'wrangler');
+			await type(demo, rest, row.rest);
+			await wait(demo, 220);
 
 			// The pointer double-clicks "wrangler", and "orange" is typed over it.
 			const arriving = cursor.hidden;
@@ -1544,54 +1574,109 @@ const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 
 			word.classList.add('dx-sel');
 			caret.hidden = true;
 			line.insertBefore(caret, rest);
-			await sleep(420);
+			await wait(demo, 420);
 			word.className = 'text-orange';
 			word.textContent = '';
 			caret.hidden = false;
-			await type(word, 'orange', 60, 30);
-			await sleep(280);
+			await type(demo, word, 'orange', 60, 30);
+			await wait(demo, 280);
 			caret.remove();
 			block.insertAdjacentHTML('beforeend', row.html);
-			await sleep(450);
+			await wait(demo, 450);
 
-			// Then it clicks the printed URL, and the app pops out.
+			// Then it clicks the printed URL, watches the agent start, and closes
+			// the window again.
 			const link = block.querySelector<HTMLElement>('[data-link]');
 			const scene = row.scene ? scenes.get(row.scene) : undefined;
 			if (link && scene) {
 				await moveTo(link, 0.3, 0.75, 600);
 				hand(true);
 				link.dataset.hover = '';
-				await sleep(220);
+				await wait(demo, 220);
 				await click();
-				const opening = open(scene, link);
-				await sleep(120);
+				const { progress, done } = openApp(scene, link);
+				await wait(demo, 120);
 				hand(false);
 				delete link.dataset.hover;
-				await opening;
-				await play(scene);
-				await sleep(1300);
-				await close();
+				await Promise.race([progress, done]);
+				await wait(demo, 1000);
+				await moveTo(closeButton, 0.5, 0.5, 600);
+				lights.setAttribute('data-hover', '');
+				await wait(demo, 240);
+				await click();
+				await closeApp();
+				pinned = null;
 			} else {
-				await sleep(500);
+				await wait(demo, 500);
 				await leave();
 			}
 		};
+
+		// A click on a URL or the close button hands the window to the visitor:
+		// the demo stops, the terminal shows the finished session, and every
+		// open plays the scene from the start.
+		const takeOver = () => {
+			if (!demo.live) return;
+			demo.live = false;
+			cursor.remove();
+			live.remove();
+			root.removeAttribute('data-live');
+			lights.removeAttribute('data-hover');
+		};
+		const ghostLinks = [...root.querySelectorAll<HTMLElement>('[data-ghost] [data-link]')];
+		for (const link of ghostLinks) {
+			link.tabIndex = 0;
+			link.setAttribute('role', 'button');
+		}
+		const openFrom = (link: HTMLElement) => {
+			takeOver();
+			const id = link.dataset.link!;
+			const scene = scenes.get(id);
+			const ghost = ghostLinks.find((el) => el.dataset.link === id);
+			if (scene && ghost) void openApp(scene, ghost);
+		};
+		root.addEventListener('click', (event) => {
+			const target = event.target as Element;
+			const link = target.closest<HTMLElement>('[data-link]');
+			if (link) openFrom(link);
+			else if (target.closest('[data-close]')) {
+				takeOver();
+				void closeApp();
+			}
+		});
+		root.addEventListener('keydown', (event) => {
+			const link = (event.target as Element).closest<HTMLElement>('[data-link]');
+			if (link && (event.key === 'Enter' || event.key === ' ')) {
+				event.preventDefault();
+				openFrom(link);
+			}
+		});
+		// Tabbing to a URL shows the finished session, so its focus ring shows.
+		root.addEventListener('focusin', (event) => {
+			if ((event.target as Element).closest('[data-ghost]')) takeOver();
+		});
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape' && browser.hasAttribute('data-open')) {
+				takeOver();
+				void closeApp();
+			}
+		});
 
 		const run = async () => {
 			for (;;) {
 				live.replaceChildren();
 				for (const [i, row] of rows.entries()) await command(row, i === 0);
-				await sleep(3200);
+				await wait(demo, 3200);
 			}
 		};
 		run().catch((error) => {
+			if (error === STOP) return;
 			// Fall back to the finished session.
 			console.error(error);
-			live.remove();
-			cursor.remove();
-			root.removeAttribute('data-live');
+			takeOver();
+			motion?.cancel();
 			browser.removeAttribute('data-open');
-			term.removeAttribute('data-dim');
+			term.removeAttribute('data-inactive');
 		});
 	}
 </script>
