@@ -22,13 +22,10 @@ export const SITE = {
 	verified: '2026-10-08',
 } as const;
 
-// Comparison pages that are still placeholders (src/pages/vs-[competitor].astro).
-// They are noindex and left out of the sitemap until written.
-export const PLACEHOLDER_COMPARISONS = [
-	{ slug: 'celld', name: 'celld' },
-	{ slug: 'miniflare', name: 'Miniflare' },
-	{ slug: 'rivet', name: 'Rivet' },
-] as const;
+// Comparison pages that are still placeholders: noindex and left out of the
+// sitemap (astro.config.ts) until written. None are left; the written ones
+// render src/data/compare.ts through src/pages/vs-[competitor].astro.
+export const PLACEHOLDER_COMPARISONS: readonly { slug: string; name: string }[] = [];
 
 export const NAV = [
 	{ label: 'Documentation', href: SITE.docs },
@@ -588,18 +585,24 @@ export const CREDITS_TOTAL = CREDITS.reduce((sum, c) => sum + c.amount, 0);
 // /vs-workerd/ — workerd (self-hosted) versus OpenOrange.
 //
 // Every workerd claim was read from the cloudflare/workerd source at the
-// commit below, mostly src/workerd/server/workerd.capnp (the config schema)
+// release below, mostly src/workerd/server/workerd.capnp (the config schema)
 // and src/workerd/server/factory/worker-factory.c++ (the limit enforcers).
-// Re-check against a newer commit before changing `verified`.
+// Claims cover the default configuration only: features behind
+// --experimental are out of scope (the page footnote says so). First read at
+// eed7c37 on 2026-10-31; re-checked at v1.20261112.1 on 2026-11-12. Re-check
+// against a newer release before changing `verified`. Page copy and the
+// comparison matrix are in compare-workerd.ts.
 
 export const WORKERD = {
 	repo: 'https://github.com/cloudflare/workerd',
-	commit: 'eed7c378dc9741360d77df360040e0a4a755afee',
-	commitShort: 'eed7c37',
-	verified: '2026-10-31',
-	schema: 'https://github.com/cloudflare/workerd/blob/eed7c378dc9741360d77df360040e0a4a755afee/src/workerd/server/workerd.capnp',
-	limits: 'https://github.com/cloudflare/workerd/blob/eed7c378dc9741360d77df360040e0a4a755afee/src/workerd/server/factory/worker-factory.c++#L276',
-	readme: 'https://github.com/cloudflare/workerd#readme',
+	release: 'v1.20261112.1',
+	commit: 'e0240debf4d6a5042a02a45311b51c61d13bd0fb',
+	commitShort: 'e0240de',
+	verified: '2026-11-12',
+	schema: 'https://github.com/cloudflare/workerd/blob/e0240debf4d6a5042a02a45311b51c61d13bd0fb/src/workerd/server/workerd.capnp',
+	factory: 'https://github.com/cloudflare/workerd/blob/e0240debf4d6a5042a02a45311b51c61d13bd0fb/src/workerd/server/factory/worker-factory.c++',
+	limits: 'https://github.com/cloudflare/workerd/blob/e0240debf4d6a5042a02a45311b51c61d13bd0fb/src/workerd/server/factory/worker-factory.c++#L275-L278',
+	readme: 'https://github.com/cloudflare/workerd/blob/e0240debf4d6a5042a02a45311b51c61d13bd0fb/README.md?plain=1',
 } as const;
 
 export type WorkerdStatus = 'supported' | 'partial' | 'shim' | 'none';
@@ -624,31 +627,31 @@ export type WorkerdServiceRow = {
 export const WORKERD_SERVICES: WorkerdServiceRow[] = [
 	{
 		service: 'Workers',
-		workerd: { status: 'supported', detail: 'The production V8 runtime.', source: `${WORKERD.schema}#L369-L434` },
+		workerd: { status: 'supported', detail: 'The production V8 runtime.', source: `${WORKERD.schema}#L542-L607` },
 		openorange: { status: 'drop-in', detail: 'Node.js.' },
 	},
 	{
 		service: 'Durable Objects',
 		workerd: {
 			status: 'partial',
-			detail: 'SQLite on local disk, marked experimental. One process owns every object. Cluster mode is behind --experimental and sends peer traffic unencrypted.',
-			source: `${WORKERD.schema}#L852-L882`,
+			detail: 'SQLite on local disk, marked experimental. One process owns every object.',
+			source: `${WORKERD.schema}#L1031-L1058`,
 		},
 		openorange: { status: 'partial', detail: 'Rivet Actors, spread across your instances. WebSocket hibernation is emulated.' },
 	},
 	{
 		service: 'Workers KV',
-		workerd: { status: 'shim', detail: 'Calls are forwarded to a service you write.', source: `${WORKERD.schema}#L524-L527` },
+		workerd: { status: 'shim', detail: 'Calls are forwarded to a service you write.', source: `${WORKERD.schema}#L703-L706` },
 		openorange: { status: 'drop-in', detail: 'One Actor per namespace, strongly consistent.' },
 	},
 	{
 		service: 'Queues',
-		workerd: { status: 'shim', detail: 'No broker, retries or dead-letter. The consumer handler needs an experimental flag.', source: `${WORKERD.schema}#L538-L541` },
+		workerd: { status: 'shim', detail: 'Calls are forwarded to a service you write. No broker, retries or dead-letter queue.', source: `${WORKERD.schema}#L717-L720` },
 		openorange: { status: 'drop-in', detail: 'Batching, retries, dead-letter. One batch at a time per queue.' },
 	},
 	{
 		service: 'Workflows',
-		workerd: { status: 'shim', detail: 'The engine is in Miniflare, not workerd.', source: `${WORKERD.schema}#L336-L367` },
+		workerd: { status: 'shim', detail: 'The engine is a service you supply. wrangler dev gets it from Miniflare.', source: `${WORKERD.schema}#L1128-L1129` },
 		openorange: { status: 'partial', detail: "Cloudflare's own engine, one Rivet Actor per instance." },
 	},
 	{
@@ -663,12 +666,12 @@ export const WORKERD_SERVICES: WorkerdServiceRow[] = [
 	},
 	{
 		service: 'R2',
-		workerd: { status: 'shim', detail: 'Calls are forwarded to a service you write.', source: `${WORKERD.schema}#L529-L531` },
+		workerd: { status: 'shim', detail: 'Calls are forwarded to a service you write.', source: `${WORKERD.schema}#L708-L710` },
 		openorange: { status: 'pluggable', detail: 'Actor storage, or any S3-compatible store: S3, GCS, R2 or MinIO.' },
 	},
 	{
 		service: 'Cache API',
-		workerd: { status: 'none', detail: 'Throws "No Cache was configured" unless you supply an HTTP cache.', source: `${WORKERD.schema}#L736-L737` },
+		workerd: { status: 'none', detail: 'Throws "No Cache was configured" unless you supply an HTTP cache.', source: `${WORKERD.schema}#L915-L916` },
 		openorange: { status: 'partial', detail: 'One Rivet Actor per cache name. Vary is ignored.' },
 	},
 	{
@@ -688,7 +691,7 @@ export const WORKERD_SERVICES: WorkerdServiceRow[] = [
 	},
 	{
 		service: 'Static assets',
-		workerd: { status: 'partial', detail: 'A disk service with no Content-Type, _headers or _redirects.', source: `${WORKERD.schema}#L1056-L1065` },
+		workerd: { status: 'partial', detail: 'A disk service with no Content-Type, _headers or _redirects.', source: `${WORKERD.schema}#L1235-L1244` },
 		openorange: { status: 'partial', detail: "Serves the assets directory with Wrangler's rules. _headers and _redirects are not applied." },
 	},
 	{
@@ -698,7 +701,7 @@ export const WORKERD_SERVICES: WorkerdServiceRow[] = [
 	},
 	{
 		service: 'wrangler config',
-		workerd: { status: 'partial', detail: 'name, main, compat flags, vars, durable_objects and migrations. Anything else is an error.', source: WORKERD.readme },
+		workerd: { status: 'partial', detail: 'name, main, compat date and flags, vars, durable_objects, exports and migrations. Anything else is an error.', source: `${WORKERD.readme}#L111-L116` },
 		openorange: { status: 'drop-in', detail: 'Read unchanged. A few keys, such as legacy_assets, stop orange dev.' },
 	},
 ];
@@ -736,6 +739,7 @@ export const WORKERD_LIMITS: ThreeWayRow[] = [
 		cloudflare: '15 min',
 		workerd: '15 min, hard-coded',
 		openorange: 'About 24.8 days, the longest Node.js timer',
+		source: `${WORKERD.factory}#L386-L388`,
 	},
 	{
 		label: 'Node.js APIs',
@@ -758,7 +762,7 @@ export const WORKERD_LIMITS: ThreeWayRow[] = [
 	{
 		label: 'Durable Objects across machines',
 		cloudflare: 'Yes',
-		workerd: 'Experimental cluster mode, unencrypted.',
+		workerd: 'No. One process holds every object.',
 		openorange: 'Yes',
 	},
 	{
@@ -774,67 +778,3 @@ export const WORKERD_LIMITS: ThreeWayRow[] = [
 		openorange: 'Your schedule',
 	},
 ];
-
-export type ReceiptLine = { item: string; amount: string };
-export type Receipt = { id: string; title: string; lines: ReceiptLine[]; total: string; note?: string };
-
-// The cost section as three receipts for the same month: Cloudflare's own
-// pricing example 3 (100 always-on Durable Objects) and the one VM that
-// holds them.
-export const WORKERD_RECEIPTS: Receipt[] = [
-	{
-		id: 'cloudflare',
-		title: 'Cloudflare',
-		lines: [
-			{ item: 'Durable Object duration', amount: '412.50' },
-			{ item: 'Durable Object requests', amount: '1.80' },
-			{ item: 'Workers Paid minimum', amount: '5.00' },
-		],
-		total: '419.30',
-		note: "Cloudflare's pricing example 3",
-	},
-	{
-		id: 'workerd',
-		title: 'workerd',
-		lines: [
-			{ item: 'm7i.xlarge, 730 h', amount: '147.00' },
-			{ item: 'KV store', amount: 'you build it' },
-			{ item: 'Queue broker', amount: 'you build it' },
-			{ item: 'SQLite service', amount: 'you build it' },
-			{ item: 'HTTP cache', amount: 'you build it' },
-			{ item: 'Scheduler', amount: 'you build it' },
-			{ item: 'Load balancer', amount: 'you build it' },
-			{ item: 'Deploy pipeline', amount: 'you build it' },
-		],
-		total: '147.00 + ?',
-	},
-	{
-		id: 'openorange',
-		title: 'OpenOrange',
-		lines: [
-			{ item: 'm7i.xlarge, 730 h', amount: '147.00' },
-			{ item: 'Rivet, Apache 2.0', amount: '0.00' },
-		],
-		total: '147.00',
-		note: 'AWS on-demand, us-east-1',
-	},
-];
-
-export const WORKERD_PICK = [
-	{
-		title: 'Pick workerd when',
-		items: [
-			'Your Worker is a fetch handler with no stateful bindings.',
-			'You need the exact V8 semantics Cloudflare runs.',
-			'You are building a dev tool.',
-		],
-	},
-	{
-		title: 'Pick OpenOrange when',
-		items: [
-			'You use KV, Queues, D1, Workflows, cron or the Cache API.',
-			'Durable Objects need more than one machine.',
-			'You want to deploy with one command.',
-		],
-	},
-] as const;

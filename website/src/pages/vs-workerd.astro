@@ -1,177 +1,326 @@
 ---
+// workerd versus OpenOrange: what each is, when to use which, and the matrix.
+// Everything past the matrix is collapsed. Copy and matrix rows are in
+// src/data/compare-workerd.ts; the service and limit rows, read from
+// workerd's source, are WORKERD_SERVICES and WORKERD_LIMITS in site.ts.
 import Base from '@/layouts/Base.astro';
 import Cta from '@/components/Cta.astro';
-import {
-	SITE,
-	STATUS_LABEL,
-	WORKERD,
-	WORKERD_LIMITS,
-	WORKERD_PICK,
-	WORKERD_RECEIPTS,
-	WORKERD_SERVICES,
-	WORKERD_STATUS_LABEL,
-} from '@/data/site';
+import { SITE, STATUS_LABEL, WORKERD, WORKERD_LIMITS, WORKERD_SERVICES, WORKERD_STATUS_LABEL } from '@/data/site';
+import { WORKERD_AS_OF, WORKERD_COMPARE, WORKERD_MATRIX, type Mark } from '@/data/compare-workerd';
 
-const counts = WORKERD_SERVICES.reduce(
-	(acc, row) => {
-		acc[row.workerd.status] += 1;
-		return acc;
-	},
-	{ supported: 0, partial: 0, shim: 0, none: 0 },
-);
-const needBackend = counts.shim + counts.none;
+// Backticks in the copy mark code.
+const parts = (text: string) => text.split('`').map((t, i) => ({ t, code: i % 2 === 1 }));
+
+const markLabel: Record<Mark, string> = { yes: 'Yes', no: 'No', partial: 'Partly' };
+const releaseUrl = `${WORKERD.repo}/releases/tag/${WORKERD.release}`;
 ---
 
 <Base
 	title={`workerd vs ${SITE.name}`}
-	description="workerd runs your fetch handler; KV, R2, D1, Queues, Workflows and the Cache API call services you have to build. workerd and OpenOrange, service by service."
+	description="As of November 12, 2026: workerd runs a Worker on one machine. OpenOrange runs your whole Cloudflare project in production, with Durable Objects, KV, D1, Queues and Workflows across your machines."
 >
-	<!-- Head to head. -->
+	<!-- What each one is. -->
 	<section>
-		<div class="container-x pt-20 pb-20 md:pt-28 md:pb-28">
-			<div class="relative grid gap-4 md:grid-cols-2 md:gap-6">
-				<div class="card p-8 md:p-10">
-					<h1 class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">workerd</h1>
-					<p class="body-copy mt-6 max-w-sm text-ink-soft">
-						Open-source V8 behind Cloudflare Workers. Runs your fetch handler. Every stateful binding calls a service you have to build.
-					</p>
+		<div class="container-x pt-16 pb-16 md:pt-24 md:pb-24">
+			<p class="label"><time datetime={WORKERD_AS_OF.iso}>As of {WORKERD_AS_OF.label}</time></p>
+			<h1 class="mt-4 max-w-4xl text-balance text-[2.25rem] font-medium leading-[1.05] tracking-[-0.035em] sm:text-[3rem] md:text-[4rem]">{WORKERD_COMPARE.headline}</h1>
+			<div class="relative mt-10 grid gap-4 md:mt-14 md:grid-cols-2 md:gap-6">
+				<div class="rounded-2xl bg-plate p-7 text-white md:p-10">
+					<h2 class="text-[2rem] font-medium leading-none tracking-[-0.03em] md:text-[2.5rem]">{SITE.name}</h2>
+					<p class="body-copy mt-5 max-w-md text-cream/75">{WORKERD_COMPARE.openorange}</p>
 				</div>
-				<div class="rounded-2xl bg-plate p-8 text-white md:p-10">
-					<p class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">OpenOrange</p>
-					<p class="body-copy mt-6 max-w-sm text-cream/70">
-						Workers API on Node.js, with Rivet underneath for everything stateful. The services ship with it.
+				<div class="card p-7 md:p-10">
+					<h2 class="text-[2rem] font-medium leading-none tracking-[-0.03em] md:text-[2.5rem]">workerd</h2>
+					<p class="body-copy mt-5 max-w-md text-ink-soft">
+						{parts(WORKERD_COMPARE.workerd).map((p) => (p.code ? <code class="code-chip whitespace-nowrap">{p.t}</code> : p.t))}
 					</p>
 				</div>
 				<span class="absolute left-1/2 top-1/2 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-[13px] font-semibold md:flex" aria-hidden="true">vs</span>
 			</div>
-			<dl class="mt-12 flex flex-wrap gap-x-12 gap-y-4">
-				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{counts.supported}<span class="text-[0.5em] text-ink-faint"> / {WORKERD_SERVICES.length}</span></dd><dt class="text-[15px] text-ink-faint">services complete in workerd</dt></div>
-				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem]">{needBackend}</dd><dt class="text-[15px] text-ink-faint">need a backend you build</dt></div>
-				<div class="flex items-baseline gap-2"><dd class="stat text-[1.75rem] text-orange-deep">{WORKERD_SERVICES.filter((r) => r.openorange.status === 'drop-in').length}</dd><dt class="text-[15px] text-ink-faint">drop-in on OpenOrange</dt></div>
-			</dl>
 		</div>
 	</section>
 
-	<!-- Service by service. -->
-	<section id="services" class="scroll-mt-20 rule">
-		<div class="container-x section">
-			<h2 class="h-section">Service by service</h2>
-			<ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{WORKERD_SERVICES.map((row) => (
-					<li class="card flex flex-col overflow-hidden">
-						<h3 class="border-b border-line px-5 py-3.5 text-[15px] font-semibold">{row.service}</h3>
-						<div class="flex-1 px-5 py-4">
-							<div class="flex items-center justify-between gap-3">
-								<p class="label">workerd</p>
-								<span class={row.workerd.status === 'supported' ? 'chip-neutral font-semibold text-ink' : 'chip-muted'}>{WORKERD_STATUS_LABEL[row.workerd.status]}</span>
-							</div>
-							{row.workerd.detail ? (
-								<p class="mt-2.5 text-[13px] leading-snug text-ink-soft">
-									{row.workerd.detail}
-									{row.workerd.source ? (
-										<>
-											{' '}
-											<a href={row.workerd.source} class="link whitespace-nowrap" rel="noopener">source</a>
-										</>
-									) : null}
-								</p>
-							) : null}
-						</div>
-						<div class="border-t border-line bg-paper-mid px-5 py-4">
-							<div class="flex items-center justify-between gap-3">
-								<p class="label text-ink">OpenOrange</p>
-								<span class={row.openorange.status === 'drop-in' ? 'chip-good' : row.openorange.status === 'pluggable' ? 'chip-neutral' : 'chip-muted'}>{STATUS_LABEL[row.openorange.status]}</span>
-							</div>
-							{row.openorange.detail ? <p class="mt-2.5 text-[13px] leading-snug text-ink-soft">{row.openorange.detail}</p> : null}
-						</div>
-					</li>
-				))}
-			</ul>
-			<p class="caption mt-6">
-				workerd read from <a href={`${WORKERD.repo}/tree/${WORKERD.commit}`} class="link" rel="noopener">cloudflare/workerd at {WORKERD.commitShort}</a>, {WORKERD.verified}. Shim only: the binding ships, the service does not. Test results per feature: <a href="/compatibility/" class="link">compatibility</a>; per binding: <a href="/docs/bindings/" class="link">bindings</a>.
+	<!-- When to use which. -->
+	<section id="which" class="scroll-mt-20 rule">
+		<div class="container-x section-tight grid gap-4 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] md:gap-6">
+			<div class="rounded-2xl bg-plate p-7 text-white md:p-9">
+				<h2 class="h-sub">Use {SITE.name} when…</h2>
+				<ul class="mt-6 divide-y divide-white/10 border-t border-white/10">
+					{WORKERD_COMPARE.useOpenOrange.map((item) => (
+						<li class="flex items-start gap-3 py-3.5 text-[15px] leading-snug md:text-[16px]">
+							<svg class="mt-[3px] size-4 shrink-0 text-orange" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.25 3.25L13 5" /></svg>
+							<span>{parts(item).map((p) => (p.code ? <code class="whitespace-nowrap rounded bg-white/10 px-1.5 py-0.5 font-mono text-[0.85em]">{p.t}</code> : p.t))}</span>
+						</li>
+					))}
+				</ul>
+			</div>
+			<div class="card p-7 md:p-9">
+				<h2 class="h-sub">Use workerd when…</h2>
+				<ul class="mt-6 divide-y divide-line border-t border-line">
+					{WORKERD_COMPARE.useWorkerd.map((item) => (
+						<li class="flex items-start gap-3 py-3.5 text-[15px] leading-snug text-ink-soft md:text-[16px]">
+							<span class="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-ink-faint" aria-hidden="true"></span>
+							{item}
+						</li>
+					))}
+				</ul>
+			</div>
+		</div>
+	</section>
+
+	<!-- The matrix. -->
+	<section id="compare" class="scroll-mt-20 rule">
+		<div class="container-x section-tight">
+			<h2 class="h-section">Side by side</h2>
+			<div class="card mt-10 overflow-hidden">
+				<table class="matrix w-full text-left">
+					<thead>
+						<tr>
+							<th scope="col" class="w-[30%]"><span class="sr-only">Feature</span></th>
+							<th scope="col" class="oo text-orange-deep">{SITE.name}</th>
+							<th scope="col">workerd</th>
+						</tr>
+					</thead>
+					<tbody>
+						{WORKERD_MATRIX.map((row) => (
+							<tr>
+								<th scope="row">{row.label}</th>
+								{[
+									{ cell: row.openorange, cls: 'oo font-medium text-ink' },
+									{ cell: row.workerd, cls: 'text-ink-soft' },
+								].map(({ cell, cls }) => (
+									<td class={cls}>
+										<span class="flex items-start gap-2.5">
+											{cell.mark ? (
+												<span class={`mark mark-${cell.mark}`}>
+													{cell.mark === 'yes' ? (
+														<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3L12.5 5" /></svg>
+													) : cell.mark === 'no' ? (
+														<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6" /></svg>
+													) : (
+														<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M4.5 8h7" /></svg>
+													)}
+													<span class="sr-only">{markLabel[cell.mark]}: </span>
+												</span>
+											) : (
+												<span class="mark" aria-hidden="true"></span>
+											)}
+											<span class="min-w-0">{parts(cell.text).map((p) => (p.code ? <code class="code-chip whitespace-nowrap">{p.t}</code> : p.t))}</span>
+										</span>
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+			<p class="caption mt-4 max-w-3xl">
+				{parts(WORKERD_COMPARE.footnote).map((p) => (p.code ? <code class="code-chip whitespace-nowrap">{p.t}</code> : p.t))}
+				{' '}workerd read from <a href={releaseUrl} class="link" rel="noopener">cloudflare/workerd {WORKERD.release}</a>.
 			</p>
 		</div>
 	</section>
 
-	<!-- Limits. -->
-	<section id="limits" class="scroll-mt-20 rule">
-		<div class="container-x section">
-			<h2 class="h-section">Limits</h2>
-			<p class="lede mt-6 max-w-2xl">The 128 MB and 30 second caps are Cloudflare's, not workerd's.</p>
-			<ul class="mt-10 grid gap-4 sm:grid-cols-2">
-				{WORKERD_LIMITS.map((row) => (
-					<li class="card p-5">
-						<h3 class="text-[15px] font-semibold">
-							{row.source ? <a href={row.source} class="hover:text-orange-deep" rel="noopener">{row.label}</a> : row.label}
-						</h3>
-						<dl class="mt-3 divide-y divide-line text-[13.5px]">
-							<div class="flex gap-4 py-2">
-								<dt class="w-24 shrink-0 text-ink-faint">Cloudflare</dt>
-								<dd class="text-ink-faint">{row.cloudflare}</dd>
-							</div>
-							<div class="flex gap-4 py-2">
-								<dt class="w-24 shrink-0 text-ink-faint">workerd</dt>
-								<dd class="text-ink-soft">{row.workerd}</dd>
-							</div>
-							<div class="flex gap-4 py-2 font-semibold">
-								<dt class="w-24 shrink-0 text-orange-deep">OpenOrange</dt>
-								<dd>{row.openorange}</dd>
-							</div>
-						</dl>
-					</li>
-				))}
-			</ul>
-			<p class="caption mt-6">Workers Paid plan, checked {SITE.verified}. workerd from worker-factory.c++ at {WORKERD.commitShort}.</p>
-		</div>
-	</section>
-
-	<!-- Cost. Same month, three bills. -->
-	<section id="cost" class="scroll-mt-20 rule">
-		<div class="container-x section">
-			<h2 class="h-section">Cost</h2>
-			<p class="lede mt-6 max-w-2xl">100 always-on Durable Objects for one month.</p>
-			<div class="mt-10 grid gap-4 md:grid-cols-3">
-				{WORKERD_RECEIPTS.map((receipt) => (
-					<div class={`flex flex-col rounded-2xl p-6 md:p-7 ${receipt.id === 'openorange' ? 'bg-plate text-white' : 'card'}`}>
-						<p class="text-[1.5rem] font-semibold leading-none tracking-[-0.02em]">{receipt.title}</p>
-						<ul class={`mt-6 flex-1 text-[13.5px] ${receipt.id === 'openorange' ? 'divide-y divide-white/10 border-y border-white/10' : 'divide-y divide-line border-y border-line'}`}>
-							{receipt.lines.map((line) => (
-								<li class="flex items-baseline gap-3 py-2.5">
-									<span class={receipt.id === 'openorange' ? 'text-cream/80' : 'text-ink-soft'}>{line.item}</span>
-									<span class="flex-1"></span>
-									<span class={line.amount.startsWith('you') ? 'text-ink-faint' : 'font-mono tabular-nums'}>{line.amount}</span>
+	<!-- Detail past the matrix, collapsed. -->
+	<section id="details" class="scroll-mt-20 rule">
+		<div class="container-x section-tight">
+			<h2 class="h-sub">The details</h2>
+			<div class="mt-6 divide-y divide-line border-y border-line">
+				<details id="services" class="more group scroll-mt-20">
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 [&::-webkit-details-marker]:hidden">
+						<span>
+							<span class="block text-[17px] font-medium">Service by service</span>
+							<span class="mt-0.5 block text-[14px] text-ink-faint">Each Cloudflare service, read from workerd's source.</span>
+						</span>
+						<span class="text-xl leading-none text-ink-faint transition-transform duration-200 group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
+					</summary>
+					<div class="pb-10 pt-2">
+						<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+							{WORKERD_SERVICES.map((row) => (
+								<li class="card flex flex-col overflow-hidden">
+									<h3 class="border-b border-line px-5 py-3.5 text-[15px] font-semibold">{row.service}</h3>
+									<div class="flex-1 px-5 py-4">
+										<div class="flex items-center justify-between gap-3">
+											<p class="label">workerd</p>
+											<span class={row.workerd.status === 'supported' ? 'chip-neutral font-semibold text-ink' : 'chip-muted'}>{WORKERD_STATUS_LABEL[row.workerd.status]}</span>
+										</div>
+										{row.workerd.detail ? (
+											<p class="mt-2.5 text-[13px] leading-snug text-ink-soft">
+												{row.workerd.detail}
+												{row.workerd.source ? (
+													<>
+														{' '}
+														<a href={row.workerd.source} class="link whitespace-nowrap" rel="noopener">source</a>
+													</>
+												) : null}
+											</p>
+										) : null}
+									</div>
+									<div class="border-t border-line bg-paper-mid px-5 py-4">
+										<div class="flex items-center justify-between gap-3">
+											<p class="label text-ink">{SITE.name}</p>
+											<span class={row.openorange.status === 'drop-in' ? 'chip-good' : row.openorange.status === 'pluggable' ? 'chip-neutral' : 'chip-muted'}>{STATUS_LABEL[row.openorange.status]}</span>
+										</div>
+										{row.openorange.detail ? <p class="mt-2.5 text-[13px] leading-snug text-ink-soft">{row.openorange.detail}</p> : null}
+									</div>
 								</li>
 							))}
 						</ul>
-						{receipt.note ? <p class={`caption mt-3 ${receipt.id === 'openorange' ? 'text-cream/50' : ''}`}>{receipt.note}</p> : null}
-						<p class="mt-6 flex items-baseline justify-between">
-							<span class={`text-[13px] font-semibold ${receipt.id === 'openorange' ? 'text-cream/60' : 'text-ink-faint'}`}>Total / mo</span>
-							<span class="stat font-mono text-[2rem]">${receipt.total}</span>
+						<p class="caption mt-6">
+							workerd read from <a href={`${WORKERD.repo}/tree/${WORKERD.commit}`} class="link" rel="noopener">cloudflare/workerd {WORKERD.release}</a> ({WORKERD.commitShort}), default configuration. Shim only: the binding ships, the service doesn't. Test results per feature: <a href="/compatibility/" class="link">compatibility</a>; per binding: <a href={SITE.docsBindings} class="link">bindings</a>.
 						</p>
 					</div>
-				))}
+				</details>
+				<details id="limits" class="more group scroll-mt-20">
+					<summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-5 [&::-webkit-details-marker]:hidden">
+						<span>
+							<span class="block text-[17px] font-medium">Limits</span>
+							<span class="mt-0.5 block text-[14px] text-ink-faint">Cloudflare, workerd and {SITE.name}. The 128 MB and 30 second caps are Cloudflare's, not workerd's.</span>
+						</span>
+						<span class="text-xl leading-none text-ink-faint transition-transform duration-200 group-open:rotate-45 motion-reduce:transition-none" aria-hidden="true">+</span>
+					</summary>
+					<div class="pb-10 pt-2">
+						<ul class="grid gap-4 sm:grid-cols-2">
+							{WORKERD_LIMITS.map((row) => (
+								<li class="card p-5">
+									<h3 class="text-[15px] font-semibold">
+										{row.source ? <a href={row.source} class="hover:text-orange-deep" rel="noopener">{row.label}</a> : row.label}
+									</h3>
+									<dl class="mt-3 divide-y divide-line text-[13.5px]">
+										<div class="flex gap-4 py-2 font-semibold">
+											<dt class="w-24 shrink-0 text-orange-deep">{SITE.name}</dt>
+											<dd>{row.openorange}</dd>
+										</div>
+										<div class="flex gap-4 py-2">
+											<dt class="w-24 shrink-0 text-ink-faint">workerd</dt>
+											<dd class="text-ink-soft">{row.workerd}</dd>
+										</div>
+										<div class="flex gap-4 py-2">
+											<dt class="w-24 shrink-0 text-ink-faint">Cloudflare</dt>
+											<dd class="text-ink-faint">{row.cloudflare}</dd>
+										</div>
+									</dl>
+								</li>
+							))}
+						</ul>
+						<p class="caption mt-6">Cloudflare: Workers Paid plan, checked {SITE.verified}. workerd: worker-factory.c++ at {WORKERD.release}.</p>
+					</div>
+				</details>
 			</div>
-			<p class="mt-8 text-[15px]"><a href="/#cost" class="link">See the cost breakdown</a></p>
 		</div>
 	</section>
 
-	<section class="rule">
-		<div class="container-x section grid gap-4 md:grid-cols-2 md:gap-6">
-			{WORKERD_PICK.map((column) => (
-				<div class="card p-7 md:p-8">
-					<h2 class="h-sub">{column.title}</h2>
-					<ul class="mt-6 divide-y divide-line">
-						{column.items.map((item) => (
-							<li class="flex items-start gap-3 py-3.5 text-[15px] leading-snug">
-								<span class="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-orange" aria-hidden="true"></span>
-								{item}
-							</li>
-						))}
-					</ul>
-				</div>
-			))}
-		</div>
-	</section>
-
-	<Cta title="Same project. All of it runs." body="Keep the wrangler config." />
+	<Cta title="Same project. All of it runs." body="Keep your code and your wrangler config." />
 </Base>
+
+<script>
+	// A link to #services or #limits opens that section.
+	const reveal = () => {
+		const target = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+		if (target instanceof HTMLDetailsElement && target.classList.contains('more')) target.open = true;
+	};
+	window.addEventListener('hashchange', reveal);
+	reveal();
+</script>
+
+<style>
+	.matrix th,
+	.matrix td {
+		padding: 0.875rem 1.25rem;
+		border-bottom: 1px solid var(--color-line);
+		vertical-align: top;
+	}
+	.matrix thead th {
+		padding-top: 1rem;
+		padding-bottom: 1rem;
+		font-size: 15px;
+		font-weight: 600;
+	}
+	.matrix tbody th {
+		font-size: 15px;
+		font-weight: 500;
+		line-height: 1.4;
+	}
+	.matrix td {
+		font-size: 14.5px;
+		line-height: 1.45;
+	}
+	.matrix tbody tr:last-child th,
+	.matrix tbody tr:last-child td {
+		border-bottom: 0;
+	}
+	/* The OpenOrange column, lightly tinted down its length. */
+	.matrix .oo {
+		background: color-mix(in srgb, var(--color-orange-soft) 55%, transparent);
+	}
+	.mark {
+		display: inline-flex;
+		width: 1.25rem;
+		height: 1.25rem;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		border-radius: 999px;
+	}
+	.mark svg {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+	.mark-yes {
+		background: var(--color-orange);
+		color: #fff;
+	}
+	.mark-no {
+		border: 1px dashed color-mix(in srgb, var(--color-ink) 30%, transparent);
+		color: var(--color-ink-faint);
+	}
+	.mark-partial {
+		background: var(--color-paper-mid);
+		color: var(--color-ink-soft);
+	}
+	/* Phones: the row label on its own line, then the two values side by side
+	   under a two-column header, as on the homepage limits table. */
+	@media (max-width: 639px) {
+		.matrix tr {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		}
+		.matrix th,
+		.matrix td {
+			width: auto;
+			border: 0;
+		}
+		.matrix thead th:first-child {
+			display: none;
+		}
+		.matrix thead th {
+			padding: 0.875rem 1rem;
+		}
+		.matrix thead tr {
+			border-bottom: 1px solid var(--color-line);
+		}
+		.matrix tbody tr {
+			border-bottom: 1px solid var(--color-line);
+		}
+		.matrix tbody tr:last-child {
+			border-bottom: 0;
+		}
+		.matrix tbody th {
+			grid-column: 1 / -1;
+			padding: 0.875rem 1rem 0.25rem;
+			font-size: 14.5px;
+			font-weight: 600;
+		}
+		.matrix td {
+			padding: 0.375rem 1rem 0.875rem;
+			font-size: 13.5px;
+		}
+		.mark {
+			width: 1.125rem;
+			height: 1.125rem;
+		}
+		.matrix .mark + span {
+			padding-top: 0;
+		}
+	}
+</style>

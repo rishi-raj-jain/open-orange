@@ -1,33 +1,335 @@
 ---
-// Placeholder comparison pages. Each one gets its own page, like
-// vs-workerd.astro, once it is written.
+// /vs-celld/, /vs-rivet/ and /vs-miniflare/. All copy lives in
+// src/data/compare.ts. /vs-workerd/ has its own page.
 import Base from '@/layouts/Base.astro';
 import Cta from '@/components/Cta.astro';
-import { PLACEHOLDER_COMPARISONS, SITE } from '@/data/site';
+import { AS_OF, COMPARISONS, type Comparison, type Mark, type Product } from '@/data/compare';
+import { SITE } from '@/data/site';
 
 export function getStaticPaths() {
-	return PLACEHOLDER_COMPARISONS.map(({ slug, name }) => ({ params: { competitor: slug }, props: { name } }));
+	return COMPARISONS.map((page) => ({ params: { competitor: page.slug }, props: { page } }));
 }
 
-const { name } = Astro.props;
+interface Props {
+	page: Comparison;
+}
+
+const { page } = Astro.props;
+const { them, us } = page;
+
+const MARK_LABEL: Record<Mark, string> = { yes: 'Yes', partial: 'Partly', no: 'No' };
+const badgeClass = (badge: NonNullable<Product['badge']>, onPlate: boolean) =>
+	badge.tone === 'good'
+		? onPlate
+			? 'chip bg-orange text-white'
+			: 'chip-good'
+		: onPlate
+			? 'chip border border-dashed border-white/25 text-cream/70'
+			: 'chip-muted';
+const pickGrid = page.picks.length === 3 ? 'lg:grid-cols-3' : 'md:grid-cols-2';
 ---
 
-<!-- Placeholders stay out of search results until they are written. astro.config.ts leaves them out of the sitemap. -->
-<Base title={`${SITE.name} vs ${name}`} description={`${SITE.name} compared with ${name}.`} noindex>
+<Base title={page.title} description={page.description}>
+	<!-- Head to head. -->
 	<section>
 		<div class="container-x pt-20 pb-20 md:pt-28 md:pb-28">
-			<div class="relative grid gap-4 md:grid-cols-2 md:gap-6">
-				<div class="rounded-2xl bg-plate p-8 text-white md:p-10">
-					<h1 class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">{SITE.name}</h1>
+			<p class="label">As of <time datetime={AS_OF.iso}>{AS_OF.label}</time></p>
+			<h1 class="h-hero mt-5 max-w-4xl">{page.headline}</h1>
+			<p class="lede mt-6 max-w-2xl">{page.lede}</p>
+
+			<div class="relative mt-12 grid gap-4 md:mt-16 md:grid-cols-2 md:gap-6">
+				<div class="card p-7 md:p-10">
+					<p class="text-[2.25rem] font-medium leading-none tracking-[-0.03em] md:text-[3rem]">{them.name}</p>
+					{them.badge ? <p class="mt-5"><span class={badgeClass(them.badge, false)}>{them.badge.text}</span></p> : null}
+					<p class="body-copy mt-5 max-w-md text-ink-soft">{them.body}</p>
 				</div>
-				<div class="card p-8 md:p-10">
-					<p class="text-[2.5rem] font-medium leading-none tracking-[-0.03em] md:text-[3.25rem]">{name}</p>
+				<div class="rounded-2xl bg-plate p-7 text-white md:p-10">
+					<p class="text-[2.25rem] font-medium leading-none tracking-[-0.03em] md:text-[3rem]">{us.name}</p>
+					{us.badge ? <p class="mt-5"><span class={badgeClass(us.badge, true)}>{us.badge.text}</span></p> : null}
+					<p class="body-copy mt-5 max-w-md text-cream/75">{us.body}</p>
 				</div>
 				<span class="absolute left-1/2 top-1/2 hidden h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface text-[13px] font-semibold md:flex" aria-hidden="true">vs</span>
 			</div>
-			<p class="lede mt-12 text-ink-faint">Comparison coming soon.</p>
 		</div>
 	</section>
 
-	<Cta />
+	<!-- When to use which. -->
+	<section id="when" class="scroll-mt-20 rule">
+		<div class="container-x section">
+			<h2 class="h-section">When to use which</h2>
+			<div class={`mt-10 grid gap-4 md:gap-6 ${pickGrid}`}>
+				{page.picks.map((pick) => (
+					<div class={pick.highlight ? 'rounded-2xl bg-plate p-7 text-white md:p-8' : 'card p-7 md:p-8'}>
+						<h3 class={`h-sub ${page.picks.length === 3 ? 'lg:text-[1.375rem]' : ''}`}>{pick.title}</h3>
+						{pick.lead ? <p class={`mt-3 text-[15px] leading-snug ${pick.highlight ? 'text-cream/70' : 'text-ink-soft'}`}>{pick.lead}</p> : null}
+						<ul class={`mt-5 divide-y ${pick.highlight ? 'divide-white/10' : 'divide-line'}`}>
+							{pick.items.map((item) => (
+								<li class="flex items-start gap-3 py-3.5 text-[15px] leading-snug">
+									<span class="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-orange" aria-hidden="true"></span>
+									{item}
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+			</div>
+		</div>
+	</section>
+
+	<!-- The matrix. -->
+	<section id="compare" class="scroll-mt-20 rule">
+		<div class="container-x section">
+			<h2 class="h-section">{page.matrix.title}</h2>
+			<div class="card mt-10 px-5 pb-2 pt-5 md:px-6">
+				<table class="matrix w-full text-[15px]">
+					<thead>
+						<tr>
+							<th class="w-[28%]"><span class="sr-only">Feature</span></th>
+							<th class="w-[36%]">{them.name}</th>
+							<th class="text-orange-deep">{us.name}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{page.matrix.rows.map((row) => (
+							<tr>
+								<th scope="row" class="row-label">{row.label}</th>
+								{'same' in row ? (
+									<td colspan="2" class="same">
+										<span class="chip-neutral mr-2.5 align-[1px]">Same on both</span>
+										<span class="font-medium">{row.same}</span>
+									</td>
+								) : (
+									[
+										{ cell: row.them, who: them.name, ours: false },
+										{ cell: row.us, who: us.name, ours: true },
+									].map(({ cell, who, ours }) => (
+										<td class={ours ? 'ours' : 'theirs'}>
+											<span class="who">{who}</span>
+											<span class="flex items-start gap-2">
+												{cell.mark ? (
+													<span class={`mark mark-${cell.mark} ${ours && cell.mark === 'yes' ? 'text-orange-deep' : ''}`} title={MARK_LABEL[cell.mark]}>
+														<span class="sr-only">{MARK_LABEL[cell.mark]}: </span>
+														<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+															{cell.mark === 'yes' ? <path d="M3.5 8.5l3 3 6-7" /> : cell.mark === 'no' ? <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /> : <path d="M4 8h8" />}
+														</svg>
+													</span>
+												) : (
+													<span class="mark" aria-hidden="true"></span>
+												)}
+												<span class="min-w-0">
+													{cell.text}
+													{cell.note ? <span class="note">{cell.note}</span> : null}
+												</span>
+											</span>
+										</td>
+									))
+								)}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+			<p class="caption mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
+				<span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" /></svg>Yes</span>
+				<span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h8" /></svg>Partly</span>
+				<span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" /></svg>No</span>
+				{page.matrix.caption ? <span>{page.matrix.caption}</span> : null}
+			</p>
+		</div>
+	</section>
+
+	{page.timeline ? (
+		<section id="status" class="scroll-mt-20 rule">
+			<div class="container-x section split-head">
+				<div>
+					<h2 class="h-section">{page.timeline.title}</h2>
+					<p class="lede mt-6 max-w-xl">{page.timeline.lede}</p>
+				</div>
+				<ol class="timeline">
+					{page.timeline.events.map((event) => (
+						<li class="relative pb-7 pl-7 last:pb-0">
+							<span class="absolute left-0 top-[7px] h-2.5 w-2.5 rounded-full border-2 border-orange bg-paper" aria-hidden="true"></span>
+							<p class="font-mono text-[12.5px] tabular-nums text-ink-faint">
+								{event.date === 'Since' ? event.date : <time datetime={event.iso}>{event.date}</time>}
+							</p>
+							<p class="mt-1 text-[15px] leading-snug">
+								{event.text}
+								{event.href ? (
+									<>
+										{' '}
+										<a href={event.href} class="link whitespace-nowrap text-[13px]" rel="noopener">source</a>
+									</>
+								) : null}
+							</p>
+						</li>
+					))}
+				</ol>
+			</div>
+		</section>
+	) : null}
+
+	{page.stats ? (
+		<section id="storage" class="scroll-mt-20 rule">
+			<div class="container-x section">
+				<div class="split-head">
+					<h2 class="h-section">{page.stats.title}</h2>
+					<p class="lede">{page.stats.lede}</p>
+				</div>
+				<ul class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+					{page.stats.items.map((stat) => (
+						<li class="card flex flex-col p-6">
+							<p class="stat text-balance text-[2rem] text-orange-deep">{stat.value}</p>
+							<p class="mt-4 text-[15px] font-semibold">{stat.label}</p>
+							<p class="mt-1.5 text-[14px] leading-snug text-ink-soft">{stat.body}</p>
+						</li>
+					))}
+				</ul>
+				{page.stats.caption ? <p class="caption mt-4">{page.stats.caption}</p> : null}
+			</div>
+		</section>
+	) : null}
+
+	<!-- Sources. -->
+	<section class="rule">
+		<div class="container-x py-10">
+			<p class="label">Sources, read {AS_OF.label}</p>
+			<ul class="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-[13px]">
+				{page.sources.map((source) => (
+					<li><a href={source.href} class="text-ink-soft underline decoration-ink-faint/40 underline-offset-2 hover:text-ink" rel="noopener">{source.label}</a></li>
+				))}
+			</ul>
+		</div>
+	</section>
+
+	{page.cta.primary ? (
+		<section class="rule">
+			<div class="container-x section">
+				<h2 class="h-section max-w-3xl">{page.cta.title}</h2>
+				<p class="lede mt-6 max-w-xl">{page.cta.body}</p>
+				<div class="mt-9 flex flex-col gap-3 sm:flex-row">
+					<a href={page.cta.primary.href} class="btn-primary">{page.cta.primary.label}</a>
+					{page.cta.secondary ? <a href={page.cta.secondary.href} class="btn-secondary">{page.cta.secondary.label}</a> : null}
+				</div>
+			</div>
+		</section>
+	) : (
+		<Cta title={page.cta.title} body={page.cta.body} />
+	)}
 </Base>
+
+<style>
+	.matrix thead th {
+		padding: 0 1rem 0.625rem 0;
+		border-bottom: 1px solid var(--color-line);
+		text-align: left;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+	.matrix thead th:not(.text-orange-deep) {
+		color: var(--color-ink-faint);
+	}
+	.matrix tbody th,
+	.matrix td {
+		padding: 0.85rem 1rem 0.85rem 0;
+		border-bottom: 1px solid var(--color-line);
+		text-align: left;
+		vertical-align: top;
+		line-height: 1.45;
+	}
+	.matrix tbody tr:last-child th,
+	.matrix tbody tr:last-child td {
+		border-bottom: 0;
+	}
+	.matrix .row-label {
+		font-weight: 500;
+	}
+	.matrix .theirs {
+		color: var(--color-ink-soft);
+	}
+	.matrix .ours {
+		font-weight: 600;
+	}
+	.matrix .note {
+		display: block;
+		margin-top: 0.2rem;
+		font-size: 13px;
+		font-weight: 400;
+		color: var(--color-ink-faint);
+	}
+	.matrix .mark {
+		display: inline-flex;
+		flex: none;
+		width: 16px;
+		height: 16px;
+		margin-top: 0.15rem;
+	}
+	.matrix .mark-partial,
+	.matrix .mark-no {
+		color: var(--color-ink-faint);
+	}
+	/* Column names repeat inside each cell on phones, where the header is off screen. */
+	.matrix .who {
+		display: none;
+	}
+
+	/* Phones: the feature on its own line, then the two values side by side. */
+	@media (max-width: 639px) {
+		.matrix,
+		.matrix tbody {
+			display: block;
+		}
+		.matrix thead {
+			display: none;
+		}
+		.matrix tr {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			column-gap: 0.875rem;
+			padding: 0.9rem 0;
+			border-bottom: 1px solid var(--color-line);
+		}
+		.matrix tbody tr:last-child {
+			border-bottom: 0;
+		}
+		.matrix tbody th,
+		.matrix td {
+			padding: 0;
+			border: 0;
+			font-size: 14px;
+		}
+		.matrix .row-label {
+			grid-column: 1 / -1;
+			margin-bottom: 0.5rem;
+		}
+		.matrix .same {
+			grid-column: 1 / -1;
+		}
+		.matrix .who {
+			display: block;
+			margin-bottom: 0.25rem;
+			font-size: 11px;
+			font-weight: 600;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			color: var(--color-ink-faint);
+		}
+		.matrix .ours .who {
+			color: var(--color-orange-deep);
+		}
+	}
+
+	.timeline {
+		position: relative;
+	}
+	.timeline::before {
+		content: '';
+		position: absolute;
+		left: 4px;
+		top: 12px;
+		bottom: 12px;
+		width: 2px;
+		background: var(--color-line);
+	}
+</style>
