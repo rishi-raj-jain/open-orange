@@ -61,41 +61,47 @@ const stats = [
 		))}
 	</dl>
 
-	<div class="receipt-wrap relative mx-auto max-w-[460px]" data-receipt-wrap>
-		<div class="receipt theme-light absolute inset-x-2 top-2 z-20 -rotate-1 bg-[#fffdf8] px-4 pb-6 pt-7 font-mono text-[12px] sm:px-6 sm:text-[12.5px] uppercase leading-relaxed text-ink" data-receipt>
-			<div class="text-center">
-				<p class="text-[15px] font-semibold tracking-[0.2em]">OpenOrange</p>
-				<p class="text-ink-faint">Same work. Less bill.</p>
-				<p class="mt-1 text-[11px] text-ink-faint">
-					<Tip tip={`AWS on-demand Graviton (ARM) prices in us-east-1, provisioned 40% above use for autoscaling. Reserved pricing, spot and credits are lower. Cloudflare and AWS list prices checked ${SITE.verified}.`}>AWS Graviton · us-east-1</Tip>
-				</p>
-			</div>
+	<div class="receipt-wrap relative mx-auto h-[19.5rem] max-w-[460px]" data-receipt-wrap>
+		<!-- Tilted about its top edge, so unrolling never moves what is already printed. -->
+		<div class="receipt theme-light absolute inset-x-2 top-3 z-20 origin-top -rotate-1" data-receipt>
+			<div class="paper relative bg-[#fffdf8] px-4 pb-6 pt-7 font-mono text-[12px] uppercase leading-relaxed text-ink sm:px-6 sm:text-[12.5px]" data-paper>
+				<div class="text-center">
+					<p class="text-[15px] font-semibold tracking-[0.2em]">OpenOrange</p>
+					<p class="text-ink-faint">Same work. Less bill.</p>
+					<p class="mt-1 text-[11px] text-ink-faint">
+						<Tip tip={`AWS on-demand Graviton (ARM) prices in us-east-1, provisioned 40% above use for autoscaling. Reserved pricing, spot and credits are lower. Cloudflare and AWS list prices checked ${SITE.verified}.`}>AWS Graviton · us-east-1</Tip>
+					</p>
+				</div>
 
-			<div class="rule-dash mt-4"></div>
-			<div class="grid grid-cols-[minmax(0,1fr)_3.75rem_4rem_2.75rem] gap-1.5 sm:grid-cols-[minmax(0,1fr)_4rem_4.25rem_3rem] sm:gap-2 py-2 text-[11px] text-ink-faint">
-				<span>Item</span><span class="text-right">Cloudflare</span><span class="text-right text-ink">You pay</span><span></span>
-			</div>
+				<div class="rule-dash mt-4"></div>
+				<div class="grid grid-cols-[minmax(0,1fr)_3.75rem_4rem_2.75rem] gap-1.5 py-2 text-[11px] text-ink-faint sm:grid-cols-[minmax(0,1fr)_4rem_4.25rem_3rem] sm:gap-2">
+					<span>Item</span><span class="text-right">Cloudflare</span><span class="text-right text-ink">You pay</span><span></span>
+				</div>
 
-			<ul>{shown.map((l) => <Line l={l} />)}</ul>
+				<ul data-shown>{shown.map((l) => <Line l={l} />)}</ul>
 
-			<!-- The rest of the receipt, rolled up. Hovering unrolls it over the page. -->
-			<div class="more grid" id="receipt-more" data-more>
-				<div class="min-h-0 overflow-hidden" data-more-inner>
-					<div>
-						<ul>{more.map((l) => <Line l={l} />)}</ul>
-						<div class="rule-dash mt-2"></div>
-						<ul class="py-2">
-							<li class="flex justify-between gap-4"><Tip tip={egress.body} align="start">Egress tax</Tip><span class="font-semibold">$0.00 <span class="text-orange-deep">Free</span></span></li>
-							<li class="flex justify-between gap-4"><Tip tip={credits.body} align="start">Cloud credits</Tip><span class="font-semibold">Accepted</span></li>
-						</ul>
-						<div class="rule-dash"></div>
-						<div class="barcode mx-auto mt-5 h-9 w-48" aria-hidden="true"></div>
-						<p class="mt-2 text-center text-[11px] tracking-[0.12em] text-ink-faint">Keep this for your CFO</p>
-					</div>
+				<!-- The rest of the receipt, still on the roll. It is printed in full
+				     and cut off where the paper meets the roll. -->
+				<div id="receipt-more" data-more>
+					<ul>{more.map((l) => <Line l={l} />)}</ul>
+					<div class="rule-dash mt-2"></div>
+					<ul class="py-2">
+						<li class="flex justify-between gap-4"><Tip tip={egress.body} align="start">Egress tax</Tip><span class="font-semibold">$0.00 <span class="text-orange-deep">Free</span></span></li>
+						<li class="flex justify-between gap-4"><Tip tip={credits.body} align="start">Cloud credits</Tip><span class="font-semibold">Accepted</span></li>
+					</ul>
+					<div class="rule-dash"></div>
+					<div class="barcode mx-auto mt-5 h-9 w-48" aria-hidden="true"></div>
+					<p class="mt-2 text-center text-[11px] tracking-[0.12em] text-ink-faint">Keep this for your CFO</p>
 				</div>
 			</div>
-			<button type="button" class="roll absolute -bottom-[15px] -left-1 -right-1 block text-center text-[10.5px] font-semibold tracking-[0.14em] text-ink-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange" aria-expanded="false" aria-controls="receipt-more" data-more-toggle>
-				<span class="roll-label">{more.length} more lines ↓</span>
+
+			<!-- The roll. The button is a fixed band centered where the paper meets
+			     the roll, so it stays easy to hit while the roll shrinks. -->
+			<button type="button" class="roll-hit absolute -inset-x-px top-0 block h-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange" aria-expanded="false" aria-controls="receipt-more" data-roll-hit>
+				<span class="roll absolute inset-x-0 top-1/2 block overflow-hidden" data-roll>
+					<span class="absolute inset-0" data-roll-lines></span>
+					<span class="roll-label absolute inset-x-0 top-1/2 block text-center font-mono text-[10.5px] font-semibold uppercase leading-none tracking-[0.14em] text-ink-faint" data-roll-label>{more.length} more lines ↓</span>
+				</span>
 			</button>
 		</div>
 	</div>
@@ -103,7 +109,7 @@ const stats = [
 
 <style>
 	/* Paper: a hairline outline so the torn edges read on the page, and a soft
-	   shadow below. */
+	   shadow below. On the receipt, not the paper, so the roll shares it. */
 	.receipt {
 		filter: drop-shadow(0 0 0.6px rgb(26 25 24 / 0.28)) drop-shadow(0 1px 1px rgb(26 25 24 / 0.06)) drop-shadow(0 10px 18px rgb(26 25 24 / 0.1));
 	}
@@ -111,28 +117,27 @@ const stats = [
 	:global(.dark) .receipt {
 		filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35)) drop-shadow(0 12px 22px rgb(0 0 0 / 0.5));
 	}
-	/* Torn top edge, always; torn bottom edge once the receipt is unrolled. */
-	.receipt::before,
-	.receipt::after {
+	/* Torn edges. The bottom one is the end of the paper, the last thing to
+	   come off the roll. */
+	.paper::before,
+	.paper::after {
 		content: '';
 		position: absolute;
 		left: 0;
 		right: 0;
 		height: 10px;
 	}
-	.receipt::before {
+	.paper::before {
 		bottom: 100%;
 		background:
 			linear-gradient(45deg, #fffdf8 50%, transparent 50%) 0 100% / 14px 10px repeat-x,
 			linear-gradient(-45deg, #fffdf8 50%, transparent 50%) 0 100% / 14px 10px repeat-x;
 	}
-	.receipt::after {
+	.paper::after {
 		top: 100%;
 		background:
 			linear-gradient(135deg, #fffdf8 50%, transparent 50%) 0 0 / 14px 10px repeat-x,
 			linear-gradient(-135deg, #fffdf8 50%, transparent 50%) 0 0 / 14px 10px repeat-x;
-		opacity: 0;
-		transition: opacity 0.12s;
 	}
 	.rule-dash {
 		border-top: 1.5px dashed color-mix(in srgb, var(--color-ink) 22%, transparent);
@@ -141,133 +146,176 @@ const stats = [
 		background: repeating-linear-gradient(90deg, #1a1918 0 2px, transparent 2px 4px, #1a1918 4px 5px, transparent 5px 8px, #1a1918 8px 11px, transparent 11px 12px, #1a1918 12px 13px, transparent 13px 17px);
 	}
 
-	/* Unrolling. The printed lines stay where they are; the paper feeds out of
-	   the roll, so the receipt grows from the bottom. The roll rides the
-	   paper's bottom edge at a constant size and spins while it feeds. Once the
-	   paper is all out, the roll gives way to the torn edge. Rolling back up is
-	   the same in reverse. */
-	.more {
-		grid-template-rows: 0fr;
-		transition: grid-template-rows 0.8s cubic-bezier(0.45, 0, 0.2, 1);
+	/* The roll: a cylinder of the same paper, lit from above and seen side on.
+	   The script sets its radius (--r), where it sits, and the creases that
+	   show it turning. */
+	.roll-hit {
+		--r: 14px;
 	}
 	.roll {
-		height: 30px;
-		border-radius: 10px / 15px;
-		background:
-			repeating-linear-gradient(180deg, rgb(26 25 24 / 0.045) 0 1px, transparent 1px 6px) 0 var(--spin, 0px) / 100% 36px,
-			linear-gradient(180deg, #d6d0c4 0%, #fffdf8 28%, #faf7f0 50%, #e6e0d4 76%, #b9b2a3 100%);
-		box-shadow:
-			0 7px 10px -5px rgb(26 25 24 / 0.38),
-			inset 7px 0 7px -5px rgb(26 25 24 / 0.2),
-			inset -7px 0 7px -5px rgb(26 25 24 / 0.2);
-		transition: opacity 0.12s;
+		height: calc(var(--r) * 2);
+		margin-top: calc(var(--r) * -1);
+		border-radius: min(3px, var(--r)) / var(--r);
+		background: linear-gradient(180deg, #cbc4b6 0%, #ebe6db 13%, #fffdf8 30%, #fbf8f1 50%, #e9e3d7 72%, #c5bdae 90%, #aaa291 100%);
+		box-shadow: 0 calc(var(--r) * 0.3) calc(var(--r) * 0.45) calc(var(--r) * -0.1) rgb(26 25 24 / 0.32);
 	}
-	/* The paper curls into the roll: a shadow on the paper just above it. */
-	.roll::before {
+	/* Just above the roll the paper curls under it, into its shadow. */
+	.roll-hit::before {
 		content: '';
 		position: absolute;
-		inset: auto 4px 100% 4px;
-		height: 14px;
-		background: linear-gradient(to bottom, transparent, rgb(26 25 24 / 0.08));
+		left: 1px;
+		right: 1px;
+		bottom: calc(50% + var(--r));
+		height: calc(var(--r) * 0.8);
+		background: linear-gradient(to bottom, transparent, rgb(26 25 24 / 0.07));
 		pointer-events: none;
 	}
 	.roll-label {
-		transition: opacity 0.15s;
-	}
-	.roll[data-rolling='out'] {
-		animation: spin-out 0.8s cubic-bezier(0.45, 0, 0.2, 1) both;
-	}
-	.roll[data-rolling='in'] {
-		animation: spin-in 0.8s cubic-bezier(0.45, 0, 0.2, 1) both;
-	}
-	@keyframes spin-out {
-		from { background-position: 0 0, 0 0; }
-		to { background-position: 0 72px, 0 0; }
-	}
-	@keyframes spin-in {
-		from { background-position: 0 72px, 0 0; }
-		to { background-position: 0 0, 0 0; }
+		transform: translateY(-50%);
+		transform-origin: 50% 50%;
 	}
 
-	/* Open: hover (with a mouse), keyboard focus inside, or a tap. */
-	.more[data-open],
-	.receipt-wrap:focus-within .more {
-		grid-template-rows: 1fr;
-	}
-	.receipt:has(.more[data-open]) .roll-label,
-	.receipt-wrap:focus-within .roll-label {
-		opacity: 0;
-	}
-	.receipt:has(.more[data-open]) .roll,
-	.receipt-wrap:focus-within .roll {
-		opacity: 0;
-		transition: opacity 0.22s 0.72s;
-	}
-	.receipt:has(.more[data-open])::after,
-	.receipt-wrap:focus-within .receipt::after {
-		opacity: 1;
-		transition: opacity 0.22s 0.72s;
-	}
-	@media (hover: hover) {
-		.receipt-wrap:hover .more {
-			grid-template-rows: 1fr;
-		}
-		.receipt-wrap:hover .roll-label {
-			opacity: 0;
-		}
-		.receipt-wrap:hover .roll {
-			opacity: 0;
-			transition: opacity 0.22s 0.72s;
-		}
-		.receipt-wrap:hover .receipt::after {
-			opacity: 1;
-			transition: opacity 0.22s 0.72s;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.more,
-		.roll,
-		.receipt::after {
-			transition: none !important;
-		}
-		.roll[data-rolling] {
-			animation: none;
-		}
+	/* Without the script the receipt stays folded: the printed lines and the
+	   torn edge, no roll. */
+	.receipt:not([data-ready]) [data-more],
+	.receipt:not([data-ready]) .roll-hit {
+		display: none;
 	}
 </style>
 
 <script>
+	// One number, p, says how much paper is off the roll: 0 rolled up, 1 all
+	// out. The rest follows from it. The paper is cut off at the roll's center
+	// line, where it wraps around the back of the roll, and the roll rides that
+	// line down. The roll holds what paper is left, so its radius shrinks as
+	// r = r0 · √(1 − p), slowly at first and to nothing at the paper's end.
+	// The creases on its face turn by the paper fed out over the radius, so a
+	// small roll spins faster. Reduced motion jumps p straight to the end.
+	const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+	const canHover = matchMedia('(hover: hover)');
+	const R0 = 14; // roll radius, rolled up
+	const GAP = 4; // paper showing between the last line and the roll
+	const BAND = 40; // the button's height
+	const TORN = 10; // the torn edge hangs below the paper's box
+	const CREASES = 12;
+	const MS = 950;
+	const ease = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+
 	for (const wrap of document.querySelectorAll<HTMLElement>('[data-receipt-wrap]')) {
 		const receipt = wrap.querySelector<HTMLElement>('[data-receipt]')!;
-		const toggle = receipt.querySelector<HTMLButtonElement>('[data-more-toggle]')!;
-		const more = receipt.querySelector<HTMLElement>('[data-more]')!;
-		const list = more.querySelector<HTMLElement>('[data-more-inner]')!;
-		const isOpen = () => getComputedStyle(more).gridTemplateRows !== '0px';
-		// The receipt floats over the page; the wrapper keeps its folded height
-		// so the rest prints over the next section instead of pushing it down.
-		const fit = () => { if (!isOpen()) wrap.style.height = `${receipt.offsetHeight + 24}px`; };
-		fit();
-		new ResizeObserver(fit).observe(wrap);
-		// Rows clip while they feed out; once out, let their hover tips overflow.
-		more.addEventListener('transitionend', () => (list.style.overflow = isOpen() ? 'visible' : ''));
-		wrap.addEventListener('mouseleave', () => (list.style.overflow = ''));
-		// Spin the roll while the paper feeds out or back in.
-		let spinTimer = 0;
-		const spin = (dir: 'out' | 'in') => {
-			toggle.dataset.rolling = dir;
-			clearTimeout(spinTimer);
-			spinTimer = window.setTimeout(() => delete toggle.dataset.rolling, 820);
+		const paper = receipt.querySelector<HTMLElement>('[data-paper]')!;
+		const shown = paper.querySelector<HTMLElement>('[data-shown]')!;
+		const hit = receipt.querySelector<HTMLButtonElement>('[data-roll-hit]')!;
+		const roll = hit.querySelector<HTMLElement>('[data-roll]')!;
+		const creases = hit.querySelector<HTMLElement>('[data-roll-lines]')!;
+		const label = hit.querySelector<HTMLElement>('[data-roll-label]')!;
+		receipt.toggleAttribute('data-ready', true);
+
+		// y0: where the paper meets the roll, rolled up. y1: its torn end.
+		let y0 = 0, y1 = 0, box = 0, p = 0;
+		const measure = () => {
+			box = paper.offsetHeight;
+			y0 = shown.offsetTop + shown.offsetHeight + GAP + R0;
+			y1 = box + TORN;
+			// The receipt floats over the page and the wrapper keeps its rolled-up
+			// height, so the paper prints over the next section instead of pushing
+			// it down. Nothing outside the receipt moves.
+			wrap.style.height = `${receipt.offsetTop + y0 + R0 + 20}px`;
 		};
-		if (matchMedia('(hover: hover)').matches) {
-			wrap.addEventListener('mouseenter', () => spin('out'));
-			wrap.addEventListener('mouseleave', () => spin('in'));
-		}
-		toggle.addEventListener('click', () => {
-			spin(more.hasAttribute('data-open') ? 'in' : 'out');
-			const open = !more.hasAttribute('data-open');
-			list.style.overflow = '';
-			more.toggleAttribute('data-open', open);
-			toggle.setAttribute('aria-expanded', String(open));
+
+		const render = () => {
+			const y = y0 + (y1 - y0) * p;
+			const r = R0 * Math.sqrt(Math.max(0, 1 - p));
+			paper.style.clipPath = `inset(-400px -400px ${box - y}px -400px)`;
+			hit.style.transform = `translateY(${y - BAND / 2}px)`;
+			hit.style.setProperty('--r', `${r.toFixed(2)}px`);
+			roll.style.visibility = r < 0.4 ? 'hidden' : '';
+
+			const turn = ((2 * (y1 - y0)) / R0) * (1 - r / R0);
+			const fade = Math.min(1, r / 6);
+			const layers: string[] = [];
+			for (let i = 0; i < CREASES; i++) {
+				const a = turn + (i / CREASES) * 2 * Math.PI;
+				const c = Math.cos(a);
+				if (c < 0.08) continue;
+				const ly = r + r * Math.sin(a);
+				const ink = `rgb(26 25 24 / ${(0.1 * c * fade).toFixed(3)})`;
+				layers.push(`linear-gradient(transparent ${(ly - 0.5).toFixed(2)}px, ${ink} ${(ly - 0.5).toFixed(2)}px ${(ly + 0.5).toFixed(2)}px, transparent ${(ly + 0.5).toFixed(2)}px)`);
+			}
+			creases.style.backgroundImage = layers.join(', ');
+
+			// The label is printed on the roll and turns away with it.
+			const c = turn < Math.PI / 2 ? Math.cos(turn) : 0;
+			label.style.opacity = c.toFixed(3);
+			label.style.transform = `translateY(calc(-50% + ${(r * Math.sin(Math.min(turn, Math.PI / 2))).toFixed(2)}px)) scaleY(${c.toFixed(3)})`;
+		};
+
+		// Ease p toward 0 or 1. A change of mind mid-roll starts from where it is.
+		let from = 0, to = 0, start = 0, dur = 0, raf = 0;
+		const tick = (now: number) => {
+			const k = Math.min(1, (now - start) / dur);
+			p = from + (to - from) * ease(k);
+			render();
+			raf = k < 1 ? requestAnimationFrame(tick) : 0;
+		};
+		const rollTo = (open: boolean) => {
+			hit.setAttribute('aria-expanded', String(open));
+			const target = open ? 1 : 0;
+			if (target === to) return;
+			to = target;
+			if (reduced.matches) {
+				cancelAnimationFrame(raf);
+				raf = 0;
+				p = to;
+				render();
+				return;
+			}
+			from = p;
+			start = performance.now();
+			dur = MS * Math.max(0.4, Math.abs(to - from));
+			if (!raf) raf = requestAnimationFrame(tick);
+		};
+
+		// Open while a mouse is over it, while keyboard focus is inside, or after
+		// a tap until the next tap.
+		let hover = false, focus = false, pinned = false;
+		const update = () => rollTo(hover || focus || pinned);
+		wrap.addEventListener('mouseenter', () => {
+			if (!canHover.matches) return;
+			hover = true;
+			update();
 		});
+		wrap.addEventListener('mouseleave', () => {
+			hover = pinned = false;
+			update();
+		});
+		wrap.addEventListener('focusin', (e) => {
+			if (!(e.target as HTMLElement).matches(':focus-visible')) return;
+			focus = true;
+			update();
+		});
+		wrap.addEventListener('focusout', (e) => {
+			if (wrap.contains(e.relatedTarget as Node | null)) return;
+			focus = false;
+			update();
+		});
+		// A click rolls it up again, except under a mouse, where hover rules.
+		hit.addEventListener('click', () => {
+			if (to === 1 && !hover) focus = pinned = false;
+			else pinned = true;
+			update();
+		});
+		document.addEventListener('pointerdown', (e) => {
+			if (!pinned || wrap.contains(e.target as Node)) return;
+			pinned = false;
+			update();
+		});
+
+		measure();
+		render();
+		new ResizeObserver(() => {
+			measure();
+			render();
+		}).observe(paper);
 	}
 </script>
