@@ -13,18 +13,18 @@ const DURATION = '7:18';
 		<div class="video-frame rounded-[22px] bg-paper-mid p-2 ring-1 ring-line md:p-3">
 			<div class="@container relative aspect-video w-full overflow-hidden rounded-2xl bg-plate" data-video={VIDEO_ID}>
 				<a href={watch} class="group absolute inset-0 block focus-visible:outline-none" aria-label={`Play ${TITLE}, a 7 minute walkthrough`} data-play>
-					<!-- The "Cut over DNS" frame, used as-is: the face sits in the lower left, the badge in the upper right. -->
+					<!-- The "Cut over DNS" frame, blurred and dimmed so it reads as paused. The blur scales with the frame, and the image is
+					     scaled up so its soft edges stay outside the rounded corners. Hover and focus ease both back a little. -->
 					<img
 						src="/images/walkthrough-poster.webp"
 						alt=""
 						width="1920"
 						height="1080"
-						class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none"
+						class="absolute inset-0 h-full w-full scale-[1.02] object-cover blur-[clamp(1.5px,0.3cqw,3.5px)] transition-[filter] duration-300 group-hover:blur-[clamp(1px,0.16cqw,2px)] group-focus-visible:blur-[clamp(1px,0.16cqw,2px)] motion-reduce:transition-none"
 						loading="lazy"
 						decoding="async"
 					/>
-					<!-- No shade over the frame: it stays bright, and the title carries its own plate. Dim a little on hover. -->
-					<span class="absolute inset-0 bg-plate/0 transition-colors duration-200 group-hover:bg-plate/10 motion-reduce:transition-none" aria-hidden="true"></span>
+					<span class="absolute inset-0 bg-[rgb(14_13_12/0.4)] bg-[radial-gradient(ellipse_48%_42%_at_50%_58%,rgb(14_13_12/0.3),transparent)] transition-colors duration-300 group-hover:bg-[rgb(14_13_12/0.28)] group-focus-visible:bg-[rgb(14_13_12/0.28)] motion-reduce:transition-none" aria-hidden="true"></span>
 
 					<!-- Centred in the frame, across and down, at every width. -->
 					<span class="absolute top-1/2 left-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-orange text-white shadow-[0_0_0_5px_rgb(255_255_255/0.22),0_8px_24px_rgb(0_0_0/0.35)] transition-[scale,box-shadow] duration-200 group-hover:scale-110 group-hover:shadow-[0_0_0_7px_rgb(255_255_255/0.3),0_10px_30px_rgb(242_107_29/0.45)] group-focus-visible:scale-110 group-focus-visible:shadow-[0_0_0_4px_rgb(255_255_255/1),0_0_0_8px_rgb(242_107_29/0.9)] motion-reduce:transition-none sm:h-12 sm:w-12 md:h-22 md:w-22 md:shadow-[0_0_0_10px_rgb(255_255_255/0.22),0_16px_44px_rgb(0_0_0/0.35)] md:group-hover:shadow-[0_0_0_12px_rgb(255_255_255/0.3),0_18px_50px_rgb(242_107_29/0.45)] md:group-focus-visible:shadow-[0_0_0_5px_rgb(255_255_255/1),0_0_0_10px_rgb(242_107_29/0.9)]" aria-hidden="true">
@@ -32,13 +32,13 @@ const DURATION = '7:18';
 						<svg class="h-[18px] w-[18px] sm:h-5 sm:w-5 md:h-9 md:w-9" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z" /></svg>
 					</span>
 
-					<!-- Lower right, clear of the face (lower left), the badge, the step pill and the + button. Sized to the frame so it keeps its place at
-					     every width; narrow frames wrap the name and drop the subtitle. -->
-					<span class="absolute right-[4.5%] bottom-[5.1%] flex flex-col items-end rounded-[clamp(7px,1.1cqw,14px)] bg-[rgb(26_25_24/0.86)] px-[clamp(8px,1.6cqw,20px)] py-[clamp(6px,1.1cqw,14px)] text-right text-white shadow-[0_8px_30px_rgb(0_0_0/0.22)] ring-1 ring-white/10 backdrop-blur-md" aria-hidden="true">
-						<span class="block text-[clamp(12px,2.3cqw,26px)] leading-[1.15] font-semibold tracking-[-0.02em]">Introducing <span class="@max-xl:block">OpenOrange</span></span>
-						<span class="mt-[clamp(4px,0.6cqw,8px)] flex items-center gap-2 text-[clamp(11px,1.3cqw,15px)] leading-none">
-							<span class="text-white/75 @max-xl:hidden">Watch the walkthrough</span>
-							<span class="shrink-0 rounded-[0.4em] bg-white/15 px-[0.5em] py-[0.35em] font-mono text-[clamp(9px,1.05cqw,12px)] leading-none tabular-nums">{DURATION}</span>
+					<!-- Hung from the centre, so it sits just below the play button (its radius plus its ring plus a gap) without moving it.
+					     The text scales with the frame; phone-width frames drop the subtitle and keep the duration. -->
+					<span class="absolute top-1/2 left-1/2 flex w-max -translate-x-1/2 translate-y-[34px] flex-col items-center text-center text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.55),0_2px_18px_rgb(0_0_0/0.45)] sm:translate-y-[40px] md:translate-y-[74px]" aria-hidden="true">
+						<span class="block text-[clamp(14px,2.8cqw,32px)] leading-[1.15] font-semibold tracking-[-0.02em]">{TITLE}</span>
+						<span class="mt-[clamp(5px,0.7cqw,10px)] flex items-center gap-[0.6em] text-[clamp(11px,1.35cqw,16px)] leading-none">
+							<span class="font-medium text-white/90 @max-sm:hidden">Watch the walkthrough</span>
+							<span class="shrink-0 rounded-[0.4em] bg-black/35 px-[0.5em] py-[0.35em] font-mono text-[clamp(10px,1.1cqw,13px)] leading-none tabular-nums ring-1 ring-white/20 [text-shadow:none]">{DURATION}</span>
 						</span>
 					</span>
 					<!-- Keyboard focus: a ring around the whole card, drawn above the image. -->
