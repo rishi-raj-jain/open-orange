@@ -1,11 +1,11 @@
 ---
 name: rivet-open-orange
-description: Move a Cloudflare Workers project to Rivet with Open Orange, the orange CLI. Use when asked to run, deploy, or migrate a Worker, its Durable Objects, or its D1 databases from Cloudflare to Rivet, or when a project with a wrangler.jsonc, wrangler.json, or wrangler.toml mentions Open Orange or orange.
+description: Move a Cloudflare Workers project to Rivet with OpenOrange, the orange CLI. Use when asked to run, deploy, or migrate a Worker, its Durable Objects, or its D1 databases from Cloudflare to Rivet, or when a project with a wrangler.jsonc, wrangler.json, or wrangler.toml mentions OpenOrange or orange.
 ---
 
-# Move a Cloudflare Worker to Rivet with Open Orange
+# Move a Cloudflare Worker to Rivet with OpenOrange
 
-Open Orange runs a Worker, unchanged, on Rivet: `orange dev` locally, `orange deploy` on a Rivet cluster, and `orange migrate` to move the data of Durable Objects and D1 databases from Cloudflare while the app serves. A D1 database takes no writes during its move.
+OpenOrange runs a Worker, unchanged, on Rivet: `orange dev` locally, `orange deploy` on a Rivet cluster, and `orange migrate` to move the data of Durable Objects and D1 databases from Cloudflare while the app serves. A D1 database takes no writes during its move.
 
 Steps 1 to 3 run and deploy the Worker. Steps 4 to 10 move production data. Do only the steps the user asked for.
 
@@ -14,7 +14,7 @@ Steps 1 to 3 run and deploy the Worker. Steps 4 to 10 move production data. Do o
 - **Secrets.** The user creates and enters every secret value: `WORKER_MIGRATOR_TOKEN`, `CLOUDFLARE_API_TOKEN`, Rivet tokens. Refer to a secret only by its name or as `$NAME`. Keep secret values out of commands you show, files you read, and your output. Run the commands that prompt for a secret (`wrangler secret put`, `rivet cluster secret set`) by asking the user to run them.
 - **Stop and ask.** At each **Stop and ask**, tell the user what will change and for whom, then wait for an explicit yes. A yes covers that one action.
 - **Cloudflare stays.** Orange never deletes anything on Cloudflare. Deleting the Cloudflare Worker or its data is the user's job, after the migration.
-- **Run commands through the project.** Open Orange is a dev dependency of the project, so run `pnpm orange ...` (or the project's package manager). When the project has no `orange`, install it as the [Open Orange README](https://github.com/rivet-dev/open-orange#readme) says. `orange <command> --help` is the source of truth for flags.
+- **Run commands through the project.** OpenOrange is a dev dependency of the project, so run `pnpm orange ...` (or the project's package manager). When the project has no `orange`, install it as the [OpenOrange README](https://github.com/rivet-dev/open-orange#readme) says. `orange <command> --help` is the source of truth for flags.
 - **Rivet MCP.** When the user's agent has no Rivet MCP server, suggest it once for reading cluster state and logs. `orange mcp --json` gives the install command for Claude Code, Codex, Cursor, and VS Code, pinned to the linked cluster, and `configured` says whether an agent already has it. Other clients are at <https://rivet.dev/docs/mcp/>.
 
 ## Steps

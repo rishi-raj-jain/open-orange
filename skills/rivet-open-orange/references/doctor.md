@@ -29,7 +29,7 @@ A binding that is not supported does not change the exit code. Read the `binding
 | `id` | Checks | Usual fix for `fail` |
 |---|---|---|
 | `node` | The Node.js version is in Orange's range | Install the Node.js major in the `hint` |
-| `rivetkit` | The pinned RivetKit packages and engine binary are installed | Reinstall Open Orange |
+| `rivetkit` | The pinned RivetKit packages and engine binary are installed | Reinstall OpenOrange |
 | `config` | The Wrangler configuration loads | Fix the error in `detail` |
 | `bundle` | The Worker bundles. Skipped when the config has a custom `build`. | Fix the import or build error in `detail` |
 | `port` | The port is free | Stop the other server, or pass the free port that the `hint` names to `orange dev --port` |
@@ -54,7 +54,7 @@ One event per binding, Durable Objects first.
 | `support` | `runs_as_is` needs nothing. `needs_service` needs a service the user supplies: tell them `setup`. `not_supported` has no backend, so its calls throw or its data is dropped: tell them `alternative`, or the `docs` page when there is no `alternative`. |
 | `status` | `local`, `pluggable` (a backend set by a variable), or `stub` (every call throws) |
 | `runsOn` | What backs the binding on Rivet |
-| `docs` | The Open Orange page for the binding |
+| `docs` | The OpenOrange page for the binding |
 
 An older Orange prints no `support` field. Then treat `"status":"stub"` as not supported.
 

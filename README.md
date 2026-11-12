@@ -2,7 +2,7 @@
   <img src="docs/images/hero.png" width="560" alt="A Cloudflare Worker and its bindings run on Rivet Actors">
 </p>
 
-<h1 align="center">Open Orange</h1>
+<h1 align="center">OpenOrange</h1>
 
 <p align="center">Run your Cloudflare Workers and Durable Objects on Rivet with no changes to your app code.</p>
 
@@ -14,7 +14,7 @@
   <a href="https://rivet.dev/discord">Discord</a>
 </p>
 
-Open Orange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a [Rivet Actor](https://rivet.dev/docs/actors/) with its own SQLite database.
+OpenOrange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a [Rivet Actor](https://rivet.dev/docs/actors/) with its own SQLite database.
 
 ## Install the MCP
 
@@ -46,7 +46,7 @@ code --add-mcp '{"name":"rivet","type":"http","url":"https://mcp.rivet.dev/mcp"}
 
 For other clients, see [Rivet MCP](https://rivet.dev/mcp). The Rivet dashboard shows the same commands under **Settings > MCP**.
 
-After you [install Open Orange](#step-1-install), `pnpm orange mcp` says whether your coding agent has the Rivet MCP. If it does not, it prints the one command for the agent you use, pinned to your linked cluster:
+After you [install OpenOrange](#step-1-install), `pnpm orange mcp` says whether your coding agent has the Rivet MCP. If it does not, it prints the one command for the agent you use, pinned to your linked cluster:
 
 ```text
 ! Rivet MCP is not set up. Connect Claude Code:
@@ -57,7 +57,7 @@ After you [install Open Orange](#step-1-install), `pnpm orange mcp` says whether
 
 ## Check compatibility
 
-After you [install Open Orange](#step-1-install), run `orange doctor` in your Worker project:
+After you [install OpenOrange](#step-1-install), run `orange doctor` in your Worker project:
 
 ```sh
 pnpm orange doctor
@@ -112,10 +112,10 @@ You need:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/step-1-install-dark.svg">
-  <img alt="Open Orange reads the wrangler.jsonc and source files that your Worker already has" src="docs/images/step-1-install.svg">
+  <img alt="OpenOrange reads the wrangler.jsonc and source files that your Worker already has" src="docs/images/step-1-install.svg">
 </picture>
 
-Clone Open Orange next to your project. The install also builds the CLI.
+Clone OpenOrange next to your project. The install also builds the CLI.
 
 ```sh
 git clone https://github.com/rivet-dev/open-orange
@@ -250,14 +250,14 @@ docker run --rm -p 8080:8080 -e RIVET_ENDPOINT=https://<namespace>:<token>@<engi
    pnpm orange migrate d1 <database> --url <orange-url>
    ```
 
-6. **Point DNS.** Point your domain at Open Orange. Each Durable Object now copies itself from Cloudflare on its first request.
+6. **Point DNS.** Point your domain at OpenOrange. Each Durable Object now copies itself from Cloudflare on its first request.
 7. **Backfill.** Wait a few minutes, then copy the Durable Objects that got no requests. Run the command again after a few more minutes, because Cloudflare lists new objects late.
 
    ```sh
    pnpm orange migrate backfill --url https://app.example.com
    ```
 
-8. **Clean up.** Remove `ORANGE_MIGRATE_WORKER_URL` after a backfill reports 0 failed. Open Orange never deletes data on Cloudflare.
+8. **Clean up.** Remove `ORANGE_MIGRATE_WORKER_URL` after a backfill reports 0 failed. OpenOrange never deletes data on Cloudflare.
 
 Skip step 5 if your app has no D1 database. Skip step 7 if it has no Durable Objects.
 
@@ -273,7 +273,7 @@ Skip step 5 if your app has no D1 database. Skip step 7 if it has no Durable Obj
 `prepare` writes a Worker that exports your app as it is, with three additions:
 
 - Each SQLite Durable Object class goes through `migratable()`, which lets the object export its data.
-- Each D1 binding gets a wrapper that sends its queries to Open Orange after the database moves.
+- Each D1 binding gets a wrapper that sends its queries to OpenOrange after the database moves.
 - The token-protected `/__migrate/*` routes go in front of your `fetch` handler.
 
 `prepare` deploys nothing. It prints the `wrangler` commands, and you run them. Do not commit the two generated files.
@@ -282,15 +282,15 @@ Skip step 5 if your app has no D1 database. Skip step 7 if it has no Durable Obj
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-migrate-durable-object-dark.svg">
-  <img alt="A Durable Object starts on Open Orange on its first request or when the backfill wakes it, copies its data from Cloudflare in pages, and then serves. Cloudflare marks it as moved and answers 503" src="docs/images/readme-migrate-durable-object.svg">
+  <img alt="A Durable Object starts on OpenOrange on its first request or when the backfill wakes it, copies its data from Cloudflare in pages, and then serves. Cloudflare marks it as moved and answers 503" src="docs/images/readme-migrate-durable-object.svg">
 </picture>
 
-- An object moves on its first request to Open Orange, or when `orange migrate backfill` wakes it.
-- Open Orange pulls the data in pages before the object's constructor runs.
+- An object moves on its first request to OpenOrange, or when `orange migrate backfill` wakes it.
+- OpenOrange pulls the data in pages before the object's constructor runs.
 - Cloudflare marks the object as moved only if no write came during the copy. If a write came, the copy starts again.
 - After that, Cloudflare answers 503 `migrator.moved` for the object, so no write can go to the old copy.
 
-**To roll back,** point your domain back at Cloudflare and set `MIGRATOR_DISABLED=true` on the prepared Worker. Writes made on Open Orange stay on Open Orange.
+**To roll back,** point your domain back at Cloudflare and set `MIGRATOR_DISABLED=true` on the prepared Worker. Writes made on OpenOrange stay on OpenOrange.
 
 Durable Objects that use the older key-value storage (`new_classes`) cannot move.
 
@@ -303,17 +303,17 @@ Durable Objects that use the older key-value storage (`new_classes`) cannot move
 
 1. **Freeze.** Triggers on Cloudflare's D1 refuse every write with `orange-d1-frozen`. Reads continue.
 2. **Export.** Cloudflare's D1 export API dumps the database exactly. D1 answers no query until it ends.
-3. **Import.** Open Orange reads the dump in commits of about 1 MiB. A rerun continues from the last commit.
-4. **Check.** Open Orange compares every row with the frozen D1, by SHA-256 per page of rows.
-5. **Switch.** Cloudflare forwards every query for the database to Open Orange.
+3. **Import.** OpenOrange reads the dump in commits of about 1 MiB. A rerun continues from the last commit.
+4. **Check.** OpenOrange compares every row with the frozen D1, by SHA-256 per page of rows.
+5. **Switch.** Cloudflare forwards every query for the database to OpenOrange.
 
 If a step fails before the switch, the freeze opens, Cloudflare takes writes again, and nothing is lost.
 
 ## Compatibility
 
-- **Upstream workerd tests:** 1,602 of 1,774 pass (90.3%). Open Orange also runs 77 Durable Object tests that it ports from workerd's C++ tests, and 68 of them pass. The score counts only the upstream tests. See the [report](packages/cloudflare-conformance/README.md).
+- **Upstream workerd tests:** 1,602 of 1,774 pass (90.3%). OpenOrange also runs 77 Durable Object tests that it ports from workerd's C++ tests, and 68 of them pass. The score counts only the upstream tests. See the [report](packages/cloudflare-conformance/README.md).
 - **WebSocket hibernation is emulated.** The Durable Object leaves memory and its sockets stay open, but its Rivet Actor stays running.
-- **Compatibility dates do not apply.** Open Orange runs one profile and ignores `compatibility_date`. It warns about each flag in `compatibility_flags` that it does not apply.
+- **Compatibility dates do not apply.** OpenOrange runs one profile and ignores `compatibility_date`. It warns about each flag in `compatibility_flags` that it does not apply.
 
 Each [module page](docs/modules/index.mdx) lists every known difference from Cloudflare.
 
@@ -343,6 +343,6 @@ Run `orange <command> --help` for the flags of one command.
 - [Deploy guide](docs/deploy.mdx): variables, secrets, rollback, and self-hosting.
 - [Migration guide](docs/migrate.mdx): how to cut over, how to roll back, and what cannot move.
 - [Modules](docs/modules/index.mdx): one page for each binding and runtime API, with its known differences.
-- [Examples](examples/): Workers that you can copy, with no Open Orange imports.
+- [Examples](examples/): Workers that you can copy, with no OpenOrange imports.
 - [Real projects](packages/cloudflare-conformance/real-projects): open-source Workers run through `orange dev`, with what works and what does not.
 - [Discord](https://rivet.dev/discord): questions and support.

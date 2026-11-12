@@ -1,4 +1,4 @@
-# Run and deploy with Open Orange
+# Run and deploy with OpenOrange
 
 ## Run locally
 

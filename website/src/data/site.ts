@@ -437,7 +437,7 @@ export const STATUS_LABEL: Record<ServiceStatus, string> = {
 export const GET_STARTED = [
 	{
 		title: 'Install',
-		body: 'Add Open Orange to your Worker project. Your code and your Wrangler configuration do not change.',
+		body: 'Add OpenOrange to your Worker project. Your code and your Wrangler configuration do not change.',
 		commands: ['git clone https://github.com/rivet-dev/open-orange', 'cd my-worker && pnpm add -D ../open-orange'],
 		output: null,
 	},
@@ -456,7 +456,7 @@ export const GET_STARTED = [
 ] as const;
 
 export const AGENT_PROMPT =
-	"Run this project's Cloudflare Worker on Rivet with Open Orange. First, ask me where it should run: on my machine, on a Rivet cluster, or on my own Rivet Engine. Then read https://github.com/rivet-dev/open-orange/blob/main/README.md and follow its quickstart. Do not change my app code.";
+	"Run this project's Cloudflare Worker on Rivet with OpenOrange. First, ask me where it should run: on my machine, on a Rivet cluster, or on my own Rivet Engine. Then read https://github.com/rivet-dev/open-orange/blob/main/README.md and follow its quickstart. Do not change my app code.";
 
 // The bindings documented in docs/modules/, in the order the overview lists them.
 export const MODULES = [

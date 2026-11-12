@@ -17,8 +17,8 @@ const steps = [
 		title: 'Install',
 		image: image('step-1-install.svg'),
 		darkImage: darkImage('step-1-install.svg'),
-		alt: 'Open Orange reads the wrangler.jsonc and source files that your Worker already has',
-		body: 'Clone Open Orange next to your project, then add it to your Worker project. Your code and your Wrangler configuration do not change.',
+		alt: 'OpenOrange reads the wrangler.jsonc and source files that your Worker already has',
+		body: 'Clone OpenOrange next to your project, then add it to your Worker project. Your code and your Wrangler configuration do not change.',
 		code: 'git clone https://github.com/rivet-dev/open-orange\ncd open-orange && pnpm install\ncd ../my-worker && pnpm add -D ../open-orange',
 	},
 	{
@@ -42,7 +42,7 @@ const steps = [
 		title: 'Move your data from Cloudflare',
 		image: image('step-4-migrate.svg'),
 		darkImage: darkImage('step-4-migrate.svg'),
-		alt: 'Prepare the Cloudflare Worker, deploy to Open Orange, point DNS at it, then run the backfill',
+		alt: 'Prepare the Cloudflare Worker, deploy to OpenOrange, point DNS at it, then run the backfill',
 		body: '`orange migrate` moves Durable Objects and D1 databases while your app serves. Skip this step if your app has no data on Cloudflare.',
 		code: 'pnpm orange migrate prepare\npnpm orange migrate backfill --url https://app.example.com',
 		more: { label: 'Migration guide', href: docHref('migrate') },
@@ -55,7 +55,7 @@ const codeParts = (text: string) => text.split(/`([^`]+)`/);
 const sections = await Promise.all(
 	['deploy', 'migrate', 'modules', 'modules/bindings', 'errors'].map(async (id) => {
 		const entry = (await getEntry('docs', id))!;
-		if (id === 'modules') return { href: docHref(id), title: 'Bindings', description: 'Every Cloudflare binding on Open Orange: whether it runs, how, and what differs from Cloudflare.' };
+		if (id === 'modules') return { href: docHref(id), title: 'Bindings', description: 'Every Cloudflare binding on OpenOrange: whether it runs, how, and what differs from Cloudflare.' };
 		return { href: docHref(id), title: id === 'modules/bindings' ? 'Binding configuration' : entry.data.title, description: entry.data.description };
 	}),
 );
@@ -71,7 +71,7 @@ const sections = await Promise.all(
 	]}
 >
 	<p>
-		Open Orange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a <a href="https://rivet.dev/docs/actors/">Rivet Actor</a> with its own SQLite database.
+		OpenOrange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a <a href="https://rivet.dev/docs/actors/">Rivet Actor</a> with its own SQLite database.
 	</p>
 	<ul>
 		<li><strong>Run.</strong> <code>orange dev</code> runs your Worker on your machine.</li>
