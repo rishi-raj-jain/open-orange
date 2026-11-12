@@ -20,8 +20,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png">
-    <img src="docs/images/hero.png" width="560" alt="A Cloudflare Worker and its bindings run on Rivet Actors">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.svg">
+    <img src="docs/images/hero.svg" width="560" alt="A Cloudflare Worker and its bindings run on Rivet Actors">
   </picture>
 </p>
 
