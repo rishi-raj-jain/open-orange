@@ -1,6 +1,6 @@
 {
   "name": "open-orange",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Cloudflare Workers compatibility layer for Rivet",
   "packageManager": "pnpm@10.13.1",
   "engines": {
@@ -49,7 +49,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "3.1153.0",
     "@rivet-dev/agentos-core": "0.4.1",
-    "@rivet-dev/durable-object-migrator": "1.0.0",
+    "@rivet-dev/durable-object-migrator": "1.0.2",
     "@rivet-dev/sandbox-adapter": "0.5.3",
     "capnweb": "0.12.0",
     "devalue": "5.9.4",
