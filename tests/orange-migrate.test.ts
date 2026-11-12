@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { glob, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { glob, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
@@ -147,6 +147,45 @@ test("migrate commands take Wrangler's --cwd and --env before or after the comma
 		assert.doesNotMatch(after.output, /Not moved/);
 		const missing = await orange(["migrate", "prepare", "--env"], project.directory);
 		assert.equal(missing.code, 2, missing.output);
+	} finally {
+		await project.dispose();
+	}
+});
+
+// The fixture app, with a single-page app in front of it. As on Cloudflare, only `/rooms/*` reaches
+// the Worker first, and any other path that matches no file gets index.html.
+async function serveStaticAssets(projectDirectory: string, extra: Record<string, unknown> = {}): Promise<void> {
+	await mkdir(join(projectDirectory, "public"));
+	await writeFile(join(projectDirectory, "public", "index.html"), "<!doctype html><title>Rooms</title>\n");
+	const configPath = join(projectDirectory, "wrangler.jsonc");
+	const config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+	const assets = { directory: "./public", not_found_handling: "single-page-application", run_worker_first: ["/rooms/*"] };
+	await writeFile(configPath, JSON.stringify({ ...config, assets, ...extra }));
+}
+
+async function readPreparedConfig(projectDirectory: string): Promise<Record<string, any>> {
+	const text = await readFile(join(projectDirectory, "wrangler.migrate.jsonc"), "utf8");
+	return JSON.parse(text.replace(/^\/\/.*\n/, "")) as Record<string, any>;
+}
+
+test("prepare sends the migrator's routes to the Worker before static assets, and keeps the app's own rules", { timeout: 120_000 }, async () => {
+	const project = await copyProject(fixture);
+	try {
+		const assets = (runWorkerFirst: unknown) => ({ directory: "./public", not_found_handling: "single-page-application", run_worker_first: runWorkerFirst });
+		await serveStaticAssets(project.directory, {
+			env: {
+				listed: { assets: assets(["/api/*", "/__migrate/*"]) },
+				unset: { assets: { directory: "./public", not_found_handling: "single-page-application" } },
+				all: { assets: assets(true) },
+			},
+		});
+		const prepared = await orange(["migrate", "prepare"], project.directory);
+		assert.equal(prepared.code, 0, prepared.output);
+		const config = await readPreparedConfig(project.directory);
+		assert.deepEqual(config.assets, assets(["/rooms/*", "/__migrate/*", "/__migrate-d1/*"]));
+		assert.deepEqual(config.env.listed.assets.run_worker_first, ["/api/*", "/__migrate/*", "/__migrate-d1/*"]);
+		assert.deepEqual(config.env.unset.assets.run_worker_first, ["/__migrate/*", "/__migrate-d1/*"]);
+		assert.equal(config.env.all.assets.run_worker_first, true);
 	} finally {
 		await project.dispose();
 	}
@@ -357,6 +396,58 @@ test("an object that still runs code without the migrator fails its copy with a 
 			const moved = await wake();
 			assert.equal(moved.status, 200, await moved.clone().text());
 			assert.deepEqual(await roomState(orangeDev.origin, "/rooms/lobby"), before);
+		} finally {
+			await orangeDev.close();
+		}
+	} finally {
+		await source?.close();
+		await destination.dispose();
+		await project.dispose();
+	}
+});
+
+test("an app that serves static assets moves its objects, and a Worker prepared without the migrator's routes fails with a message that says so", { timeout: 300_000 }, async () => {
+	const project = await copyProject(fixture);
+	const destination = await copyProject(fixture);
+	let source: CloudflareSource | undefined;
+	try {
+		await serveStaticAssets(project.directory);
+		await serveStaticAssets(destination.directory);
+		const prepare = async (): Promise<void> => {
+			const prepared = await orange(["migrate", "prepare"], project.directory);
+			assert.equal(prepared.code, 0, prepared.output);
+		};
+		// As an Orange before this fix prepared it: the app's run_worker_first only.
+		await prepare();
+		const generatedConfig = join(project.directory, "wrangler.migrate.jsonc");
+		const prepared = await readFile(generatedConfig, "utf8");
+		await writeFile(generatedConfig, prepared.replace(/"run_worker_first": \[[^\]]*\]/, `"run_worker_first": ["/rooms/*"]`));
+		source = await startCloudflareSource(project.directory);
+		await post(source.origin, "/rooms/lobby/seed?rows=3");
+		const { port } = new URL(source.origin);
+		await writeFile(join(destination.directory, ".dev.vars"), `ORANGE_MIGRATE_WORKER_URL=${source.origin}\nWORKER_MIGRATOR_TOKEN=${migratorToken}\n`);
+		const orangeDev = await startOrangeDev(destination.directory);
+		try {
+			const wake = (): Promise<Response> =>
+				fetch(`${orangeDev.origin}/__migrate/ROOMS/wake?name=lobby`, { headers: { authorization: `Bearer ${migratorToken}` }, method: "POST" });
+			const refused = await wake();
+			assert.equal(refused.status, 502);
+			const message = await refused.text();
+			assert.match(message, /the Worker on Cloudflare did not answer as a migrator \(HTTP 200\)/);
+			assert.match(message, /`assets\.run_worker_first` in wrangler\.migrate\.jsonc must list `\/__migrate\/\*`/);
+			assert.doesNotMatch(message, /old connections/);
+
+			// The prepare that the message asks for routes the migrator to the Worker, and the app's
+			// pages still come from its assets.
+			await source.close();
+			await prepare();
+			source = await startCloudflareSource(project.directory, Number(port));
+			assert.match(await (await fetch(`${source.origin}/`)).text(), /<title>Rooms<\/title>/);
+			const before = await roomState(source.origin, "/rooms/lobby");
+			const moved = await wake();
+			assert.equal(moved.status, 200, await moved.clone().text());
+			assert.deepEqual(await roomState(orangeDev.origin, "/rooms/lobby"), before);
+			assert.equal((await fetch(`${source.origin}/rooms/lobby/state`)).status, 503);
 		} finally {
 			await orangeDev.close();
 		}

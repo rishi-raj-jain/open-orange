@@ -78,7 +78,7 @@ It prints `✓ Prepared <classes and D1 bindings>. Your code did not change.` an
 
 | File | Content |
 |---|---|
-| `wrangler.migrate.jsonc` | A copy of the Wrangler config whose `main` is the generated Worker |
+| `wrangler.migrate.jsonc` | A copy of the Wrangler config whose `main` is the generated Worker. With static assets, `assets.run_worker_first` also lists `/__migrate/*` and `/__migrate-d1/*` (unless it is `true`), so these routes reach the Worker before the assets |
 | `.open-orange/migrate/worker.mjs` | The app, with each `new_sqlite_classes` class wrapped by the migrator, the routes `/__migrate/*` and `/__migrate-d1/*` in front of `fetch`, and each D1 binding wrapped |
 
 Nobody edits or commits these files. Run `prepare` again to change them, and again after each Orange update. When `prepare` prints `Add <files> to .gitignore`, add those entries to the project's `.gitignore`.
@@ -253,6 +253,7 @@ It prints `<class>: <n> objects on Cloudflare, including any that already moved 
 - `--url` is any URL that reaches Orange: the app domain after step 7, or the pool URL.
 - Each class prints `<class>: <n> moved, <m> failed, already moved: <k>.` and the failed IDs. `already moved` counts objects that Orange already had, for example because the app asked for them after the cutover. `no data on Cloudflare: <e>` shows when not 0: objects with no saved name and no data on Cloudflare, which Orange does not copy. To check, backfill reads the first export page of each object with no saved name, so an object of one page (about 4 MB) refuses traffic on Cloudflare from then on, even when its wake fails. The next run copies it.
 - Exit `1` means some objects did not move. Run it again to retry them. When the last line is `Orange failed on its own side: <reason>`, a retry fails the same way: tell the user, and show the `Looks like a bug? Report it:` link.
+- A failed object with `did not answer as a migrator Worker (HTTP 200)`, or `the Worker on Cloudflare did not answer as a migrator (HTTP 200)`, usually means static assets answered before the Worker. Check that `assets.run_worker_first` in `wrangler.migrate.jsonc` lists `/__migrate/*`. If not, run `orange migrate prepare` again and, after the user agrees, deploy `wrangler.migrate.jsonc`.
 - A failed object with `did not answer as a migrator ... Try again after its old connections close` still runs the code from before the wrapped deploy, because it kept a WebSocket open. Run the backfill again after those connections close.
 - Exit `130` means it was stopped. Run it again: it continues from `.open-orange/migrate/backfill-<class>.json`.
 - After a run with `0 failed`, wait a few minutes and run it one more time to catch objects that Cloudflare listed late.

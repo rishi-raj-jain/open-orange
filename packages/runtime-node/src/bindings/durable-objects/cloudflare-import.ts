@@ -218,8 +218,11 @@ export async function importDurableObjectFromCloudflare(
 	}
 	const client = createClient(source);
 	const label = `${object.className} ${id.name ?? id.toString()}`;
+	let workerAnswered = false;
 	try {
 		const cloudflareId = id.name === undefined ? id.toString() : (await client.resolve(binding, { name: id.name })).id;
+		// The Worker itself answers a name lookup, so a later failure comes from the object.
+		workerAnswered = id.name !== undefined;
 		for (let attempt = 1; ; attempt += 1) {
 			try {
 				await copyObject(database, client, binding, cloudflareId);
@@ -231,7 +234,7 @@ export async function importDurableObjectFromCloudflare(
 			}
 		}
 	} catch (error: unknown) {
-		throw Object.assign(new Error(`Couldn't import ${label} from Cloudflare: ${importFailureReason(error, id.name !== undefined)}`, { cause: error }), {
+		throw Object.assign(new Error(`Couldn't import ${label} from Cloudflare: ${importFailureReason(error, workerAnswered, id.name !== undefined)}`, { cause: error }), {
 			internal: !(error instanceof MigratorError) && !isNetworkFailure(error),
 		});
 	}
@@ -240,16 +243,23 @@ export async function importDurableObjectFromCloudflare(
 // The export goes through the Worker to the object. After the wrapped deploy, an object that kept
 // a WebSocket open still runs the code from before it, which has no export route, so it answers
 // like the app. When the Worker answered the name lookup, the URL is right, and only that is left.
-function importFailureReason(error: unknown, workerAnswered: boolean): string {
+// When the Worker did not answer it, the request did not reach the wrapped Worker: often static
+// assets answered first, as a single-page-application fallback answers 200 with index.html.
+function importFailureReason(error: unknown, workerAnswered: boolean, named: boolean): string {
 	const message = error instanceof Error ? error.message : String(error);
 	if (!(error instanceof MigratorError) || error.code !== "migrator.not_a_migrator") return message;
 	const status = error.status === undefined ? "" : ` (HTTP ${error.status})`;
 	const oldCode =
-		`the object did not answer as a migrator${status}. It may still run code from before the wrapped Worker was deployed: ` +
+		"It may still run code from before the wrapped Worker was deployed: " +
 		"an object with open WebSockets keeps its old code until those connections close. Try again after its old connections close.";
-	return workerAnswered
-		? `The Worker on Cloudflare answered, but ${oldCode}`
-		: `${oldCode} Also check that ${workerUrlSetting} reaches the wrapped Worker on Cloudflare, such as its workers.dev URL.`;
+	if (workerAnswered) return `The Worker on Cloudflare answered, but the object did not answer as a migrator${status}. ${oldCode}`;
+	const notReached =
+		"If the Worker serves static assets, they may answer before it: `assets.run_worker_first` in wrangler.migrate.jsonc must list `/__migrate/*`. " +
+		"Run `orange migrate prepare` again and deploy wrangler.migrate.jsonc. " +
+		`Also check that ${workerUrlSetting} reaches the wrapped Worker on Cloudflare, such as its workers.dev URL.`;
+	return named
+		? `the Worker on Cloudflare did not answer as a migrator${status}. ${notReached}`
+		: `the object did not answer as a migrator${status}. ${oldCode} ${notReached}`;
 }
 
 function tokenMatches(request: Request, token: string): boolean {

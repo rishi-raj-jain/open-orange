@@ -152,7 +152,7 @@ orange migrate prepare
 
 | File | Content |
 |---|---|
-| `wrangler.migrate.jsonc` | A copy of your Wrangler config. Its `main` is the generated Worker. |
+| `wrangler.migrate.jsonc` | A copy of your Wrangler config. Its `main` is the generated Worker. When the Worker serves static assets, `assets.run_worker_first` also lists `/__migrate/*` and `/__migrate-d1/*`, so these routes reach the Worker before the assets. A `run_worker_first: true` stays as it is. |
 | `.open-orange/migrate/worker.mjs` | A Worker that wraps your app |
 
 The generated Worker does these things:
@@ -496,6 +496,7 @@ There is no automated way back after the state is `moved`.
 | An object already has data on Orange when you turn the migration on | Its calls fail with an error. Orange keeps its data and leaves the Cloudflare copy alone. To serve the Cloudflare data, destroy the object's actor on Orange. See [Test Orange before the migration is on](#test-orange-before-the-migration-is-on). To serve the Orange data, remove `ORANGE_MIGRATE_WORKER_URL`. |
 | `ORANGE_MIGRATE_WORKER_URL` is removed while the copy of an object is unfinished | Its calls fail with an error and never return partial data. Set the variable again to finish the copy. |
 | Cloudflare is down during the first request to an object | The request fails. The object never serves empty data. A later request tries again. |
+| Static assets answer the migrator's routes before the Worker, for example a single-page-application fallback | The copy fails with `the Worker on Cloudflare did not answer as a migrator (HTTP 200)`. Run `prepare` again, which adds the routes to `assets.run_worker_first`, and deploy `wrangler.migrate.jsonc`. |
 | An object still runs its code from before the prepared Worker, because it kept a WebSocket open | The copy fails with `the object did not answer as a migrator ... Try again after its old connections close`. A later request, or backfill run, tries again. |
 | A client with stale DNS writes during a copy | The copy starts over, so the write moves too. |
 | A client with stale DNS writes after a move | It gets `migrator.moved`. |
