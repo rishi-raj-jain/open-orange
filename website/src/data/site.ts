@@ -38,62 +38,69 @@ export const HERO = {
 } as const;
 
 export type LimitRow = {
+	id: string;
 	limit: string;
 	cloudflare: string;
 	openorange: string;
-	/** The full limit, shown on hover. */
-	detail: string;
+	/** A qualifier shown under the OpenOrange value. */
+	note?: string;
 	source?: string;
 };
 
-// Workers Paid plan values. Free plan values are stricter.
+// Workers Paid plan values. Free plan values are stricter. The OpenOrange
+// values come from the runtime: it sets no CPU, wall-time, bundle or Durable
+// Object storage cap (docs/modules/durable-objects.mdx, Limits), and the
+// runtime process is plain Node.js, whose heap is the one default ceiling.
 export const LIMITS: LimitRow[] = [
 	{
-		limit: 'Memory',
+		id: 'memory',
+		limit: 'Memory per Worker or Durable Object',
 		cloudflare: '128 MB',
-		openorange: 'Your instance',
-		detail: 'Memory per Worker isolate. Each Durable Object has the same 128 MB cap.',
+		openorange: "Up to your machine's memory",
+		note: 'Node.js heap: up to about 4 GB by default, configurable',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#memory',
 	},
 	{
-		limit: 'CPU time',
-		cloudflare: '5 min',
-		openorange: 'No limit',
-		detail: 'CPU time per request: 30 seconds by default, 5 minutes at most.',
+		id: 'cpu',
+		limit: 'CPU time per request',
+		cloudflare: '30 s default, 5 min max',
+		openorange: 'No cap',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#cpu-time',
 	},
 	{
-		limit: 'Connections',
-		cloudflare: '6',
-		openorange: 'OS limits',
-		detail: 'Simultaneous outgoing connections per request. Extra fetch() calls wait for a free one.',
-		source: 'https://developers.cloudflare.com/workers/platform/limits/#simultaneous-open-connections',
-	},
-	{
-		limit: 'Wall time',
-		cloudflare: '15 min',
-		openorange: 'No limit',
-		detail: 'Cron, queue and alarm handlers stop after 15 minutes of wall time.',
+		id: 'wall-time',
+		limit: 'Cron, queue and alarm handlers',
+		cloudflare: '15 min wall time',
+		openorange: 'No cap',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#duration',
 	},
 	{
-		limit: 'Bundle size',
+		id: 'connections',
+		limit: 'Open connections per request',
+		cloudflare: '6 at once',
+		openorange: 'OS limits',
+		source: 'https://developers.cloudflare.com/workers/platform/limits/#simultaneous-open-connections',
+	},
+	{
+		id: 'storage',
+		limit: 'Storage per Durable Object',
+		cloudflare: '10 GB',
+		openorange: 'No cap',
+		source: 'https://developers.cloudflare.com/durable-objects/platform/limits/',
+	},
+	{
+		id: 'bundle',
+		limit: 'Worker bundle',
 		cloudflare: '64 MiB',
-		openorange: 'No limit',
-		detail: 'The largest Worker bundle Cloudflare accepts.',
+		openorange: 'No cap',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#worker-size',
 	},
 	{
+		id: 'nodejs',
 		limit: 'Node.js',
-		cloudflare: 'A subset',
+		cloudflare: 'nodejs_compat subset',
 		openorange: 'Stock Node.js',
-		detail: 'Cloudflare runs part of the Node.js API behind nodejs_compat. OpenOrange runs stock Node.js, with a few node: modules swapped for workerd-shaped versions so Workers code behaves the same.',
-	},
-	{
-		limit: 'p99 latency',
-		cloudflare: 'Edge ↔ DB',
-		openorange: 'Next to DB',
-		detail: 'Run next to your database instead of crossing the internet on every query. No CPU cap cuts a slow request short, and no memory ceiling evicts a busy object, so p99s stay steady.',
+		source: 'https://developers.cloudflare.com/workers/runtime-apis/nodejs/',
 	},
 ];
 
