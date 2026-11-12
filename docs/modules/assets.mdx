@@ -1,70 +1,279 @@
 ---
 title: Static assets
-description: Serve a Worker's static assets with OpenOrange, routed like Cloudflare's asset and router Workers.
+description: Serve a Worker's static assets on OpenOrange from local files, routed like Cloudflare's router and asset Workers.
 ---
 
 # Static assets
 
-**Status:** Partial
+**Status: Partial.** Orange serves the assets directory from local files.
+
+- **Works:** `html_handling`, `not_found_handling`, `run_worker_first`,
+  `.assetsignore`, the `ASSETS` binding, and assets-only Workers
+- **Differs:** Cloudflare's limits of 25 MiB per file and 100,000 files are
+  not enforced
+- **Missing:** `_headers` and `_redirects` rules, and Workers Sites
+- **Migration:** Not needed. Assets are files in your project, and they deploy
+  with it.
 
 ## Configuration
 
-OpenOrange reads Wrangler's `assets` configuration:
+This serves a single-page app from `public/` and sends `/api/*` to the
+Worker. It builds
+[`tests/fixtures/examples/assets-spa`](../../tests/fixtures/examples/assets-spa).
+
+<Steps>
+
+<Step title="Point assets at a directory">
+
+Add `assets` to `wrangler.jsonc`. `directory` resolves against the
+configuration file.
 
 ```jsonc
 {
-  "main": "./src/worker.ts",
+  "name": "assets-spa",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "assets": {
-    "directory": "./dist",
-    "binding": "ASSETS",
-    "html_handling": "auto-trailing-slash",
+    "directory": "./public",
+    // Unknown paths serve index.html, so the browser app can route them.
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "!/api/docs/*"]
+    // API requests always reach the Worker, even when no asset matches.
+    "run_worker_first": ["/api/*"]
   }
 }
 ```
 
-`directory` resolves against the configuration file. A project without `main`
-is an assets-only Worker. A `.assetsignore` file in the directory excludes files
-with `.gitignore` syntax.
+</Step>
+
+<Step title="Write the Worker for the API">
+
+Only requests that match `run_worker_first` reach this Worker. Assets and the
+single-page app fallback answer everything else.
+
+```ts
+export default {
+  async fetch(request): Promise<Response> {
+    const { pathname } = new URL(request.url);
+    if (pathname === "/api/hello") {
+      return Response.json({ message: "Hello from the Worker" });
+    }
+    return Response.json({ error: `No API route for ${pathname}` }, { status: 404 });
+  },
+} satisfies ExportedHandler;
+```
+
+</Step>
+
+<Step title="Start the Worker">
+
+`orange dev` serves the Worker on port 8787. It stops with an error when the
+assets directory does not exist.
+
+```sh
+orange dev
+```
+
+</Step>
+
+<Step title="Open the app and call the API">
+
+Open `http://localhost:8787/about` in a browser: the app's `index.html` loads.
+An API route that does not exist gets the Worker's 404, never `index.html`.
+
+```sh
+curl localhost:8787/api/hello     # {"message":"Hello from the Worker"}
+curl localhost:8787/api/missing   # 404 {"error":"No API route for /api/missing"}
+```
+
+</Step>
+
+</Steps>
+
+### What Orange reads
+
+Orange reads `assets` as `wrangler dev` does, with these differences:
+
+| In your project | On Orange |
+| --- | --- |
+| `assets.directory` outside the project | `orange dev` serves it. `orange deploy` stops, because it copies only the project directory. |
+| `site`, `legacy_assets`, or `pages_build_output_dir` | The configuration does not load. |
+
+## Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `html_handling` | Supported | All four modes, with their `307` redirects. |
+| `not_found_handling` | Supported | `single-page-application`, and `404-page` with the nearest `404.html`. |
+| `run_worker_first` | Supported | `true`, or patterns with `*` and `!/` exclusions. |
+| `assets.binding` and `env.ASSETS.fetch()` | Supported | Follows redirects like any Fetcher. |
+| Assets-only Workers | Supported | A project without `main`. |
+| `.assetsignore` | Supported | `.gitignore` syntax. |
+| `ETag`, `If-None-Match`, and `Cache-Control` | Supported | |
+| `_headers` and `_redirects` | Not supported | |
+| Workers Sites (`site`) | Not supported | |
+| The router's `/_next/image` and `/_image` content-type checks | Not supported | |
+
+One difference reaches most projects:
+
+- **`_headers` and `_redirects` have no effect,** and `orange dev` warns at
+  startup when the directory has one. Set those headers and redirects in the
+  Worker, and list their paths in `run_worker_first`, so the Worker sees the
+  requests before assets answer them.
 
 ## How it works
 
-`orange dev` routes each request like Cloudflare's router Worker:
+Orange routes each request like Cloudflare's router Worker, then serves it
+like the asset Worker, from the files on disk:
 
-1. A negated `run_worker_first` pattern (`!/...`) sends the request to assets.
-2. A `run_worker_first` pattern, or `run_worker_first: true`, sends it to the
-   Worker.
-3. If an asset matches, assets serve it. Otherwise the Worker handles it. An
-   assets-only Worker always serves from assets.
+1. A path that matches a `!/` pattern in `run_worker_first` goes to assets.
+2. A path that matches another pattern, or any path with
+   `run_worker_first: true`, goes to the Worker.
+3. Otherwise assets answer when a file matches, and the Worker runs when none
+   does. An assets-only Worker serves every request from assets.
 
-The asset handler is a port of Cloudflare's asset Worker: the four
-`html_handling` modes with their 307 redirects, `not_found_handling` with
-`404.html` lookup in parent directories or the `index.html` fallback, `ETag`
-with `If-None-Match` 304 responses, `Cache-Control`, and 405 for methods other
-than GET and HEAD. Without `run_worker_first` patterns, `not_found_handling`
-applies to a missing path only for a browser navigation, as with the
-`assets_navigation_prefers_asset_serving` compatibility flag from 2025-04-01.
+Without `run_worker_first` patterns, `not_found_handling` answers a missing
+path only for a browser navigation, as on Cloudflare from the compatibility
+date 2025-04-01. A `fetch()` from your app to a missing path runs the Worker.
 
-`env.ASSETS.fetch()` runs the same handler with `not_found_handling` always on,
-and follows redirects like any Fetcher.
+Orange reads the directory on each request, so a new or changed file serves
+without a restart. An asset's `ETag` comes from its path and modification
+time, as in `wrangler dev`.
 
-OpenOrange reads the directory on each request, so added and changed files are
-served without a restart. Like `wrangler dev`, an asset's `ETag` comes from its
-path and modification time.
+## Limits
 
-## Conformance
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| Size of one file | No limit set by Orange. Cloudflare's is 25 MiB. | |
+| Number of files | No limit set by Orange. Cloudflare's is 100,000. | |
+| Methods for an asset path | `GET` and `HEAD` | Assets answer `405 Method Not Allowed`. |
 
-An end-to-end `orange dev` test covers headers and 304 responses, the HTML
-redirects, `run_worker_first` patterns, the SPA fallback for navigations,
-`404.html` pages, `.assetsignore`, the `ASSETS` binding, assets-only projects,
-and a missing directory. The asset and router Worker tests from workers-sdk are
-not part of the conformance corpus.
+<AiContext summary="Every configuration check, routing and HTML rule, response header, deviation, and the test evidence">
 
-## Limits and deviations
+#### Configuration reference
 
-- `_headers` and `_redirects` files are not applied. `orange dev` warns when
-  the directory has one.
-- OpenOrange does not enforce the 25 MiB asset size or the 100,000 file limit.
-- The router's `/_next/image` and `/_image` content-type checks are not applied.
-- `CF-Cache-Status` is always `HIT`, as it is for local reads in `wrangler dev`.
+| Key | Default | Values |
+| --- | --- | --- |
+| `directory` | Required | A path, resolved against the configuration file |
+| `binding` | None | The name of `env.<binding>` |
+| `html_handling` | `auto-trailing-slash` | `auto-trailing-slash`, `force-trailing-slash`, `drop-trailing-slash`, `none` |
+| `not_found_handling` | `none` | `single-page-application`, `404-page`, `none` |
+| `run_worker_first` | None | `true`, `false`, or an array of patterns |
+
+Errors that stop config load, with Wrangler's text where Wrangler has one:
+
+| Configuration | Error message |
+| --- | --- |
+| `assets` that is not an object | `assets must be an object` |
+| No `directory` | ``The `assets` property in your configuration is missing the required `directory` property.`` |
+| An empty `directory` | `The assets directory cannot be an empty string.` |
+| An unknown `html_handling` | `assets.html_handling must be one of auto-trailing-slash, drop-trailing-slash, force-trailing-slash, none` |
+| An unknown `not_found_handling` | `assets.not_found_handling must be one of 404-page, none, single-page-application` |
+| `run_worker_first` that is not a boolean or an array | `assets.run_worker_first must be a boolean or an array of strings` |
+| An empty `run_worker_first` array | ``No `run_worker_first` rules were provided; must provide at least 1 rule.`` |
+| A pattern that does not start with `/` or `!/` | ``Invalid routes in `run_worker_first`:`` and a line for each, such as `'api/*': rules must start with '/' or '!/'` or `'!api': negative rules must start with '!/'` |
+| Only `!/` patterns | ``Only negative `run_worker_first` rules were provided; must provide at least 1 non-negative rule`` |
+| `binding` without `main` | `Cannot use assets with a binding in an assets-only Worker.` |
+| `run_worker_first` without `main` | `Cannot set run_worker_first without a Worker script.` |
+
+- `run_worker_first: true` without `binding` loads with the warning
+  `run_worker_first=true set without an assets binding. Every request runs the Worker, which cannot fetch assets without assets.binding.`
+- `orange dev` checks the directory after the custom build in `build.command`.
+  A missing directory stops it with
+  `The directory specified by the "assets.directory" field in your configuration file does not exist:`,
+  and a file stops it with
+  `The path specified by the "assets.directory" field in your configuration file doesn't point to a directory:`.
+- The warning for `_headers` is
+  `open-orange does not apply the assets _headers file yet, so its rules have no effect.`
+  `_redirects` gets the same warning.
+- `orange deploy` stops with
+  `orange deploy copies the project directory only, so assets must be inside it: <directory>`.
+- `site`, `legacy_assets`, and `pages_build_output_dir` fail config load with
+  `Unsupported Wrangler configuration: <keys>`.
+- A configuration with neither `main` nor `assets` fails with
+  `Wrangler configuration must resolve a Worker entrypoint`.
+- `orange dev` and `orange serve` both serve assets.
+- A pattern matches the whole path, and `*` matches any characters,
+  including `/`.
+- The compatibility flags `assets_navigation_prefers_asset_serving` and
+  `assets_navigation_has_no_effect` apply, so Orange does not warn about
+  them.
+- `orange migrate prepare` adds `/__migrate/*` and `/__migrate-d1/*` to
+  `run_worker_first` in `wrangler.migrate.jsonc`, so the migrator's routes
+  reach the Worker before assets. A `run_worker_first: true` stays as it is.
+  See [Migrate from Cloudflare](../migrate).
+
+#### HTML handling
+
+The handler is a port of Cloudflare's asset Worker. It redirects with `307`
+only when nothing exists at the destination and the destination would serve
+the same file. The query string is kept.
+
+| Mode | `/about.html` serves at | `/blog/index.html` serves at |
+| --- | --- | --- |
+| `auto-trailing-slash` | `/about` | `/blog/` |
+| `force-trailing-slash` | `/about/` | `/blog/` |
+| `drop-trailing-slash` | `/about` | `/blog` |
+| `none` | `/about.html` only | `/blog/index.html` only |
+
+- Paths are decoded before the lookup, so non-ASCII and optionally encoded
+  characters match. A request for another spelling of the canonical path gets
+  a `307` to it.
+- Under `drop-trailing-slash`, the root keeps its slash.
+- With both `/foo.html` and `/foo/index.html`, `force-trailing-slash` keeps
+  `/foo.html` at its own path, and `drop-trailing-slash` keeps
+  `/foo/index.html` at its own path.
+
+#### Not-found handling
+
+- `single-page-application` serves `/index.html` with `200`.
+- `404-page` serves the nearest `404.html` in the path's directory or a parent
+  directory, with `404`.
+- `none` answers `404` with no body, or runs the Worker.
+- For a Worker with `main` and no `run_worker_first` patterns, the router
+  applies `not_found_handling` only to a request with
+  `Sec-Fetch-Mode: navigate`, and only while
+  `assets_navigation_prefers_asset_serving` is on. That flag is on from the
+  compatibility date 2025-04-01, and `assets_navigation_has_no_effect` turns
+  it off. Otherwise a missing path runs the Worker.
+- With `run_worker_first` patterns, in an assets-only Worker, and in
+  `env.ASSETS.fetch()`, `not_found_handling` applies to every request.
+
+#### Responses
+
+- `ETag` is a strong ETag of 32 hex characters, from a SHA-256 of the file
+  path and its modification time. `If-None-Match` with it, strong or `W/`,
+  gets `304`.
+- `Content-Type` comes from the file extension. Text types get
+  `; charset=utf-8`.
+- `Cache-Control: public, max-age=0, must-revalidate`, unless the request has
+  `Authorization` or `Range`.
+- `CF-Cache-Status: HIT` on every asset response, as for local reads in
+  `wrangler dev`.
+- A request with `Range` gets the whole file with `200`.
+- `HEAD` gets the headers and no body.
+- `.assetsignore`, `_headers`, and `_redirects` are never served. A path with
+  a `.` or `..` segment matches no asset.
+
+#### Deviations
+
+These add to the differences under [Compatibility](#compatibility) and
+[Limits](#limits).
+
+- Orange reads the directory on each request. `wrangler dev` builds its view
+  of the directory when it starts.
+
+#### Conformance
+
+- `src/runtime/assets.test.ts` runs a real `orange dev`. It covers content
+  types, `ETag` and `304`, the HTML redirects, `run_worker_first` patterns,
+  `env.ASSETS.fetch()` and its redirects, a file added while `orange dev`
+  runs, the single-page app fallback for navigations only, an assets-only
+  project with `drop-trailing-slash` and the nearest `404.html`, and a
+  missing directory.
+- `tests/runnable-examples.test.ts` runs the `assets-spa` example end to end.
+- The asset Worker and router Worker tests from workers-sdk are not part of
+  the conformance corpus.
+- The compatibility matrix lists the `assets` configuration as partial and
+  the `assets` binding as supported.
+
+</AiContext>

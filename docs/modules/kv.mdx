@@ -1,76 +1,223 @@
 ---
 title: KV
-description: Use Workers KV namespaces with OpenOrange, backed by a local Rivet Actor.
+description: Run Workers KV namespaces on OpenOrange, where each namespace is one Rivet Actor with its own SQLite database.
 ---
 
 # KV
 
-**Status:** Supported. Runs on one Rivet Actor for each namespace.
+<BindingStatus
+  binding="kv"
+  works="`get()`, `getWithMetadata()`, `put()`, `delete()`, and `list()`, with metadata, expiration, and bulk reads"
+  differs="Reads are strongly consistent. Cloudflare's KV quotas do not apply, so a value over 25 MiB or a 30-second TTL works."
+  missing="The edge cache: `cacheTtl` is ignored and `cacheStatus` is always `null`. There is no `orange kv` command."
+/>
+
+Your KV code and Wrangler configuration run unchanged.
 
 ## Configuration
 
-OpenOrange reads the standard Wrangler KV binding. No extra setup is needed:
+<Steps>
+
+<Step title="Bind the namespace">
+
+Add a `kv_namespaces` entry to `wrangler.jsonc`. On Orange, `id` only names
+the namespace, so a Cloudflare namespace ID works as it is.
 
 ```jsonc
 {
-  "kv_namespaces": [{ "binding": "CACHE", "id": "<NAMESPACE_ID>" }]
+  "name": "kv",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "kv_namespaces": [{ "binding": "NOTES", "id": "kv-example-notes" }]
 }
 ```
 
-Like `wrangler dev`, OpenOrange uses `preview_id` when it is set, then `id`,
-then the binding name. Bindings with the same ID share data.
+</Step>
+
+<Step title="Read and write keys">
+
+Call the namespace from `env`, as on Cloudflare.
+
+```ts
+interface Env {
+  NOTES: KVNamespace;
+}
+
+export default {
+  async fetch(request, env): Promise<Response> {
+    const key = /^\/notes\/(.+)$/.exec(new URL(request.url).pathname)?.[1];
+    if (key === undefined) return new Response("Try /notes/<key>", { status: 404 });
+    switch (request.method) {
+      case "PUT":
+        await env.NOTES.put(key, await request.text());
+        return new Response(null, { status: 204 });
+      case "DELETE":
+        await env.NOTES.delete(key);
+        return new Response(null, { status: 204 });
+      default: {
+        const value = await env.NOTES.get(key);
+        return value === null
+          ? new Response(`No note named ${key}`, { status: 404 })
+          : new Response(value);
+      }
+    }
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+</Step>
+
+<Step title="Start orange dev">
+
+```sh
+orange dev
+```
+
+The binding table lists `env.NOTES` as a KV namespace on a Rivet Actor.
+
+</Step>
+
+<Step title="Call it">
+
+Keys survive a restart of `orange dev`.
+
+```sh
+curl -X PUT localhost:8787/notes/todo-1 -d 'buy milk'
+curl localhost:8787/notes/todo-1             # buy milk
+curl -X DELETE localhost:8787/notes/todo-1
+curl localhost:8787/notes/todo-1             # No note named todo-1
+```
+
+</Step>
+
+</Steps>
+
+### What Orange reads
+
+| In `wrangler.jsonc` | On Orange |
+| --- | --- |
+| `id` | Names the namespace. Under `orange dev`, a `preview_id` wins, as in `wrangler dev`. With neither, the binding name names it. `orange serve` and a deployed Worker skip `preview_id`, as `wrangler deploy` does. |
+| The same `id` on two bindings | One namespace, also for every Worker of one `orange dev` session. See [Multiple Workers](./multi-worker). |
+
+## Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `get()` and `getWithMetadata()`, with the `text`, `json`, `arrayBuffer`, and `stream` types | Supported | A `stream` read loads the whole value first. |
+| Bulk `get()` and `getWithMetadata()` with an array of keys | Supported | `text` and `json` only, as on Cloudflare. No 100-key limit. |
+| `put()` with a string, `ArrayBuffer`, `ArrayBufferView`, or `ReadableStream` | Supported | A stream is read whole before it is stored. |
+| `expiration` and `expirationTtl` | Supported | No 60-second minimum. |
+| `metadata` | Supported | No 1,024-byte limit. |
+| `delete()` | Supported | |
+| `list()` with `prefix`, `limit`, and `cursor` | Supported | Keys list in UTF-8 byte order. A page holds 1,000 keys by default, and `limit` has no maximum. |
+| `cacheTtl` | Partial | Checked, then ignored. |
+| `cacheStatus` | Partial | Always `null`. |
+| `wrangler kv` commands | Not supported | `orange kv` prints that the command is not implemented. |
+
+Two differences reach most projects:
+
+- **Reads are strongly consistent.** A read anywhere sees the last write. On
+  Cloudflare, a read in another location can return an older value for up to
+  60 seconds.
+- **Cloudflare's quotas do not apply,** so a write that Cloudflare would refuse
+  succeeds. Rivet's limit on one write applies instead. See [Limits](#limits).
 
 ## How it works
 
-Each namespace is one internal Durable Object, which runs as a Rivet Actor with
-SQLite storage. Data persists across `orange dev` restarts in the project's
-`.open-orange` directory, next to Durable Object storage.
+Each namespace is one Rivet Actor with a SQLite database. Under `orange dev`,
+it lives in the project's `.open-orange` directory, next to Durable Object
+storage, so keys survive restarts. After `orange deploy`, it runs on your Rivet
+cluster.
 
-The binding implements the Workers KV API:
+One actor is the single writer for its namespace, so every `get()`, `put()`,
+`delete()`, and `list()` on a namespace goes through it. Cloudflare spreads
+reads across its edge and has no such bound. To spread load, use more than one
+namespace.
 
-- `get()` and `getWithMetadata()` with `text`, `json`, `arrayBuffer`, and
-  `stream` types, and bulk reads with an array of keys.
-- `put()` with string, `ArrayBuffer`, `ArrayBufferView`, and `ReadableStream`
-  values, plus `expiration`, `expirationTtl`, and `metadata`.
-- `delete()`.
-- `list()` with `prefix`, `limit`, and `cursor`. Keys list in UTF-8 byte order.
+## Limits
 
-Argument checks and error messages follow workerd and the local KV backend of
-`wrangler dev`. `cacheTtl` is validated and otherwise ignored.
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| One `put()` | Key, value, and metadata together under 128 MiB, Rivet's limit for one write | The `put()` throws a `RangeError` at once that names the limit. The namespace keeps working. |
+| A large value | 64 MiB stored and read back in a test on Rivet 3.0.6 | A 100 MiB value made the Engine fence the namespace's storage, and the `put()` did not return. That is a Rivet issue under one large write, not a set limit. |
+| Calls on one namespace | What one Rivet Actor serves | Spread the keys over more namespaces. |
 
-OpenOrange does not copy Cloudflare's KV quotas: 512-byte keys, 1,024-byte
-metadata, 25 MiB values, 100 keys per bulk read, 1,000 keys per `list()`, and
-TTLs of at least 60 seconds. A `list()` page still holds 1,000 keys by default.
-The limit that applies is Rivet's: one write stores at most 128 MiB of changed
-SQLite pages, so a `put()` of a key, value, and metadata of 128 MiB or more
-fails at once with a `RangeError` that names that limit.
+<AiContext summary="Argument rules, error text, storage, every deviation, and the test evidence">
 
-## Conformance
+#### API details
 
-An end-to-end `orange dev` test covers every value and result type, metadata,
-bulk reads, listing with pagination, error text, shared and separate namespace
-IDs, overlapping writes, and persistence across restarts. The same Worker
-returns identical results under `wrangler dev`. The upstream workerd KV tests
-use a mock KV server that the conformance runner does not configure.
+- `get()` takes a type string or `{ type, cacheTtl }`. The type defaults to
+  `text`. Another type throws
+  `Unknown response type. Possible types are "text", "arrayBuffer", "json", and "stream".`
+- A bulk `get()` returns a `Map` with `null` for a missing key. It needs at
+  least one key, and a type other than `text` or `json` fails with
+  `KV GET_BULK failed: 400 "<type>" is not a valid type. Use "json" or "text"`.
+  A bulk `json` read of a value that is not JSON fails with
+  `At least one of the requested keys corresponds to a non-json value`.
+- `cacheTtl` must be greater than 0, or the call fails with
+  `Invalid cache_ttl of <n>. Please specify integer greater than 0.`
+- `put()` turns other primitives into strings, as workerd does. An object that
+  is not one of the accepted types throws
+  `KV put() accepts only strings, ArrayBuffers, ArrayBufferViews, and ReadableStreams as values.`
+  A stream must produce `Uint8Array` chunks.
+- `expirationTtl` must be an integer greater than 0. `expiration` must be later
+  than the current second. Each fails with the `KV PUT failed: 400 ...` text of
+  Miniflare.
+- An empty key, `.`, and `..` are refused with workerd's messages. A key has no
+  512-byte limit.
+- `metadata` is stored as JSON and parsed again on each read.
+- `list()` uses a `limit` of 1,000 when it is missing or not above 0. The
+  cursor is the last returned key, base64url-encoded. Listed keys carry
+  `expiration` and `metadata` when they have them, and expired keys are left
+  out.
+- A failed call throws `KV <METHOD> failed: <status> <message>`.
 
-## Limits and deviations
+Argument checks and error text follow workerd's KV client and the local KV
+backend of `wrangler dev`.
 
-- KV is strongly consistent locally. Cloudflare KV is eventually consistent, so
-  a read in another location can return an older value for up to 60 seconds.
-- Expired keys read as absent immediately at their expiration second.
+#### Storage
+
+- The actor class is `openorange:kv-namespace`, shown as
+  `KV namespaces (Orange)`, and its key is the namespace ID.
+- Entries are rows of one table, `openorange_kv`, with the key, the value, the
+  expiration, and the metadata.
+- A read of an expired key deletes its row.
+- Keys and metadata travel in the request body to the actor, so URL and header
+  size limits do not bound them.
+
+#### Deviations
+
+These add to the two differences under [Compatibility](#compatibility).
+
+- An expired key reads as absent at once, from its expiration second.
+- Cloudflare's quotas that Orange does not copy: 512-byte keys, 1,024-byte
+  metadata, 25 MiB values, 100 keys per bulk read, 1,000 keys per `list()`
+  page, and TTLs of at least 60 seconds.
 - `put()` buffers the whole value before it stores it.
-- In a test on Rivet 3.0.6, a 64 MiB value stored and read back, but a 100 MiB
-  value made the Engine fence the namespace's storage, and the `put()` did not
-  return. That is a Rivet issue under one large write, not a limit.
-- `cacheStatus` is always `null`.
-- There is no `orange kv` command to manage keys from the CLI.
+- Sharding a namespace across actors, or backing KV with a Rivet Service, may
+  lift the one-actor throughput bound later.
 
-### Throughput
+#### Conformance
 
-Each namespace is one actor, and one actor is the single writer for its
-storage. Every `get()`, `put()`, `delete()`, and `list()` on a namespace goes
-through that actor, so one namespace's throughput is bounded by what one actor
-can do. Cloudflare KV spreads reads across its edge and has no such
-per-namespace bound. To spread load today, use more than one namespace.
-Sharding a namespace across actors, or backing KV with a Rivet Service, may
-lift this limit later.
+- `src/runtime/bindings.test.ts` drives KV through a real `orange dev` and
+  Rivet Engine: every value and result type, metadata, bulk reads, listing
+  with pagination, error text, shared and separate namespace IDs, overlapping
+  writes, and persistence across restarts. The same Worker returns identical
+  results under `wrangler dev`.
+- `tests/beyond-cloudflare-quotas.test.ts` writes keys, metadata, values, bulk
+  reads, lists, and TTLs past Cloudflare's quotas, and a write over 128 MiB
+  that fails with Rivet's limit.
+- `tests/session-shared-storage.test.ts` checks that the Workers of one session
+  share a namespace by ID.
+- `tests/runnable-examples.test.ts` runs the `kv` example, including a
+  30-second TTL that Cloudflare refuses.
+- workerd's upstream `kv-test` passes 0 of 5. It needs a mock KV server that
+  the conformance runner does not configure, and its `deleteBulk` case calls a
+  method that the pinned Wrangler declarations do not have.
+  `kv-resizable-arraybuffer-test` passes 3 of 3.
+
+##### Recorded results
+
+<BindingEvidence bindings={["kv"]} />
+
+</AiContext>

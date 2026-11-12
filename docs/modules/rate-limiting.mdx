@@ -1,19 +1,33 @@
 ---
 title: Rate Limiting
-description: Use the Workers Rate Limiting binding with OpenOrange, backed by a local Rivet Actor.
+description: Use the Workers Rate Limiting binding on OpenOrange, where each namespace_id is one Rivet Actor with an exact fixed-window counter.
 ---
 
 # Rate Limiting
 
-**Status:** Supported. Runs on one Rivet Actor for each namespace.
+<BindingStatus
+  binding="rate-limiting"
+  works="`limit()` with your `simple` limit and period, per-call overrides, and the same option checks as `wrangler dev`"
+  differs="One exact counter for each `namespace_id`, where Cloudflare counts per location and approximately. Each call is a round trip to a Rivet Actor."
+  missing="Nothing"
+/>
 
 ## Configuration
 
-OpenOrange reads the standard Wrangler `ratelimits` binding. No extra setup is
-needed:
+This limits each client to 100 requests a minute.
+
+<Steps>
+
+<Step title="Bind the rate limiter">
+
+Add a `ratelimits` entry to `wrangler.jsonc`. `period` is in seconds, and it
+is 10 or 60.
 
 ```jsonc
 {
+  "name": "my-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "ratelimits": [
     {
       "name": "MY_RATE_LIMITER",
@@ -24,56 +38,190 @@ needed:
 }
 ```
 
-The older `unsafe.bindings` form with `"type": "ratelimit"` and the same
-fields also works.
+</Step>
 
-Like `wrangler dev`, `orange dev` stops at startup when `simple.period` is not
-10 or 60, or when `simple.limit` is not a number. The error names the binding.
+<Step title="Call limit() for each request">
 
-## Usage
+Pick a key for each client, such as an IP address or a user ID. `limit()`
+resolves to `{ success: false }` once the key has used its limit in this
+window.
 
-```js
+```ts
 export default {
-  async fetch(request, env) {
+  async fetch(request, env): Promise<Response> {
     const key = request.headers.get("cf-connecting-ip") ?? "anonymous";
     const { success } = await env.MY_RATE_LIMITER.limit({ key });
-    if (!success) return new Response("Too Many Requests", { status: 429 });
+    if (!success) {
+      return new Response("Too Many Requests", { status: 429 });
+    }
     return new Response("ok");
   },
-};
+} satisfies ExportedHandler<Env>;
 ```
+
+</Step>
+
+<Step title="Start the Worker">
+
+`orange dev` serves the Worker on port 8787. It stops with an error when a
+rate limiter's `period` is not 10 or 60, or its `limit` is not a number.
+
+```sh
+orange dev
+```
+
+</Step>
+
+<Step title="Send requests past the limit">
+
+Send 101 requests inside one clock minute. The first 100 get `200`, and the
+101st gets `429`. The counter starts again at the next full minute.
+
+```sh
+for i in $(seq 1 101); do curl -s -o /dev/null -w '%{http_code}\n' localhost:8787/; done
+```
+
+</Step>
+
+</Steps>
+
+### What Orange reads
+
+Orange reads the binding as `wrangler dev` does:
+
+| In `wrangler.jsonc` | On Orange |
+| --- | --- |
+| `ratelimits` | Supported, with Wrangler's checks. |
+| `unsafe.bindings` with `"type": "ratelimit"` | The same fields, with the same checks. |
+| `namespace_id` | Names the counter. Bindings with the same `namespace_id` share counters, also across the Workers of one `orange dev` session. |
+
+## Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `limit({ key })` | Supported | Resolves to `{ success }`. |
+| `limit` and `period` overrides in one call | Supported | As in `wrangler dev`. The `period` must still be 10 or 60. |
+| Option errors | Supported | The same error text as `wrangler dev`, such as `bad rate limit options: [window]`. |
+
+Two differences reach most projects:
+
+- **Orange never lets a call over the limit through.** Cloudflare's count is
+  approximate, so it can allow a few more calls than `limit`. Traffic that
+  went slightly over the limit on Cloudflare gets `success: false` on Orange.
+- **A client can choose its own IP key.** Orange sets `cf-connecting-ip` from
+  the connection only when the request has no such header, as `wrangler dev`
+  does. Key a limit on it only behind a proxy that sets the header.
 
 ## How it works
 
-Each `namespace_id` is one internal Durable Object, which runs as a Rivet Actor
-named `openorange:ratelimit` with SQLite storage. The counters persist across
-`orange dev` restarts in the project's `.open-orange` directory.
+Each `namespace_id` is one Rivet Actor with its own SQLite database, and that
+actor holds the counter of every key. The counters survive a restart of
+`orange dev`.
 
-The counter is a fixed window, like `wrangler dev`:
+The counter is a fixed window, as in `wrangler dev`:
 
-- The window is `floor(now / period)`, aligned to the wall clock.
-- Each `(key, period)` pair has one counter. Bindings with the same
-  `namespace_id` share counters.
-- A call increments the counter and returns `{ success: true }` until the
-  counter reaches `limit`. Then it returns `{ success: false }` until the next
-  window.
-- Each call reads and updates the counter in one SQLite transaction, so
-  overlapping calls never allow more than `limit`.
+- Windows start on wall-clock multiples of the period, so a 60 second window
+  starts at each full minute.
+- Each key and period has one counter. A call adds one until the counter
+  reaches `limit`. Calls that get `success: false` do not count.
+- A client can use its whole limit at the end of one window and again at the
+  start of the next.
+- Each call reads and updates its counter in one SQLite transaction, so calls
+  that overlap never get more than `limit` through.
 
-`limit()` checks its options like `wrangler dev`. For example, an unknown
-option rejects with `bad rate limit options: [window]`. Like `wrangler dev`,
-a call can also override `limit` and `period`.
+## Limits
 
-## Conformance
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| Calls for one key in one window | The binding's `limit`, or the `limit` of the call | `limit()` resolves to `{ success: false }` until the next window. |
+| `period` | 10 or 60 seconds | In `wrangler.jsonc`, `orange dev` stops with an error. In a call, `limit()` rejects with `unsupported period: <period>`. |
 
-An end-to-end `orange dev` test covers the limit per key, separate keys and
-namespaces, shared namespaces, the next window, overlapping calls on one key,
-option errors, both configuration forms, and persistence across restarts.
+<AiContext summary="Every option check, error text, counter detail, deviation, and the test evidence">
 
-## Limits and deviations
+#### Configuration edge cases
 
-- Cloudflare counts per location and is eventually consistent, so it can allow
-  a few more calls than `limit`. OpenOrange has one exact counter per
-  `namespace_id`. It never allows more than `limit` in a window.
-- Each `limit()` call is one round trip to a Rivet Actor. Cloudflare answers
-  from a local cache.
+- `ratelimits` goes through Wrangler's own validation, so its errors are
+  Wrangler's, for example `"simple.period" must be either 10 or 60 but got 30`.
+- Wrangler passes `unsafe.bindings` through unchecked, so Orange checks that
+  form like Miniflare's binding schema. Its errors name the binding:
+  - `Rate Limiting binding <NAME> must have a simple configuration object`
+  - `Rate Limiting binding <NAME> simple.limit must be a number but got "5"`
+  - `Rate Limiting binding <NAME> simple.period must be either 10 or 60 but got 30`
+  - `<NAME>.namespace_id must be a non-empty string`
+- Any number loads as `limit`, including `0`, which rejects every call.
+- Two bindings with the same `namespace_id` share the counter of a key only
+  when they use the same period. The counter is per key and period, and each
+  call applies its own binding's `limit`. For example, a login limiter and a
+  password-reset limiter with one `namespace_id` and one period spend one
+  budget for each account.
+
+#### `limit()` options
+
+`limit()` checks its options as Miniflare's client does, with the same error
+text. Each failed check rejects the call with an `Error`:
+
+| Call | Error message |
+| --- | --- |
+| Options that are not an object | `invalid rate limit options` |
+| An option other than `key`, `limit`, and `period` | `bad rate limit options: [window]` |
+| A `key` that is not a string | `invalid key: 1` |
+| A `limit` that is not a number | `limit must be a number: <value>` |
+| A `period` that is not a number | `period must be a number: <value>` |
+| A `period` other than 10 or 60 | `unsupported period: 30` |
+
+- Only an absent or `undefined` option falls back to the binding's `simple`
+  value.
+- A call without `key` counts under the empty string.
+- Cloudflare's public types list only `key`. A TypeScript Worker that passes
+  `limit` or `period` needs its own type for the options.
+- When the actor answers with an error, the call rejects with
+  `Rate limit call failed: <status> <body>`.
+
+#### The counter
+
+- The actor's class is the internal `openorange:ratelimit`. RivetKit shows it
+  as `Rate Limiting (Orange)`. The binding table of `orange dev` shows each
+  binding as a `Rate Limiter` on a `Rivet Actor`.
+- The window is `floor(now / period)`. Each row of the
+  `openorange_ratelimit_buckets` table holds a key, a period, its window, and
+  its count. When a call finds no row for the current window, the actor also
+  deletes every row of an earlier window of that period.
+- Counters persist in the local Engine state under `.open-orange/rivetkit/`.
+- The current window ends in `period - (seconds since the epoch % period)`
+  seconds, which a Worker can send as `Retry-After`. On Cloudflare, treat the
+  value as a hint.
+
+#### `cf-connecting-ip`
+
+`orange dev` and `orange serve` both fill in `cf-connecting-ip` from the
+client's socket address, as Miniflare does. Locally, send the header yourself
+to act as another client.
+
+#### Deviations
+
+These add to the differences under [Compatibility](#compatibility).
+
+- Cloudflare's count is eventually consistent across its locations.
+- Orange's windows start on wall-clock multiples of the period. Cloudflare
+  does not document where its windows start.
+
+#### Conformance
+
+- `src/runtime/bindings.test.ts` runs a real `orange dev` with both
+  configuration forms. It covers the limit per key, separate keys and
+  namespaces, a namespace shared by two bindings, the next window, 60
+  overlapping calls on two keys, the option errors, and counts that survive a
+  restart.
+- `src/config/load-wrangler.test.ts` covers both configuration forms and
+  their errors.
+- The runnable example
+  [`tests/fixtures/examples/rate-limiting`](../../tests/fixtures/examples/rate-limiting)
+  layers a per-IP limit, a per-user limit with a higher limit for pro users,
+  and login throttling with `429` and `Retry-After`.
+  `tests/runnable-examples.test.ts` runs it end to end.
+
+##### Recorded results
+
+<BindingEvidence bindings={["rate-limiting"]} />
+
+</AiContext>

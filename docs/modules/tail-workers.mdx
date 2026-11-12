@@ -1,64 +1,153 @@
 ---
 title: Tail Workers
-description: Send a Worker's logs, exceptions, and outcomes to the tail() handler of Workers that it lists in tail_consumers, through Rivet Durable Streams.
+description: Send a Worker's logs, exceptions, and outcomes to the tail() handler of each Worker in its tail_consumers, through Rivet Durable Streams.
 ---
 
 # Tail Workers
 
-**Status:** Partial
+**Status:** Partial. Events travel through Rivet Durable Streams.
+
+- **Works:** `tail()` gets a `TraceItem` for each `fetch`, service binding `fetch()`, `scheduled`, and `queue` event, with its logs, exceptions, and outcome as in workerd.
+- **Differs:** Events wait for a consumer that is not running, for up to 7 days. Cloudflare drops them.
+- **Missing:** Traces of Durable Object, JS RPC, `connect()`, alarm, and WebSocket events, and `streaming_tail_consumers`.
+- **Migration:** Not needed. Cloudflare keeps no tail events to move.
 
 ## Configuration
 
-OpenOrange reads the standard Wrangler `tail_consumers` list. A consumer can be
-the Worker itself or another Worker of the same `orange dev` session:
+Tail Workers need Rivet Services, which Orange installs with RivetKit as
+`@rivet-dev/services`.
+
+<Steps>
+
+<Step title="List the consumer">
+
+In the Worker you want to trace, name the consumer Worker in
+`tail_consumers`. A Worker can also name itself.
 
 ```jsonc
 {
   "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "tail_consumers": [{ "service": "my-tail-worker" }]
 }
 ```
 
-The consumer exports a `tail()` handler:
+</Step>
 
-```js
+<Step title="Write the tail() handler">
+
+The consumer is a Worker whose `wrangler.jsonc` sets
+`"name": "my-tail-worker"`. It exports `tail()`.
+
+```ts
 export default {
-  async tail(events, env, ctx) {
+  async tail(events) {
     for (const event of events) {
       console.log(event.outcome, event.event?.request?.url, event.logs);
     }
   },
-};
+} satisfies ExportedHandler<Env>;
 ```
 
-A `WorkerEntrypoint` default export can define `tail(events)` instead.
+</Step>
+
+<Step title="Run both Workers">
+
+Pass one `-c` per Worker to one `orange dev`. The first one serves the port.
+See [Multiple Workers](./multi-worker).
+
+```sh
+orange dev -c wrangler.jsonc -c tail/wrangler.jsonc
+```
+
+</Step>
+
+<Step title="Send a request">
+
+Each request to `my-worker` reaches `tail()` in `my-tail-worker` once the
+event and its `waitUntil()` tasks end.
+
+```sh
+curl localhost:8787
+```
+
+</Step>
+
+</Steps>
+
+### What Orange reads
+
+| In `wrangler.jsonc` | On Orange |
+| --- | --- |
+| `tail_consumers[].service` | The Worker itself, or another Worker of the same `orange dev` or `orange serve`. |
+| `tail_consumers[].environment` | Ignored. |
+| `streaming_tail_consumers` | A non-empty list fails the config load with `Unsupported Wrangler configuration: streaming_tail_consumers`. |
+
+## Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `tail()` on the default export | Supported | Also `tail(events)` on a `WorkerEntrypoint` class. |
+| `fetch`, service binding `fetch()`, `scheduled`, and `queue` events | Supported | |
+| Durable Object events, JS RPC calls, `connect()`, alarms, and WebSocket events | Not supported | Not traced. |
+| `logs`, `exceptions`, `outcome`, and `errorInfo` | Supported | As in workerd. |
+| Redacted request headers and URLs | Supported | As in workerd. `request.getUnredacted()` returns the original values. |
+| `wallTime` | Supported | The event's wall time in milliseconds. |
+| `cpuTime` | Not supported | Always `0`. |
+| `diagnosticsChannelEvents` | Not supported | Always empty. |
+| A consumer in another Worker | Supported | In the same `orange dev` or `orange serve`. |
+| `streaming_tail_consumers` and `tailStream()` | Not supported | |
+| Worker Loader `tails` and `streamingTails` | Not supported | Accepted. They receive no events. |
+
+Most projects hit one difference: **delivery is at least once**, so a
+consumer can get an event twice. Make a `tail()` that writes to another system
+tolerate duplicates.
 
 ## How it works
 
-The producer Worker appends events to a Rivet Durable Streams stream. The
-consumer's tail actor reads the stream from its saved offset and calls `tail()`.
+When an event ends, after its `waitUntil()` tasks, the Worker appends its
+`TraceItem` to a [Rivet Durable Streams](https://rivet.dev/docs/integrations/durable-streams)
+stream for each consumer. The append runs after the response, so the request
+does no I/O for it.
 
-- Each `fetch`, service binding `fetch()`, `scheduled`, and `queue` event of the
-  Worker records its `console.debug/info/log/warn/error` calls, the errors that
-  its handler throws, and its outcome.
-- When the event ends, after its `waitUntil()` tasks, its `TraceItem` goes to
-  the [Rivet Durable Streams](https://rivet.dev/docs/integrations/durable-streams)
-  stream of each consumer's current segment, `tail/<consumer>/<n>`. The append
-  runs in the background after the response, so the request does no I/O for it.
-- Each consumer has one internal actor, `openorange:tail`, which runs in the
-  consumer Worker. It reads the stream from its saved offset and calls `tail()`
-  once per read, with the events of that read.
-- The offset moves only after `tail()` returns. When `tail()` throws, the same
-  events come again after 1 s, then 2 s, and so on up to 60 s. After 10 failed
-  calls, the events are dropped and the dev output shows an error.
-- Events wait in the stream while the consumer is not running. When the
-  consumer starts, it gets every event since its offset, up to the retention.
-- Log messages, `errorInfo`, exception fields, and the redaction of request
-  headers and URLs follow workerd. `request.getUnredacted()` returns the
-  original values.
+In the consumer Worker, one internal actor per consumer, `openorange:tail`,
+reads the stream from its saved offset and calls `tail()` with the events of
+each read. The offset moves only after `tail()` returns. When `tail()` throws,
+the same events come again after a pause that doubles from 1 second up to 60
+seconds.
+
+Durable Streams runs in Rivet Services. `orange dev` starts one Services
+process for the session. **On a cluster, you deploy Services yourself**:
+`orange serve` does not start it. See [On a cluster](#on-a-cluster).
+
+## Limits
+
+| What | Limit | What happens over it |
+| --- | --- | --- |
+| Failed `tail()` calls for one batch | 10 | The batch is dropped, and the dev output shows an error. |
+| How long an undelivered event waits | 7 days after its segment ends. Set `ORANGE_TAIL_RETENTION_SECONDS` to change it. | The segment expires with its events. |
+| Events a Worker holds while Durable Streams is unreachable | 10,000 per consumer | The oldest are dropped, with an error. |
+| One event | 1,000,000 bytes of JSON, less 16 KiB | The event is dropped, with an error. |
+| Clock difference between a cluster's nodes | 60 seconds | An event that a slow node appends to a segment the consumer has left is lost. |
+
+<AiContext summary="Delivery guarantees, segments, Rivet Services, cluster setup, deviations, and test coverage">
+
+#### Traced events
+
+- Each `fetch`, service binding `fetch()`, `scheduled`, and `queue` event of
+  the Worker records its `console.debug`, `console.info`, `console.log`,
+  `console.warn`, and `console.error` calls, the errors that its handler
+  throws, and its outcome.
+- The record goes to the stream of each consumer's current segment,
+  `tail/<consumer>/<n>`.
+- Log messages and exception fields follow workerd's format.
 - A `tail()` invocation is not traced, so a Worker can tail itself.
+- A consumer without a `tail()` handler fails each call with
+  `Handler does not export a tail() function.`, so its batches are retried and
+  then dropped.
 
-### Delivery guarantees
+#### Delivery guarantees
 
 | Case | Result |
 | --- | --- |
@@ -69,37 +158,49 @@ consumer's tail actor reads the stream from its saved offset and calls `tail()`.
 | Overlapping requests | Each `TraceItem` holds only its own event's logs and exceptions. |
 | A producer stops before its append | Events not yet appended, at most a few milliseconds' worth, are lost. |
 
-Delivery is at least once. A consumer can get an event twice, so a `tail()`
-handler that writes to an external system should tolerate duplicates.
+After 10 failed calls, the dev output shows
+`Dropped <n> tail event(s) for <consumer> after 10 failed tail() calls`.
 
-### Segments and retention
+#### Segments and retention
 
 Each consumer's events go to one stream per time window, a segment. The
-consumer deletes a segment once it has read past it. A segment that no consumer
-reads expires on its own after the retention.
+consumer deletes a segment once it has read past it. A segment that no
+consumer reads expires on its own after the retention.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `ORANGE_TAIL_SEGMENT_SECONDS` | 3600 | Length of one segment |
 | `ORANGE_TAIL_RETENTION_SECONDS` | 604800 (7 days) | How long an undelivered segment is kept after it ends |
 
-Set both in the environment of `orange dev` or `orange serve`, not in a
-Worker's vars, so every Worker of the deployment uses the same values. Orange
-keeps at most 2,048 segments in the retention, and makes segments longer to stay
-under it.
+- Set both in the environment of `orange dev` or `orange serve`, not in a
+  Worker's vars, so every Worker of the deployment uses the same values.
+- Orange keeps at most 2,048 segments in the retention, and makes segments
+  longer to stay under it.
+- The consumer reads a segment it has left once more, up to 60 seconds after
+  the segment ends (or one segment length, if shorter), for appends that land
+  late. That is why a cluster's clocks must agree to within 60 seconds.
 
-The clocks of a cluster's nodes must agree to within 60 seconds. An event that a
-node with a slow clock appends to a segment that the consumer has already left
-is lost.
+#### Errors a producer reports
 
-### Rivet Services
+- ``Tail events for <consumer> wait: Durable Streams is unreachable. Tail Workers need Rivet Services in the envoy pool `services`; orange dev starts it, and a cluster needs its own Services deployment.``
+  The first failed append of an outage prints it once. The Worker retries the
+  append with a pause that doubles from 100 ms up to 10 seconds.
+- `Dropped <n> tail event(s) for <consumer>: the append buffer is full`, when
+  more than 10,000 events wait.
+- `Dropped a tail event of <size> bytes for <consumer>: it exceeds the append limit`,
+  for an event over the Durable Streams append limit of 1,000,000 bytes, less
+  16 KiB.
+
+#### Rivet Services
 
 Durable Streams runs in Rivet Services, which ships with RivetKit as
 `@rivet-dev/services`.
 
 - `orange dev` starts one Services process for the session, next to its local
-  Rivet Engine, when a Worker of the session uses `tail_consumers`. It stops
-  with the session, also when the runtime crashes. Its log is in
+  Rivet Engine, when a Worker of the session uses `tail_consumers`. The
+  session's first Worker starts it. It stops with the session, also when the
+  runtime crashes.
+- Its log is in
   `.open-orange/rivetkit/<id>/.rivetkit/var/logs/rivet-services/`.
 - Orange calls the streams through the Engine, so the Services HTTP port is not
   used. Services binds a free port on 127.0.0.1.
@@ -107,7 +208,7 @@ Durable Streams runs in Rivet Services, which ships with RivetKit as
   with an error that says how to install it. `RIVET_SERVICES_BINARY` points to
   another binary.
 
-### On a cluster
+#### On a cluster
 
 `orange serve` does not start Services. The cluster's Rivet namespace needs a
 Services deployment in the envoy pool `services`, next to the Orange pool:
@@ -119,10 +220,15 @@ Services deployment in the envoy pool `services`, next to the Orange pool:
 2. Orange's token needs to create and call actors in that namespace.
 
 Until Services runs, the producers keep events in memory, up to 10,000 per
-consumer. The first failed append prints an error that names the missing
+consumer. The first failed append prints the error that names the missing
 `services` pool.
 
-## Conformance coverage
+#### Deviations
+
+The status summary and the [Compatibility](#compatibility) section list every
+known deviation. A cluster also needs its own Services deployment, as above.
+
+#### Conformance
 
 - `tests/tail-consumers.test.ts` compares a Worker that tails itself and
   another Worker with workerd 1.20260903.1, including a handler that throws and
@@ -133,12 +239,4 @@ consumer. The first failed append prints an error that names the missing
 - The upstream `self-logger-test` and `errorinfo-tail-test` files run with the
   Worker as its own tail consumer.
 
-## Known deviations
-
-- Durable Object events, JS RPC calls, `connect()`, alarms, and WebSocket events
-  are not traced.
-- `cpuTime` is always 0. `wallTime` is the event's wall time in milliseconds.
-- `diagnosticsChannelEvents` is always empty.
-- Cloudflare does not keep events for a consumer that is not deployed. OpenOrange
-  keeps them until the consumer reads them, up to the retention.
-- `streaming_tail_consumers` and Worker Loader `tails` are not supported.
+</AiContext>
