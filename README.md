@@ -141,10 +141,9 @@ Cloudflare's meters, priced on raw AWS: Graviton EC2 in us-east-1 with 40% headr
   </picture>
 </p>
 
-- **Your containers.** `orange deploy` builds your Worker and the OpenOrange runtime into a standard Docker image. Each container runs your Workers, Durable Objects, Workflows and the rest of your Cloudflare code on Node.js, in any cloud or on your own servers. To add capacity, add containers.
-- **Rivet control plane.** Open source. Each Durable Object runs as a [Rivet Actor](https://rivet.dev/actors/docs/): Rivet finds it, wakes it on one of your containers, and routes each request to it. The containers connect out to Rivet.
-- **S3.** Rivet keeps each Actor's SQLite state in S3, which is cheap, durable and scalable.
-- **Your services.** Bindings that aren't stateful, such as Workers AI, Email and Browser Rendering, plug into providers you already use.
+- **Your containers** run your Workers and Durable Objects, in any cloud or on your own servers.
+- **Rivet** places each Durable Object on a container and routes requests to it.
+- **S3** stores each object's SQLite data.
 
 See [Architecture](https://openorange.dev/docs/architecture/).
 
