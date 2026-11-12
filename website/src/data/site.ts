@@ -445,13 +445,14 @@ export const GET_STARTED = [
 		title: 'Run your Worker',
 		body: 'Reads your Wrangler configuration. Each Durable Object runs as a Rivet Actor with its own SQLite database.',
 		commands: ['orange dev'],
-		output: { status: 'ready', detail: 'http://127.0.0.1:8787' },
+		// As the CLI prints it: a status line, then labeled rows.
+		output: { mark: '●', status: 'Ready', note: 'in 0.9s', rows: [['Local', 'http://127.0.0.1:8787']] },
 	},
 	{
 		title: 'Deploy',
 		body: 'Builds an image of your Worker and rolls it out to your own cloud (AWS, GCP, Azure) or on-prem servers. Or use Rivet Cloud: fully managed, on a dedicated cluster in the provider and region you choose.',
 		commands: ['orange login', 'orange link --cluster <name>', 'orange deploy'],
-		output: { status: 'live', detail: 'https://api.example.com' },
+		output: { mark: '✓', status: 'Deployed my-worker', note: '', rows: [['URL', 'https://api.example.com']] },
 	},
 ] as const;
 

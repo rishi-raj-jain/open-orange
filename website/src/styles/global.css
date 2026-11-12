@@ -429,9 +429,6 @@ body {
 .plate .muted {
 	color: rgb(245 245 244 / 0.4);
 }
-.plate .ok {
-	@apply rounded-sm bg-orange px-1.5 text-[12px] font-semibold text-white;
-}
 .plate-bar {
 	@apply flex items-center gap-2 border-b border-white/10 px-4 py-2 font-sans text-[12px] font-medium text-cream/60;
 }
