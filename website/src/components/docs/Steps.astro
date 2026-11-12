@@ -1,0 +1,31 @@
+---
+// A numbered procedure in a docs page, ported from the Rivet docs' `<Steps>` and
+// `<Step title="…">` (`steps.tsx` in @rivet-gg/components): a left rail, a
+// numbered marker per step, and the step's title as an h3. Docs pages use it
+// without an import (see src/pages/docs/[...slug].astro):
+//
+//   <Steps>
+//   <Step title="Bind the class">
+//
+//   Markdown, with a blank line after the opening tag.
+//
+//   </Step>
+//   </Steps>
+//
+// It is an ordered list, so screen readers announce "step 2 of 4". Each step's
+// title is an h3 with its own anchor, kept out of "On this page".
+---
+
+<ol class="steps">
+	<slot />
+</ol>
+
+<style>
+	.steps {
+		counter-reset: step;
+		list-style: none;
+		margin: 1.75rem 0 2.75rem 0.875rem;
+		padding: 0 0 0 2rem;
+		border-left: 1px solid var(--color-line);
+	}
+</style>

@@ -6,7 +6,15 @@ import { TITLES, docHref } from '@/components/docs/nav';
 import { NO_PAGE } from '@/components/docs/routes';
 import BindingDetail from '@/components/docs/BindingDetail.astro';
 import TipScript from '@/components/compat/TipScript.astro';
+import AiContext from '@/components/docs/AiContext.astro';
+import BindingEvidence from '@/components/docs/BindingEvidence.astro';
+import BindingStatus from '@/components/docs/BindingStatus.astro';
+import Step from '@/components/docs/Step.astro';
+import Steps from '@/components/docs/Steps.astro';
 import { bindingsForDoc } from '@/data/bindings';
+
+// Components every doc can use without an import (CLAUDE.md, "Binding page format").
+const components = { AiContext, BindingEvidence, BindingStatus, Step, Steps };
 
 type MdxModule = { Content: (props: Record<string, unknown>) => unknown; getHeadings: () => MarkdownHeading[] };
 
@@ -32,7 +40,9 @@ const load = modules[`../../../../${source}`];
 if (!load) throw new Error(`No MDX module for ${entry.filePath}`);
 const { Content, getHeadings } = await load();
 // Compatibility details from the conformance data, after the doc's own content.
-const bindings = bindingsForDoc(entry.id);
+// A page in the binding page format shows its status in <BindingStatus> and its
+// evidence in <BindingEvidence>, so it gets no generated section.
+const bindings = entry.body?.includes('<BindingStatus') ? [] : bindingsForDoc(entry.id);
 const headings = [
 	...getHeadings(),
 	...(bindings.length ? [{ depth: 2, slug: 'compatibility', text: 'Compatibility' }] : []),
@@ -41,7 +51,7 @@ const headings = [
 ---
 
 <Docs title={TITLES[entry.id] ?? entry.data.title} description={entry.data.description} href={docHref(entry.id)} headings={headings} source={source} wide={WIDE.has(entry.id)}>
-	<Content />
+	<Content components={components} />
 	{bindings.length > 0 && (
 		<section slot="after" id="compatibility" class="mt-16 scroll-mt-20 border-t border-line pt-10">
 			<h2 class="text-[1.75rem] font-medium leading-tight tracking-[-0.025em]">Compatibility</h2>

@@ -1,0 +1,143 @@
+---
+// Detail that only an LLM or a coding agent needs: exhaustive API tables, edge
+// cases, internals, measurements, and test evidence. It renders closed, so a
+// person reads the page without it, and it is a native <details>, so Tab
+// reaches it and Enter or Space opens it. The content is in the HTML whether it
+// is open or not, and in the MDX source that agents read, so nothing is lost.
+//
+//   <AiContext summary="Every flag, refused value, and error">
+//
+//   #### A topic
+//
+//   Markdown. Use #### and ##### headings inside, so "On this page" lists only
+//   the human sections.
+//
+//   </AiContext>
+//
+// A link to an anchor inside it (`#deviations`) opens it first.
+interface Props {
+	/** What it holds, in a few words. Shown next to the "AI context" label. */
+	summary?: string;
+	id?: string;
+}
+
+const { summary = 'Full reference for coding agents', id = 'ai-context' } = Astro.props;
+---
+
+<details class="ai-context" id={id} data-ai-context>
+	<summary class="ai-summary">
+		<svg class="ai-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true">
+			<path d="M8 1.75l1.4 3.6 3.6 1.4-3.6 1.4L8 11.75l-1.4-3.6-3.6-1.4 3.6-1.4L8 1.75z" />
+			<path d="M12.75 10.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6.6-1.4z" />
+		</svg>
+		<span class="ai-text">
+			<span class="ai-label">AI context</span>
+			<span class="ai-hint">{summary}</span>
+		</span>
+		<svg class="ai-chev" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6l4 4 4-4" /></svg>
+	</summary>
+	<div class="ai-body">
+		<p class="ai-note">Written for LLMs and coding agents: every edge case, measurement, and known deviation. You do not need it to use the feature.</p>
+		<slot />
+	</div>
+</details>
+
+<script>
+	// Opens the AI context that holds a linked anchor, so `#deviations` lands on visible text.
+	const reveal = (hash: string) => {
+		if (hash.length < 2) return;
+		const target = document.getElementById(decodeURIComponent(hash.slice(1)));
+		const box = target?.closest<HTMLDetailsElement>('details[data-ai-context]');
+		if (!target || !box || box.open) return;
+		box.open = true;
+		target.scrollIntoView();
+	};
+	document.addEventListener('click', (event) => {
+		const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
+		if (link) reveal(link.hash);
+	});
+	window.addEventListener('hashchange', () => reveal(location.hash));
+	reveal(location.hash);
+</script>
+
+<style>
+	.ai-context {
+		margin: 3.5rem 0 0;
+		border: 1px dashed color-mix(in srgb, var(--color-ink) 22%, transparent);
+		border-radius: 1rem;
+		background: var(--color-paper-mid);
+	}
+	.ai-summary {
+		display: flex;
+		cursor: pointer;
+		list-style: none;
+		align-items: center;
+		gap: 0.625rem;
+		border-radius: 1rem;
+		padding: 0.875rem 1.125rem;
+		color: var(--color-ink);
+		font-size: 14px;
+		line-height: 1.4;
+	}
+	.ai-summary::-webkit-details-marker {
+		display: none;
+	}
+	.ai-summary:focus-visible {
+		outline: 2px solid var(--color-orange);
+		outline-offset: 2px;
+	}
+	.ai-icon {
+		flex: none;
+		color: var(--color-orange-deep);
+	}
+	.ai-text {
+		display: flex;
+		min-width: 0;
+		flex: 1;
+		flex-wrap: wrap;
+		column-gap: 0.625rem;
+	}
+	.ai-label {
+		font-weight: 600;
+	}
+	.ai-hint {
+		color: var(--color-ink-faint);
+	}
+	.ai-chev {
+		flex: none;
+		color: var(--color-ink-faint);
+		transition: transform 150ms;
+	}
+	.ai-context[open] > .ai-summary .ai-chev {
+		transform: rotate(180deg);
+	}
+	.ai-context[open] > .ai-summary {
+		border-bottom: 1px dashed color-mix(in srgb, var(--color-ink) 22%, transparent);
+		border-radius: 1rem 1rem 0 0;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ai-chev {
+			transition: none;
+		}
+	}
+	.ai-body {
+		padding: 0.5rem 1.125rem 1.5rem;
+		font-size: 14.5px;
+	}
+	.ai-note {
+		color: var(--color-ink-faint);
+		font-size: 13px;
+	}
+	.ai-body :global(h4) {
+		margin: 2.25rem 0 0.75rem;
+		border-top: 1px solid var(--color-line);
+		padding-top: 1.5rem;
+		font-size: 1.0625rem;
+	}
+	.ai-body :global(h5) {
+		margin: 1.5rem 0 0.5rem;
+		color: var(--color-ink);
+		font-size: 0.9375rem;
+		font-weight: 600;
+	}
+</style>

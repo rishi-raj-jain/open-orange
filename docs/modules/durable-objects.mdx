@@ -5,107 +5,233 @@ description: Run Cloudflare Durable Objects on OpenOrange, where each object is 
 
 # Durable Objects
 
-**Status:** Partial. Each object runs as one Rivet Actor with its own SQLite
-database. WebSocket hibernation is emulated, and a few APIs throw. See
-[What works](#what-works).
+<BindingStatus
+  binding="durable-objects"
+  works="SQL and key-value storage, transactions, alarms, RPC, `fetch()`, and WebSockets, through the same `cloudflare:workers` API"
+  differs="WebSocket hibernation is emulated, so an object with an open socket stays in memory. An idle object loses its instance fields after 10 seconds."
+  missing="`stub.connect()`, point-in-time recovery, read replication, and `ctx.props`"
+/>
 
-To move existing objects from Cloudflare, see [Migrate from Cloudflare](../migrate).
-For how Orange builds each part, see the
-[implementation notes](../internals/durable-objects).
+Your Durable Object code and Wrangler configuration run unchanged. To move
+objects that already hold data on Cloudflare, see
+[Migrate from Cloudflare](../migrate).
 
 ## Configuration
 
-Use the standard Wrangler binding and migration:
+This builds [`examples/hello-durable-object`](../../examples/hello-durable-object):
+one `Greeter` object per name, each with its own SQLite database.
+
+<Steps>
+
+<Step title="Bind the class">
+
+Add a binding and a migration to `wrangler.jsonc`. Every class needs one
+migration that creates it.
 
 ```jsonc
 {
+  "name": "hello-durable-object",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
   "durable_objects": {
-    "bindings": [{ "name": "COUNTER", "class_name": "Counter" }]
+    "bindings": [{ "name": "GREETER", "class_name": "Greeter" }]
   },
-  "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["Counter"] }
-  ]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Greeter"] }]
 }
 ```
 
-Export the class from the Worker entrypoint, and import the base class from
-`cloudflare:workers`:
+</Step>
 
-```js
+<Step title="Write the class">
+
+Extend `DurableObject` from `cloudflare:workers`, and export the class from
+the Worker's entry file. A migration tag runs no SQL, so create your tables in
+the constructor.
+
+```ts
 import { DurableObject } from "cloudflare:workers";
 
-export class Counter extends DurableObject {
-  async increment() {
-    const value = (this.ctx.storage.kv.get("count") ?? 0) + 1;
-    this.ctx.storage.kv.put("count", value);
-    return value;
+export class Greeter extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS visits (visited_at INTEGER NOT NULL)",
+    );
+  }
+
+  sayHello(name: string): { greeting: string; visits: number } {
+    const sql = this.ctx.storage.sql;
+    sql.exec("INSERT INTO visits (visited_at) VALUES (?)", Date.now());
+    const { visits } = sql
+      .exec<{ visits: number }>("SELECT count(*) AS visits FROM visits")
+      .one();
+    return { greeting: `Hello, ${name}!`, visits };
   }
 }
 ```
 
-Orange reads the configuration like `wrangler dev`:
+</Step>
 
-- Each configured class needs one `new_sqlite_classes` or `new_classes`
-  migration. Orange stores both kinds in SQLite.
-- More than one binding can name one class.
-- A migrated class with no binding is still registered. Reach it through
-  `ctx.exports` or the `exports` import from `cloudflare:workers`.
-- A renamed class keeps its objects. A deleted class's objects stay in storage.
-- A class from `transferred_classes` starts empty. Orange does not move the
-  objects that the other Worker stored.
-- Other migration fields stop `orange dev` with an error.
-- A binding with `script_name` works when that Worker runs in the same
-  `orange dev` session. See [Multiple Workers](./multi-worker).
-- A binding with `environment` or `namespace_id` loads as a
-  [stub that throws](./bindings) when you use it.
-- Migration tags do not run SQL. Create your tables in the constructor, for
-  example with `CREATE TABLE IF NOT EXISTS`.
+<Step title="Call it from your Worker">
 
-A plain class that does not extend `DurableObject` gets `fetch()` and alarms.
-RPC to a plain class fails, also with the `js_rpc` flag, because Orange does not
-read compatibility flags.
+`getByName()` sends every request for one name to the same object. Call its
+methods over RPC like local functions.
 
-## What works
+```ts
+export default {
+  async fetch(request, env): Promise<Response> {
+    const name = new URL(request.url).pathname.slice(1) || "World";
+    const stub = env.GREETER.getByName(name);
+    return Response.json(await stub.sayHello(name));
+  },
+} satisfies ExportedHandler<Env>;
+```
 
-| API | Status | Notes |
+</Step>
+
+<Step title="Run it">
+
+`orange dev` shows each Durable Object binding as a Rivet Actor.
+
+```sh
+orange dev
+```
+
+```text
+  Binding       Resource         Runs on
+  env.GREETER   Durable Object   Rivet Actor · Greeter
+
+● Ready in 5.3s
+  Local         http://127.0.0.1:8787
+```
+
+Each name is its own object, and its count survives a restart of `orange dev`:
+
+```sh
+curl localhost:8787/alice   # {"greeting":"Hello, alice!","visits":1}
+curl localhost:8787/alice   # {"greeting":"Hello, alice!","visits":2}
+curl localhost:8787/bob     # {"greeting":"Hello, bob!","visits":1}
+```
+
+</Step>
+
+</Steps>
+
+### What Orange reads
+
+Orange reads the binding and migrations as `wrangler dev` does, with these
+differences:
+
+| In `wrangler.jsonc` | On Orange |
+| --- | --- |
+| `new_sqlite_classes` | Creates the class, with SQLite storage. |
+| `new_classes` | The same. Orange stores every class in SQLite, so these classes can use SQL too. |
+| `renamed_classes` | The class keeps its objects. |
+| `deleted_classes` | The class goes away. Its objects' data stays in storage. |
+| `transferred_classes` | The class starts empty. Orange does not move the objects that the other Worker stored. |
+| Any other migration field | `orange dev` stops with an error. |
+| A binding with `script_name` | Works when that Worker runs in the same `orange dev` session. See [Multiple Workers](./multi-worker). |
+| A binding with `environment` or `namespace_id` | Loads as a [stub](./bindings) that throws when you use it. |
+
+## Compatibility
+
+| Feature | Status | Notes |
 | --- | --- | --- |
 | `idFromName()`, `newUniqueId()`, `idFromString()`, `get()`, `getByName()`, `jurisdiction()` | Supported | Location hints and jurisdictions are checked, but they do not change where an object runs. |
-| Method RPC on a stub | Supported | Includes streams, `RpcTarget`, callbacks, and pipelined calls. |
+| Method RPC on a stub | Supported | Streams, `RpcTarget`, callbacks, and pipelined calls work. A class that does not extend `DurableObject` gets `fetch()` and alarms, but no RPC. |
 | `stub.fetch()` | Supported | Request and response bodies stream. |
 | `stub.connect()` | Not supported | Throws. Service binding `connect()` works. |
-| `ctx.storage.sql` | Supported | Cursors are eager. See [Storage](#storage). |
+| `ctx.storage.sql` | Supported | A cursor reads all its rows before it returns. |
 | `ctx.storage.kv` and the async storage API | Supported | |
 | `transactionSync()` and `transaction()` | Supported | |
-| Alarms | Supported | See [Alarms](#alarms). |
+| Alarms | Supported | |
 | `getCurrentBookmark()`, `waitForBookmark()` | Supported | Bookmarks use the local `workerd` format. |
 | `getBookmarkForTime()`, `onNextSessionRestoreBookmark()` | Not supported | Throw `DurableObjectStorage.<name> is not implemented`. |
-| `blockConcurrencyWhile()`, `waitUntil()`, `abort()` | Supported | `abort()` restarts the complete Rivet Actor. |
+| `blockConcurrencyWhile()`, `waitUntil()`, `abort()` | Supported | `abort()` restarts the whole Rivet Actor. |
 | `ctx.exports` | Supported | |
 | Standard WebSockets | Supported | |
-| WebSocket hibernation API | Partial | Emulated. See [WebSocket hibernation](#websocket-hibernation). |
-| `ctx.facets` | Partial | The part that the agents SDK uses. See [Facets](#facets). |
+| WebSocket hibernation API | Partial | Emulated. See [How it works](#how-it-works). |
+| `ctx.facets` | Partial | `get()`, `abort()`, `delete()`, and `clone()`: the part that the agents SDK uses. |
 | `ctx.container` | Partial | Runs only Cloudflare Sandbox images. See [Sandbox](./sandbox). |
 | `ctx.props`, `ctx.restore`, `ctx.configureReadReplication`, `ctx.primaryStub`, `ctx.version` | Not supported | Reading one throws a `NotSupportedError`. |
 
-## How an object runs
+Two differences reach most projects:
 
-Each object is one Rivet Actor. The JavaScript instance of your class lives
-inside that actor. The instance and the actor stop at different times:
+- **Orange keeps its own tables in each object's database.** The `_cf_` and
+  `_rivet_` tables show in `sqlite_master`, and SQL that reads or changes them
+  fails with `not authorized`. A tool that dumps every table fails on them.
+- **An idle object stops sooner than on Cloudflare**, so keep state in
+  `ctx.storage`, not in fields. See [How it works](#how-it-works).
+
+Every other difference is listed in the AI context at the end of this page,
+under [Deviations](#deviations).
+
+## How it works
+
+Each object is one [Rivet Actor](https://rivet.dev/docs/actors/) with its own
+SQLite database. The instance of your class lives inside that actor, and
+`ctx.storage` reads and writes the actor's database. The instance and the actor
+stop at different times:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../images/durable-object-lifecycle-dark.svg" />
   <img alt="An object with one accepted WebSocket. After 10 seconds with no event, Orange drops the instance, and the actor and the socket stay. A message builds a new instance. After the socket closes and 10 more idle seconds, the actor sleeps. The next request wakes it." src="../images/durable-object-lifecycle.svg" />
 </picture>
 
-- **The instance is dropped** after 10 seconds without an event while an
-  accepted WebSocket is open. The actor keeps running, and the socket stays
-  open. The next event builds a new instance.
-- **The actor sleeps** after 10 seconds without an event when no accepted
-  WebSocket is open. The next request, RPC call, or alarm wakes it and builds a
-  new instance.
-- Instance fields are lost in both cases. Keep state in `ctx.storage`.
+- **With an open WebSocket**, Orange drops the instance after 10 seconds
+  without an event. The actor and the socket stay, and the next message builds
+  a new instance. This is how Orange emulates hibernation.
+- **Without one**, the actor sleeps after 10 seconds without an event. The
+  next request, RPC call, or alarm wakes it.
+- Either way, instance fields are lost.
 
-These keep the instance running past the idle timeout:
+Work that your code starts, such as a timer, a `fetch()`, or a `waitUntil()`,
+keeps the object awake until it ends. **Clear each `setInterval()` when the
+object has no more work for it.** An interval that is never cleared keeps the
+object and its actor awake forever.
+
+Your objects are Rivet Actors in your project's namespace, so besides your
+Worker, any client with a Rivet token that has an `actor_gateway` grant can
+call them. On Cloudflare, only the Worker can reach a Durable Object. Give
+other clients tokens without that grant, or scope it to specific actor IDs.
+
+For how Orange builds each part, see the
+[implementation notes](../internals/durable-objects).
+
+## Limits
+
+Orange does not copy Cloudflare's quotas, such as its limits on WebSocket tags,
+sockets per object, and attachment size. Rivet's limits apply:
+
+| What | Limit | What happens over it |
+|---|---|---|
+| One storage write | 128 MiB of changed SQLite pages in one commit | The write throws a `RangeError` that names the limit. |
+| One RPC call | 32 MiB on the wire. Binary data counts 4/3 of its size. | The call throws a `RangeError`. Send large data with `stub.fetch()`, which streams. |
+| `blockConcurrencyWhile()` | 30 seconds | The object resets. |
+| Idle time before the instance or actor stops | 10 seconds | See [How it works](#how-it-works). |
+| Alarm retries | 6 | The alarm is dropped. |
+| Facet depth | 4, including the root | `clone()` does nothing at the maximum depth. |
+| Awake objects on one runner | 4,000 by default. Set `RIVET__PEGBOARD__SQLITE_SESSIONS` to change it. | The next object does not start. See [One runner holds at most 4,000 awake objects](#one-runner-holds-at-most-4000-awake-objects). |
+| Storage per object | No limit set by Orange | |
+
+All synchronous SQL runs on the one Node.js runtime thread, so a long query
+delays the other Workers and objects in that process.
+
+<AiContext summary="Storage, alarms, RPC, WebSockets, facets, debugging, every deviation, and the test evidence">
+
+#### Configuration edge cases
+
+- More than one binding can name one class.
+- A migrated class with no binding is still registered. Reach it through
+  `ctx.exports` or the `exports` import from `cloudflare:workers`.
+- A bound class with no migration that creates it stops `orange dev` with an
+  error.
+- RPC to a plain class that does not extend `DurableObject` fails, also with
+  the `js_rpc` flag, because Orange does not read compatibility flags.
+
+#### What keeps an object awake
+
+These keep the instance running past the idle timeout, as in `wrangler dev`:
 
 - A standard WebSocket.
 - A WebSocket that the object opened, while it is open.
@@ -117,7 +243,7 @@ These keep the instance running past the idle timeout:
   `node:timers/promises` are the global timers, so they count too.
 - An upgrade that a client has not claimed yet.
 
-This matches `wrangler dev`. For the measurements, see the
+For the measurements, see the
 [implementation notes](../internals/durable-objects#hibernation-emulation).
 
 - A pending timer, an outbound WebSocket, or a `fetch()` also keeps an object
@@ -128,21 +254,17 @@ This matches `wrangler dev`. For the measurements, see the
 - When `ctx.abort()` resets an object, or its actor stops, Orange cancels the
   timers of the old instance, as workerd does. Their callbacks never run
   against an instance that is gone.
-
-**Clear each `setInterval()` when the object has no more work for it.** An
-interval that is never cleared is always pending. It keeps the instance and its
-Rivet Actor awake forever, with or without a socket. The actor keeps its memory
-and counts toward the runner's
-[limit of awake objects](#one-runner-holds-at-most-4000-awake-objects). To find
-such an interval, see
-[Find what keeps an object awake](#find-what-keeps-an-object-awake).
+- An interval that is never cleared keeps the instance and its Rivet Actor
+  awake with or without a socket. The actor keeps its memory and counts toward
+  the runner's
+  [limit of awake objects](#one-runner-holds-at-most-4000-awake-objects).
 
 When the runtime stops, it closes each accepted WebSocket with
 `1012 Service Restart`, at random times in a window of 10 ms per socket, up to
 10 seconds. Clients do not all reconnect at once. Standard WebSockets close at
 once.
 
-### Find what keeps an object awake
+##### Find what keeps an object awake
 
 Orange prints one line for each hibernation event of an object when RivetKit's
 info logs are on. Run `orange dev --log-level info`, or set
@@ -187,9 +309,9 @@ When Orange prints the line:
 
 Without info logs, Orange counts the causes and starts no report timer.
 
-## Storage
+#### Storage
 
-### SQL
+##### SQL
 
 - `ctx.storage.sql.exec()` runs synchronously on the actor's SQLite database.
   Cursors support `next()`, `toArray()`, `one()`, raw rows, and duplicate
@@ -207,7 +329,7 @@ Without info logs, Orange counts the causes and starts no report timer.
 - `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`, and `RELEASE` through `exec()`
   fail. Use `transactionSync()` or `transaction()`.
 
-### Key-value storage
+##### Key-value storage
 
 - `ctx.storage.kv` has synchronous `get()`, `put()`, `delete()`, and `list()`
   on the same database and transaction as SQL.
@@ -222,7 +344,7 @@ Without info logs, Orange counts the causes and starts no report timer.
 - `noCache` and `allowConcurrency` have no effect. `allowUnconfirmed: true`
   keeps a write from holding the output gate.
 
-### Transactions and gates
+##### Transactions and gates
 
 - Writes in one JavaScript turn commit together, as in workerd.
 - `transactionSync()` runs its closure in a savepoint. A thrown error rolls
@@ -238,17 +360,14 @@ Without info logs, Orange counts the causes and starts no report timer.
   timeout resets the object.
 - `ctx.storage.sync()` resolves when Rivet confirms every earlier write.
 
-### Reserved tables
-
-Orange keeps its own data in the object's SQLite database:
+##### Reserved tables
 
 - `_cf_KV`, `_cf_ALARM`, and `_cf_METADATA`, as workerd does.
 - `_rivet_` tables for RivetKit and Orange.
 
-These tables appear in `sqlite_master`. SQL that reads or changes them fails
-with `not authorized`. Do not name your own tables with these prefixes.
+Do not name your own tables with these prefixes.
 
-## Alarms
+#### Alarms
 
 - `alarm()` gets `scheduledTime`, `retryCount`, and `isRetry`.
 - Only one `alarm()` runs at a time for an object.
@@ -258,9 +377,8 @@ with `not authorized`. Do not name your own tables with these prefixes.
 - `getAlarm()` returns `null` while the alarm runs, unless the handler set a
   new one.
 - After construction, `setAlarm()` rejects a class with no `alarm()` method.
-- An alarm that comes due while `orange dev` is stopped does not run.
 
-## RPC and fetch
+#### RPC and fetch
 
 - Calls from one Worker to one object arrive in the order you make them.
 - An error that your method or `fetch()` throws rejects only that call. The
@@ -276,7 +394,7 @@ with `not authorized`. Do not name your own tables with these prefixes.
 - A pipelined call waits for its parent result, which adds round trips.
 - A Durable Object stub cannot be sent over RPC. Send the ID string.
 
-## WebSockets
+#### WebSockets
 
 - `new WebSocketPair()`, `accept()`, and a status `101` response work as on
   Cloudflare.
@@ -289,11 +407,9 @@ with `not authorized`. Do not name your own tables with these prefixes.
 - `setHibernatableWebSocketEventTimeout()` accepts up to 2,147,483,647 ms
   (about 24.8 days), the longest Node.js timer. It cannot stop synchronous
   JavaScript.
-- Orange does not copy Cloudflare's limits on tags, sockets per object,
-  attachment size, or automatic-response size. Rivet's transport limit applies
-  to a message.
+- Rivet's transport limit applies to a message.
 
-### WebSocket hibernation
+#### WebSocket hibernation
 
 Orange emulates hibernation inside a running Rivet Actor, because Rivet 3 has
 paused Rivet WebSocket hibernation:
@@ -310,7 +426,7 @@ paused Rivet WebSocket hibernation:
 These differences from Cloudflare come from running hibernation without Rivet
 WebSocket hibernation. Orange cannot remove them.
 
-#### A connected object is always a live actor
+##### A connected object is always a live actor
 
 A hibernated object frees its instance, but its Rivet Actor, its sockets, and
 their state stay in memory. Cost grows with the number of objects that have an
@@ -327,7 +443,7 @@ hibernated:
 For where the runtime's memory goes, see the
 [implementation notes](../internals/durable-objects#memory-of-a-connected-object).
 
-#### One runner holds at most 4,000 awake objects
+##### One runner holds at most 4,000 awake objects
 
 The Rivet Engine setting `pegboard.sqlite_sessions` limits the actors with an
 open SQLite database on one runner connection. Each connected object is one.
@@ -340,7 +456,7 @@ and then fails.
 - For a self-hosted Engine, set `pegboard.sqlite_sessions` in the Engine's
   configuration.
 
-#### Runner churn closes the sockets
+##### Runner churn closes the sockets
 
 Rivet cannot move an actor to another runner without closing its sockets, so a
 connected actor cannot move.
@@ -369,7 +485,7 @@ The object's storage survived each event. A client must connect again after
 any close that it did not ask for. It must wait a random time before each
 attempt, so that the clients of a stopped runner do not all return at once.
 
-## Facets
+#### Facets
 
 `ctx.facets` runs child objects that have their own SQLite storage. Orange
 supports the part that the agents SDK uses.
@@ -395,7 +511,7 @@ supports the part that the agents SDK uses.
 - Facets nest to a depth of 4, including the root.
 - `setAlarm()` in a facet fails with `Facets currently cannot set alarms.`
 
-### Clone
+##### Clone
 
 `clone(src, dst)` replaces the storage of `dst` and its children with a copy of
 `src`. Cloudflare copies the SQLite files in the call. Orange cannot reach
@@ -436,25 +552,7 @@ answered no other request. With no clone, it is about 6 ms.
 | 10 MB | 537 ms | 37 ms | 252 MB |
 | 100 MB | 5.9 s | 1.5 s | 703 MB |
 
-## Limits
-
-Orange does not copy Cloudflare's quotas. Rivet's limits apply:
-
-| What | Limit | What happens over it |
-|---|---|---|
-| One storage write | 128 MiB of changed SQLite pages in one commit | The write throws a `RangeError` that names the limit. |
-| One RPC call | 32 MiB on the wire. Binary data counts 4/3 of its size. | The call throws a `RangeError`. Send large data with `stub.fetch()`, which streams. |
-| `blockConcurrencyWhile()` | 30 seconds | The object resets. |
-| Idle time before the instance or actor stops | 10 seconds | See [How an object runs](#how-an-object-runs). |
-| Alarm retries | 6 | The alarm is dropped. |
-| Facet depth | 4, including the root | `clone()` does nothing at the maximum depth. |
-| Awake objects on one runner | 4,000 by default. Set `RIVET__PEGBOARD__SQLITE_SESSIONS` to change it. | The next object does not start. See [One runner holds at most 4,000 awake objects](#one-runner-holds-at-most-4000-awake-objects). |
-| Storage per object | No limit set by Orange | |
-
-All synchronous SQL runs on the one Node.js runtime thread, so a long query
-delays other Workers and objects in that process.
-
-## Who can call an object
+#### Who can call an object
 
 Every Orange actor is a Rivet Actor in your project's namespace: your Durable
 Objects, facets, and the actors of KV, D1, R2, Cache, Rate Limiting, Queues,
@@ -462,13 +560,8 @@ Cron Triggers, and Workflows.
 
 - The Rivet gateway checks every call with the caller's Rivet token and its
   grants. Orange adds no check of its own.
-- So your other Rivet Actors and clients in the same project can call Orange
-  actors directly with a token that has an `actor_gateway` grant. On
-  Cloudflare, only the Worker can reach a Durable Object.
-- A caller with the grant can also set the request that an object's `fetch()`
-  sees, including `request.cf`.
-- To keep a client away from your objects, give it a token without an
-  `actor_gateway` grant, or scope its grant to specific actor IDs.
+- A caller with an `actor_gateway` grant can also set the request that an
+  object's `fetch()` sees, including `request.cf`.
 - `orange dev` and `orange serve` drop every `x-open-orange-internal-*` header
   that a client sends to the Worker.
 - The Rivet token never reaches your object's `fetch()`, WebSocket, or RPC
@@ -476,7 +569,7 @@ Cron Triggers, and Workflows.
 - Local development is not a security boundary. The local Engine's admin
   token is `default`, and any process on the machine can use it.
 
-## Debug an object
+#### Debug an object
 
 1. Run `orange dev`. The binding table shows each Durable Object binding as
    `Rivet Actor · <ClassName>`.
@@ -506,10 +599,10 @@ project. The Engine's log gets half of the free disk there, from 256 MiB to 4 Gi
 `orange doctor` reports the free space in its `disk` check, with the same rule: it counts
 the free disk and the log of the Worker's own storage directory.
 
-## Deviations
+#### Deviations
 
-- RivetKit's `_rivet_` tables share the object's database. Code that dumps
-  every table in `sqlite_master`, such as starbasedb's `/export/dump`, fails.
+These add to the two differences under [Compatibility](#compatibility).
+
 - Orange blocks `_cf_` and `_rivet_` names with a text check, not a SQLite
   authorizer. There is no SQL function or PRAGMA allow-list. `DELETE` and
   `UPDATE` with `LIMIT` fail.
@@ -524,9 +617,9 @@ the free disk and the log of the Worker's own storage directory.
   repairs a schedule that a crash left missing or stale.
 - `ctx.abort()` and broken storage restart the complete Rivet actor. About 1
   call in 600 that overlaps `ctx.abort()` fails with `503`.
-- Every idle object stops after 10 seconds without events, so instance fields
-  are lost sooner than on Cloudflare.
 - An object that closes a standard WebSocket itself stays awake.
+- A client's close code can be lost in the Rivet gateway. In the recorded
+  lifecycle probe, a clean `1000` close reached `webSocketClose()` as `1001`.
 - A stub has no request owner, so a stub kept in a global works in later
   requests.
 - Classes from `new_classes` support `ctx.storage.sql`, where Cloudflare
@@ -543,7 +636,7 @@ the free disk and the log of the Worker's own storage directory.
   the actor stays. Facets nested in a deleted facet are not destroyed.
 - A facet stub cannot be sent over RPC.
 
-## Not supported
+#### Not supported
 
 - Container images other than Cloudflare Sandbox images.
 - Per-request `ctx.props` values.
@@ -558,7 +651,7 @@ the free disk and the log of the Worker's own storage directory.
 Their types stay in the generated contract, and each placeholder throws an
 error that says it is not supported.
 
-## Conformance
+#### Conformance
 
 - `src/runtime/durable-object-facets.test.ts` and
   `src/runtime/durable-object-facet-clone.test.ts` run facets and workerd's
@@ -573,3 +666,9 @@ error that says it is not supported.
 
 The [implementation notes](../internals/durable-objects#conformance) list every
 test suite.
+
+##### Recorded results
+
+<BindingEvidence bindings={["durable-objects", "durable-object-facets"]} />
+
+</AiContext>
