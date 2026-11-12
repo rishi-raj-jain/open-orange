@@ -295,7 +295,8 @@ The default backend:
 The S3 backend:
 
 - `version` is the S3 version ID when bucket versioning is on. Otherwise, it is
-  the ETag.
+  the ETag. Neon Object Storage returns the version ID `null` for every
+  object, so there `version` is the string `"null"`.
 - `uploaded` has one-second precision.
 - S3 returns custom metadata keys in lowercase. Orange keeps the original case
   of keys that have capital letters in one extra metadata entry,
@@ -309,7 +310,8 @@ The S3 backend:
   succeeds.
 - Part ETags are the MD5 of the part.
 - A conditional put is atomic only if the store supports `If-Match` and
-  `If-None-Match` on writes. AWS S3, MinIO, and R2 support them.
+  `If-None-Match` on writes. AWS S3, MinIO, R2, and Neon Object Storage support
+  them.
 
 #### Conformance
 
