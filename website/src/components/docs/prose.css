@@ -91,6 +91,14 @@
 .docs-prose img {
 	@apply h-auto max-w-full;
 }
+/* A doc's <picture> becomes a light and a dark image (see remark-docs.ts). */
+.docs-prose .docs-dark,
+.dark .docs-prose .docs-light {
+	display: none;
+}
+.dark .docs-prose .docs-dark {
+	display: block;
+}
 .docs-prose figure {
 	@apply rounded-2xl border border-line bg-surface p-4 md:p-6;
 }

@@ -1,0 +1,37 @@
+---
+title: Regions
+description: Where your Worker and Durable Objects run, and how to choose the region on Rivet Cloud or your own Rivet Engine.
+---
+
+# Regions
+
+Your Worker and its Durable Objects run in the region where you deploy them.
+
+- **Each Durable Object is one Rivet Actor.** It lives in one region for its lifetime, and its
+  storage stays in that region.
+- **An object does not move between regions.** A call from another region crosses the network
+  to it, like any other remote call.
+- **Location hints and jurisdictions do not change where an object runs.** OpenOrange checks
+  them, then ignores them for placement.
+
+## Choose a region
+
+| Where | How |
+|---|---|
+| Rivet Cloud | You pick the cloud provider and region when you create the cluster. In a cluster with several regions, `orange deploy --region <region>` picks the region of the runner pool. |
+| Self-hosted | Your Rivet Engine runs in one region. Your objects and their data run there. |
+
+Put the cluster in the same region as your database. Most backends talk to one database, and a
+Worker next to it answers faster than a Worker at the edge, which crosses the internet on every
+query.
+
+## The edge
+
+Stateless Worker requests can run in as many regions as you deploy runners to. For Durable
+Objects, an upcoming Rivet update adds multi-region support, including edge regions. Until then,
+keep an app's Durable Objects in one region.
+
+## Learn more
+
+- [Regions](https://rivet.dev/docs/regions/): how Rivet places actors on Rivet Cloud and when you self-host
+- [Architecture](https://rivet.dev/docs/architecture/): how the Rivet Engine, runners, and storage fit together

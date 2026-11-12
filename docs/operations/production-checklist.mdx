@@ -1,0 +1,53 @@
+---
+title: Production checklist
+description: The few things to check before an OpenOrange app serves production traffic.
+---
+
+# Production checklist
+
+Check these before your app serves production traffic. Rivet's own checklists cover the rest.
+
+## Tokens and secrets
+
+- [ ] CI deploys with a cluster token in `RIVET_CLOUD_TOKEN`, with only the scopes it needs.
+  See [Sign in](../deploy#sign-in).
+- [ ] Secrets go in with `--secrets-file` or `--secret`, never in `vars`. Everything in `vars` is
+  part of the image.
+- [ ] Clients that must not call your Durable Objects directly get Rivet tokens without an
+  `actor_gateway` grant. See [Who can call an object](../modules/durable-objects#who-can-call-an-object).
+- [ ] Self-hosted: `RIVET_ENDPOINT` holds a token, so pass it to the container as a secret.
+
+## Observability
+
+- [ ] Traces, metrics, and logs reach your tools. See [Monitoring](./monitoring).
+
+## Scaling and regions
+
+- [ ] The pool has at least two nodes (`--node-count 2`), so objects have a runner to wake on
+  during a rollout. Pick the size with `--machine-type`.
+- [ ] The cluster is in the region of your database. See [Regions](./regions).
+- [ ] WebSocket clients reconnect after a random wait when a socket closes with `1012`. A
+  deploy closes the sockets of each runner it replaces. See
+  [Runner churn closes the sockets](../modules/durable-objects#runner-churn-closes-the-sockets).
+
+## Rollback
+
+- [ ] You keep the build ID that each deploy prints. To roll back, deploy an earlier build:
+
+```sh
+orange deploy --cluster <cluster> --pool <pool> --build <build-id>
+```
+
+## Self-hosted runners
+
+- [ ] Each deploy sets `RIVET_NODE_VERSION` to a higher number than the last one, so new and
+  waking objects start only on the new runners. Without it, RivetKit logs an error at startup.
+  Rivet Cloud sets it for you.
+- [ ] You upgrade the Rivet Engine before you upgrade OpenOrange. A new OpenOrange can bring a
+  new RivetKit, which can need a newer Engine.
+
+## Learn more
+
+- [Rivet Actors production checklist](https://rivet.dev/actors/docs/production-checklist/)
+- [Self-hosted runners production checklist](https://rivet.dev/docs/deploy/self-host/nodes/production-checklist/)
+- [Versions and upgrades](https://rivet.dev/docs/versions/)

@@ -47,6 +47,10 @@ const SECTIONS: Section[] = [
 			},
 		],
 	},
+	{
+		title: 'Operations',
+		ids: ['operations/monitoring', 'operations/debugging', 'operations/regions', 'operations/limits', 'operations/production-checklist'],
+	},
 	{ title: 'Reference', ids: ['errors', 'internals/durable-objects'] },
 ];
 
