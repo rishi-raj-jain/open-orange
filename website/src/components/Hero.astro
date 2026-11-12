@@ -15,7 +15,7 @@ const fit = (svg: string) =>
 		return `<svg${attrs.replace(/\s(width|height|class)="[^"]*"/g, '')}${viewBox} class="h-full w-auto" aria-hidden="true">`;
 	});
 const clouds = [
-	{ name: 'AWS', svg: fit(aws.replaceAll('#252F3E', 'currentColor')), label: false },
+	{ name: 'AWS', svg: fit(aws.replaceAll('#252F3E', 'currentColor')), label: true },
 	{ name: 'Google Cloud', svg: fit(gcp), label: true },
 	{ name: 'Azure', svg: fit(azure), label: true },
 	{ name: 'Rivet Cloud', svg: fit(rivet), label: true },
