@@ -1,10 +1,13 @@
-<p align="center">
-  <img src="docs/images/hero.png" width="560" alt="A Cloudflare Worker and its bindings run on Rivet Actors">
-</p>
+<h1 align="center">
+  <a href="https://openorange.dev">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-logo-dark.svg">
+      <img src="docs/images/readme-logo.svg" width="350" height="72" alt="OpenOrange">
+    </picture>
+  </a>
+</h1>
 
-<h1 align="center">OpenOrange</h1>
-
-<p align="center">Run your Cloudflare Workers and Durable Objects on Rivet with no changes to your app code.</p>
+<p align="center"><strong>Run Cloudflare Workers anywhere: AWS, Google Cloud, Azure or your own servers.</strong></p>
 
 <p align="center">
   <a href="https://openorange.dev/docs">Docs</a> ·
@@ -14,6 +17,21 @@
   <a href="examples/">Examples</a> ·
   <a href="https://rivet.dev/discord">Discord</a>
 </p>
+
+<p align="center">
+  <img src="docs/images/hero.png" width="560" alt="A Cloudflare Worker and its bindings run on Rivet Actors">
+</p>
+
+## What is OpenOrange
+
+OpenOrange runs your existing Cloudflare Workers project, with no changes to your code. You get the same developer experience as Cloudflare, without the runtime limits, for a fraction of the bill. It's built with four goals:
+
+- **Zero refactoring, zero-downtime migration**: your Workers and Durable Objects run as they are, and your data moves off Cloudflare while your app keeps serving.
+- **The same developer experience**: `wrangler dev` becomes `orange dev`, and everything underneath is open source and self-hostable.
+- **Simpler bills**: you pay for the machines you run on, not Cloudflare's metering or an enterprise contract.
+- **Built for scale**: storage is backed by S3 with an SSD layer in front, so scaling out is a matter of adding machines.
+
+Learn more at [openorange.dev](https://openorange.dev).
 
 ## Use a coding agent
 
