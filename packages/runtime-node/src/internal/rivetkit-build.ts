@@ -3,10 +3,10 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { isRecord } from "../bindings/unknown-values.js";
 
-export const PINNED_RIVETKIT_BRANCH = "feat/sqlite-sync-3.0.6";
+export const PINNED_RIVETKIT_BRANCH = "v3.1.2-rc.1";
 export const PINNED_RIVETKIT_COMMIT =
-	"cf8679c670bc1e0e22252a6daf0523b9a1771ed6";
-export const PINNED_RIVETKIT_VERSION = "0.0.0-sqlite-sync-3-0-6-final.cf8679c";
+	"e5ed3911ebff8ddc35c08b3f6c6eb3f795d042f9";
+export const PINNED_RIVETKIT_VERSION = "3.1.2-rc.1";
 export const PINNED_RIVETKIT_SUPPORTED_HOSTS =
 	"Linux x64/arm64 (glibc or musl) and macOS x64/arm64";
 
@@ -80,7 +80,7 @@ function nativePlatformPackageName(): string {
 		}
 	}
 	throw new Error(
-		`The pinned RivetKit ${PINNED_RIVETKIT_BRANCH} preview supports ${PINNED_RIVETKIT_SUPPORTED_HOSTS}; received ${process.platform}/${process.arch}`,
+		`The pinned RivetKit ${PINNED_RIVETKIT_VERSION} supports ${PINNED_RIVETKIT_SUPPORTED_HOSTS}; received ${process.platform}/${process.arch}`,
 	);
 }
 
@@ -102,7 +102,7 @@ function enginePlatformPackageName(): string {
 		}
 	}
 	throw new Error(
-		`The pinned RivetKit ${PINNED_RIVETKIT_BRANCH} preview supports ${PINNED_RIVETKIT_SUPPORTED_HOSTS}; received ${process.platform}/${process.arch}`,
+		`The pinned RivetKit ${PINNED_RIVETKIT_VERSION} supports ${PINNED_RIVETKIT_SUPPORTED_HOSTS}; received ${process.platform}/${process.arch}`,
 	);
 }
 
@@ -183,7 +183,7 @@ export function assertPinnedRivetKitBuild(
 	for (const packageManifest of build.packages) {
 		if (packageManifest.version !== PINNED_RIVETKIT_VERSION) {
 			throw new Error(
-				`OpenOrange requires ${packageManifest.name}@${PINNED_RIVETKIT_VERSION} from RivetKit branch ${PINNED_RIVETKIT_BRANCH} commit ${PINNED_RIVETKIT_COMMIT}; resolved ${packageManifest.version}`,
+				`OpenOrange requires ${packageManifest.name}@${PINNED_RIVETKIT_VERSION} from RivetKit ${PINNED_RIVETKIT_BRANCH} (commit ${PINNED_RIVETKIT_COMMIT}); resolved ${packageManifest.version}`,
 			);
 		}
 	}

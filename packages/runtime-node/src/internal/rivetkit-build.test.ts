@@ -4,7 +4,6 @@ import test from "node:test";
 import {
 	assertPinnedRivetKitBuild,
 	discoverInstalledRivetKitBuild,
-	PINNED_RIVETKIT_COMMIT,
 	PINNED_RIVETKIT_VERSION,
 } from "./rivetkit-build.js";
 import { createRivetRegistry } from "./rivetkit.js";
@@ -13,7 +12,7 @@ test("discovers one immutable RivetKit JS, native, and Engine build", () => {
 	const build = discoverInstalledRivetKitBuild();
 	assert.equal(build.packages.length, 5);
 	assert.equal(new Set(build.packages.map(({ name }) => name)).size, 5);
-	assert.ok(PINNED_RIVETKIT_VERSION.endsWith(PINNED_RIVETKIT_COMMIT.slice(0, 7)));
+	assert.ok(build.packages.every(({ version }) => version === PINNED_RIVETKIT_VERSION));
 	assert.doesNotThrow(() => assertPinnedRivetKitBuild(build));
 });
 

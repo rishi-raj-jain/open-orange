@@ -40,7 +40,7 @@
 		"itty-time": "2.0.2",
 		"mime": "4.1.1",
 		"nodemailer": "^10.3.1",
-		"rivetkit": "0.0.0-sqlite-sync-3-0-6-final.cf8679c",
+		"rivetkit": "3.1.2-rc.1",
 		"undici": "8.10.2",
 		"urlpattern-polyfill": "10.1.0",
 		"ws": "8.21.0",
