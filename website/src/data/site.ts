@@ -462,7 +462,7 @@ export const GET_STARTED = [
 	},
 	{
 		title: 'Deploy',
-		body: 'Builds an image of your Worker and rolls it out to your own cloud (AWS, GCP, Azure) or on-prem servers. Or use Rivet Cloud: fully managed, on a dedicated cluster in the provider and region you choose.',
+		body: 'Builds an image of your Worker and rolls it out to your own cloud (AWS, GCP, Azure) or on-prem servers. Or use Rivet Cloud: a fully managed, dedicated cluster on AWS or Google Cloud, in the region you choose.',
 		commands: ['orange login', 'orange link --cluster <name>', 'orange deploy'],
 		output: { mark: '✓', status: 'Deployed my-worker', note: '', rows: [['URL', 'https://api.example.com']] },
 		// The commands above deploy to a Rivet cluster; self-hosting runs the image on your own Engine.
@@ -516,7 +516,7 @@ export const DEPLOY_TARGETS: DeployTarget[] = [
 		id: 'rivet-cloud',
 		label: 'Rivet Cloud',
 		tagline: 'Fully managed',
-		runsOn: 'A dedicated cluster in the provider and region you choose',
+		runsOn: 'A dedicated cluster on AWS or Google Cloud, in the region you choose',
 		operatedBy: 'Rivet',
 	},
 	{
