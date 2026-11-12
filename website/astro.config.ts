@@ -17,6 +17,7 @@ export default defineConfig({
 	// Old routes that moved. Static builds write a page that sends the browser on.
 	redirects: {
 		'/architecture/': '/docs/architecture/',
+		'/compatibility/': '/docs/compatibility/',
 	},
 	// Dev only: let the Amp orb portal proxy reach the dev server. This must be
 	// Astro's `server`, not `vite.server`: Astro overwrites Vite's allowedHosts

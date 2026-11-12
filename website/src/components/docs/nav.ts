@@ -49,14 +49,14 @@ const SECTIONS: Section[] = [
 		],
 	},
 	{
-		title: 'Operations',
-		ids: ['operations/monitoring', 'operations/debugging', 'operations/limits', 'operations/production-checklist'],
+		title: 'Reference',
+		ids: ['/docs/compatibility/', 'operations/monitoring', 'operations/debugging', 'operations/limits', 'operations/production-checklist'],
 	},
 	{ title: 'Advanced', ids: ['errors', 'internals/durable-objects'], collapsed: true },
 ];
 
 // Docs pages written as Astro pages rather than repo MDX, listed in SECTIONS by route.
-const PAGES: Record<string, string> = { '/docs/': 'Introduction', '/docs/bindings/': 'Bindings overview' };
+const PAGES: Record<string, string> = { '/docs/': 'Introduction', '/docs/bindings/': 'Bindings overview', '/docs/compatibility/': 'Compatibility' };
 
 /** Titles that differ from the doc's frontmatter, on the page and in the sidebar. */
 export const TITLES: Record<string, string> = { 'modules/browser-rendering': 'Browser Run', 'modules/bindings': 'Binding configuration' };

@@ -8,11 +8,11 @@ Conformance tooling for OpenOrange. Run the commands from this package:
 | `pnpm check` | Checks OpenOrange against the generated artifacts |
 | `pnpm upstream` | Runs the upstream workerd test suite against `orange dev` |
 | `pnpm results:save <run-dir>` | Saves a compact snapshot of an upstream run to `results/` |
-| `pnpm report` | Builds the website (`website/`), whose `/compatibility/` page reads `results/` and `compat/*.json` at build time |
+| `pnpm report` | Builds the website (`website/`), whose `/docs/compatibility/` page reads `results/` and `compat/*.json` at build time |
 | `pnpm real-projects` | Runs real open-source projects through `orange dev` (`--probes` runs the probes) |
 | `pnpm example-results` | Saves each example scenario's outcome |
 | `pnpm truth-table` | Builds `compat/truth-table.json` from the recorded results |
-| `pnpm site` | Runs the website's dev server; the report is at `/compatibility/` |
+| `pnpm site` | Runs the website's dev server; the report is at `/docs/compatibility/` |
 
 ## Upstream workerd tests
 
@@ -165,7 +165,7 @@ Save a full run, then view it on the website:
 ```sh
 pnpm upstream --jobs 6
 pnpm results:save .upstream/runs/<timestamp> --label "Orange PR #3"
-pnpm site                           # the website's dev server; open /compatibility/
+pnpm site                           # the website's dev server; open /docs/compatibility/
 pnpm report                         # or build the website into website/dist/
 ```
 
