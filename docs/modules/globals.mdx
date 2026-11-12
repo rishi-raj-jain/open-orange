@@ -97,6 +97,13 @@ curl -d hello localhost:8787
 | `URL.createObjectURL()` | Not supported | See [Deviations](#deviations). |
 | `compatibility_date` and `compatibility_flags` | Partial | One fixed profile. See [Compatibility date and flags](#compatibility-date-and-flags). |
 
+#### Limits
+
+Orange does not copy Cloudflare's resource limits on the globals (see
+[Deviations](#deviations)). A global that Node.js or Undici backs has that
+implementation's limits. A request has no time limit; see
+[Fetch events](./fetch-events#limits).
+
 #### The global manifest
 
 Orange intersects the value-bearing declarations with the globals exposed

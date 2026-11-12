@@ -6,17 +6,37 @@ description: What Orange prints when a command fails, and what the report link h
 # Errors
 
 When an `orange` command fails, its last line links to a new GitHub issue with
-the error already filled in.
+the error already filled in. Nothing is sent until you submit it.
+
+## Quickstart
+
+<Steps>
+
+<Step title="Open the link">
+
+Open the link on the failed command's last line.
 
 ```text
 Looks like a bug? Report it: https://github.com/rivet-dev/open-orange/issues/new
 ```
 
-## Report a bug
+</Step>
 
-Open the link, edit the issue if you want, and submit it. Nothing is sent until
-you do. Orange replaces tokens, secrets, paths, and your user name in the error
-with placeholders first.
+<Step title="Check the issue">
+
+The issue holds the error and your Orange, Node.js, and OS versions. Orange
+has already replaced tokens, secrets, paths, and your user name with
+placeholders. Edit anything you want.
+
+</Step>
+
+<Step title="Say what you did and submit it">
+
+Fill in **What I did**, then submit the issue.
+
+</Step>
+
+</Steps>
 
 <AiContext summary="What the link holds, what Orange removes, and when it prints no link">
 
@@ -26,9 +46,17 @@ The link opens a new issue on
 [rivet-dev/open-orange](https://github.com/rivet-dev/open-orange/issues). A
 terminal shows a short link. A pipe or CI log shows the full URL.
 
-The issue's title is `orange <command>: ` followed by the error's first line.
-Only the error text and the Orange, Node.js, and OS versions go in the link.
-Command arguments do not, unless the error text repeats them.
+- The short link is an OSC 8 hyperlink. Orange prints it only when stderr is a
+  TTY, `TERM` is not `dumb`, and `NO_COLOR` is unset or empty.
+- The issue's title is `orange <command>: ` followed by the error's first line,
+  cut to 120 characters. A command that Orange does not know shows as
+  `command`.
+- The body is `**Version:** orange <version>, Node.js <version>, <platform>
+  <arch>`, then the error in a code block, cut to 1,000 characters, then
+  `**What I did:**`.
+- Only the error text and the Orange, Node.js, and OS versions go in the link.
+  Command arguments do not, unless the error text repeats them.
+- An uncaught exception also prints the link, with its stack as the error.
 
 #### What Orange removes
 
@@ -36,11 +64,12 @@ Before Orange builds the link, it removes these from the error text:
 
 | Removed | Replaced with |
 |---|---|
-| Values of `--token`-like flags and of variables such as `*_TOKEN`, `*_SECRET`, and `RIVET_ENDPOINT` | `<redacted>` |
+| Values of `--token`-like flags (names ending in `token`, `secret`, `password`, or `key`) and of variables whose names contain `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `API_KEY`, `CREDENTIAL`, or `AUTH`, and of `RIVET_ENDPOINT`, when 4 or more characters | `<redacted>` |
 | Bearer and basic credentials, and `password=...`-like pairs | `<redacted>` |
-| Long opaque strings | `<redacted>` |
+| Keys with prefixes such as `sk-`, `pk-`, `ghp_`, and `xoxb-`, and runs of 32 or more letters, digits, `+`, `_`, `=`, or `-` | `<redacted>` |
 | The project directory and home directory | `.` and `~` |
 | Other absolute paths | `<path>/<file name>` |
+| `file:` URLs | `<path>` |
 | URL credentials, paths, and queries | Only `scheme://host` stays |
 | Your user name, when it has 3 or more characters | `<user>` |
 
@@ -50,8 +79,12 @@ Orange prints no link for a failure that is the command's result or the user's i
 
 - You stop a command with Ctrl-C (exit `130`).
 - A command gets invalid arguments or an unknown command (exit `2`).
-- `orange doctor` finds a check to fix, and `orange migrate backfill` has objects to retry (exit `1`).
+- `orange doctor` finds a check to fix, or with `--strict` something that needs
+  setup, and `orange migrate backfill` has objects to retry (exit `1`).
 - `orange migrate prepare` or `orange migrate d1` refuses a Worker or database it cannot move, such as a D1 database with virtual tables (exit `1`).
 - A Wrangler command that Orange does not implement.
+
+A backfill that fails on Orange's own side does print the link. Its last line
+is `Orange failed on its own side: <message>`, so the report quotes it.
 
 </AiContext>

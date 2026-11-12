@@ -97,6 +97,13 @@ curl localhost:8787/hello   # Hello from /hello
 Copying every `ctx` property, as Sentry does, works: `ctx.cache` reads as
 `undefined` instead of throwing.
 
+#### Limits
+
+Orange does not copy Cloudflare's per-request limits, such as CPU time or how
+long `waitUntil()` work runs after the response. Nothing in the runtime times
+out a handler or its `waitUntil()` promises. For the limits of the machine and
+of Rivet, see [Limits](../operations/limits).
+
 #### Handlers
 
 - The default export's `fetch` handles each request. A default class that

@@ -8,11 +8,35 @@ description: Which Rivet limits apply to Durable Objects on OpenOrange, and how 
 OpenOrange does not copy Cloudflare's quotas. Your Durable Objects get the memory and CPU of
 the machine they run on, and Rivet sets the rest.
 
-## Change a limit
+## Quickstart
 
-- **More memory and CPU:** deploy to a bigger machine with `orange deploy --machine-type <type>`.
-- **More awake objects on one runner:** on a self-hosted Rivet Engine, raise
-  `pegboard.sqlite_sessions`.
+<Steps>
+
+<Step title="Give your objects more memory and CPU">
+
+Deploy to a bigger machine. The cluster's plan limits the machine types.
+
+```sh
+orange deploy --machine-type <type>
+```
+
+</Step>
+
+<Step title="Allow more awake objects on one runner">
+
+For `orange dev`, set the Rivet Engine's limit in the environment. Orange passes
+it to the Engine that it starts.
+
+```sh
+RIVET__PEGBOARD__SQLITE_SESSIONS=20000 orange dev
+```
+
+On a self-hosted Rivet Engine, raise `pegboard.sqlite_sessions` in its
+configuration.
+
+</Step>
+
+</Steps>
 
 ## Learn more
 
