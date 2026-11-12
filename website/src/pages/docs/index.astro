@@ -3,46 +3,29 @@ import { Code } from 'astro:components';
 import { getEntry } from 'astro:content';
 import Docs from '@/layouts/Docs.astro';
 import { docHref } from '@/components/docs/nav';
-import type { ImageMetadata } from 'astro';
 
-const images = import.meta.glob<ImageMetadata>('../../../../docs/images/*.svg', { eager: true, import: 'default' });
-const image = (name: string) => images[`../../../../docs/images/${name}`];
-// Each figure has a `-dark.svg` twin for the dark theme.
-const darkImage = (name: string) => image(name.replace(/\.svg$/, '-dark.svg'));
 
 // The quickstart follows the repository README. Everything else on /docs/
 // renders from docs/*.mdx.
 const steps = [
 	{
 		title: 'Install',
-		image: image('step-1-install.svg'),
-		darkImage: darkImage('step-1-install.svg'),
-		alt: 'OpenOrange reads the wrangler.jsonc and source files that your Worker already has',
 		body: 'Install the `orange` CLI globally, then run it in your Worker project. Your code and your Wrangler configuration do not change.',
 		code: 'pnpm add -g open-orange',
 	},
 	{
 		title: 'Run your Worker',
-		image: image('step-2-dev.svg'),
-		darkImage: darkImage('step-2-dev.svg'),
-		alt: 'orange dev serves your Worker on localhost, and each Durable Object runs as a Rivet Actor with its own SQLite database',
 		body: 'Your Worker answers on `http://localhost:8787`. Each Durable Object runs as a Rivet Actor with its own SQLite database, kept in `.open-orange/`.',
 		code: 'orange dev',
 	},
 	{
 		title: 'Deploy',
-		image: image('step-3-deploy.svg'),
-		darkImage: darkImage('step-3-deploy.svg'),
-		alt: 'orange deploy builds an image of your Worker, uploads it, and rolls a runner pool out to it on a Rivet cluster',
 		body: '`orange deploy` builds an image of your Worker and rolls it out to a Rivet cluster, then prints its public URL.',
 		code: 'orange login\norange link --cluster <cluster-name>\norange deploy',
 		more: { label: 'Deploy guide', href: docHref('deploy') },
 	},
 	{
 		title: 'Move your data from Cloudflare',
-		image: image('step-4-migrate.svg'),
-		darkImage: darkImage('step-4-migrate.svg'),
-		alt: 'Prepare the Cloudflare Worker, deploy to OpenOrange, point DNS at it, then run the backfill',
 		body: '`orange migrate` moves Durable Objects and D1 databases while your app serves. Skip this step if your app has no data on Cloudflare.',
 		code: 'orange migrate prepare\norange migrate backfill --url https://app.example.com',
 		more: { label: 'Migration guide', href: docHref('migrate') },
@@ -73,11 +56,6 @@ const sections = await Promise.all(
 	<p>
 		OpenOrange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a <a href="https://rivet.dev/docs/actors/">Rivet Actor</a> with its own SQLite database.
 	</p>
-	<ul>
-		<li><strong>Run.</strong> <code>orange dev</code> runs your Worker on your machine.</li>
-		<li><strong>Deploy.</strong> <code>orange deploy</code> builds an image of your Worker and rolls it out to a Rivet cluster. <code>orange serve</code> runs it on your own Rivet Engine.</li>
-		<li><strong>Migrate.</strong> <code>orange migrate</code> moves your Durable Objects and D1 databases from Cloudflare while your app serves.</li>
-	</ul>
 
 	<h2 id="quickstart">Quickstart</h2>
 	<p>You need a Worker project with a <code>wrangler.jsonc</code>, <code>wrangler.json</code>, or <code>wrangler.toml</code>, Node.js 22 or later, and pnpm. Deploying also needs Docker.</p>
@@ -85,10 +63,6 @@ const sections = await Promise.all(
 	{steps.map((step, i) => (
 		<>
 			<h3 id={`step-${i + 1}`}>Step {i + 1}: {step.title}</h3>
-			<figure>
-				<img src={step.image.src} width={step.image.width} height={step.image.height} alt={step.alt} loading={i ? 'lazy' : 'eager'} class="mx-auto w-full max-w-[600px] dark:hidden" />
-				<img src={step.darkImage.src} width={step.darkImage.width} height={step.darkImage.height} alt={step.alt} loading="lazy" class="mx-auto hidden w-full max-w-[600px] dark:block" />
-			</figure>
 			<p>{codeParts(step.body).map((part, j) => (j % 2 ? <code>{part}</code> : part))}{step.more && <> See the <a href={step.more.href}>{step.more.label.toLowerCase()}</a>.</>}</p>
 			<Code code={step.code} lang="sh" themes={{ light: 'github-light', dark: 'github-dark' }} />
 		</>
