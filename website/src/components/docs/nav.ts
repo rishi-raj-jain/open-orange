@@ -6,9 +6,10 @@ import { NO_PAGE, docRoute } from './routes';
 
 export type DocLink = { label: string; href: string; id?: string };
 /** A sidebar section. `groups` are collapsible sub-sections, open when they hold the current page. */
-export type DocGroup = { title: string; links: DocLink[]; groups?: DocGroup[] };
+/** `collapsed`: shown as a fold, open when it holds the current page. */
+export type DocGroup = { title: string; links: DocLink[]; groups?: DocGroup[]; collapsed?: boolean };
 
-type Section = { title: string; ids: string[]; groups?: { title: string; ids: string[] }[] };
+type Section = { title: string; ids: string[]; groups?: { title: string; ids: string[] }[]; collapsed?: boolean };
 
 const SECTIONS: Section[] = [
 	{ title: 'Getting started', ids: ['/docs/', 'architecture', 'deploy', 'migrate'] },
@@ -49,9 +50,9 @@ const SECTIONS: Section[] = [
 	},
 	{
 		title: 'Operations',
-		ids: ['operations/monitoring', 'operations/debugging', 'operations/regions', 'operations/limits', 'operations/production-checklist'],
+		ids: ['operations/monitoring', 'operations/debugging', 'operations/limits', 'operations/production-checklist'],
 	},
-	{ title: 'Reference', ids: ['errors', 'internals/durable-objects'] },
+	{ title: 'Advanced', ids: ['errors', 'internals/durable-objects'], collapsed: true },
 ];
 
 // Docs pages written as Astro pages rather than repo MDX, listed in SECTIONS by route.
@@ -86,6 +87,8 @@ export async function docsNav(): Promise<{ groups: DocGroup[]; entries: Collecti
 	const groups: DocGroup[] = SECTIONS.map((section) => ({
 		title: section.title,
 		links: links(section.ids),
+		collapsed: section.collapsed,
+		collapsed: section.collapsed,
 		groups: section.groups?.map((g) => ({ title: g.title, links: links(g.ids) })).filter((g) => g.links.length),
 	}));
 	const unlisted = entries.filter((entry) => !listed.has(entry.id) && !NO_PAGE.has(entry.id)).sort((a, b) => a.data.title.localeCompare(b.data.title));

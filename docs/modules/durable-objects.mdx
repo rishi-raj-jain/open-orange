@@ -8,18 +8,13 @@ description: Run Cloudflare Durable Objects on OpenOrange, where each object is 
 <BindingStatus
   binding="durable-objects"
   works="SQL and key-value storage, transactions, alarms, RPC, `fetch()`, and WebSockets, through the same `cloudflare:workers` API"
-  differs="WebSocket hibernation is emulated, so an object with an open socket stays in memory, and an idle object loses its instance fields after 10 seconds"
+  differs="An idle object loses its instance fields after 10 seconds"
   missing="`stub.connect()`, point-in-time recovery, read replication, and `ctx.props`"
 />
 
 Each Durable Object runs as one [Rivet Actor](https://rivet.dev/docs/actors/)
 with its own SQLite database. Your class and your `wrangler.jsonc` run
 unchanged.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="../images/durable-object-lifecycle-dark.svg" />
-  <img alt="An object with one accepted WebSocket. After 10 seconds with no event, Orange drops the instance, and the actor and the socket stay. A message builds a new instance. After the socket closes and 10 more idle seconds, the actor sleeps. The next request wakes it." src="../images/durable-object-lifecycle.svg" />
-</picture>
 
 ## Quickstart
 
@@ -128,8 +123,7 @@ curl localhost:8787/bob     # {"greeting":"Hello, bob!","visits":1}
 - When the object is idle, Orange drops the instance and builds a new one on
   the next request, RPC call, alarm, or message. Keep state in `ctx.storage`,
   not in fields.
-- An open WebSocket stays connected while the instance is gone. This is how
-  Orange emulates hibernation.
+- An open WebSocket stays connected while the instance is gone.
 
 <AiContext summary="Compatibility, limits and details">
 

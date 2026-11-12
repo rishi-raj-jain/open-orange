@@ -356,7 +356,7 @@ export const SERVICE_MAP: ServiceMapping[] = [
 		cloudflare: 'Durable Objects',
 		openorange: 'Rivet Actors',
 		status: 'partial',
-		detail: 'One Rivet Actor per object, with SQLite storage and alarms. Same class, same bindings. WebSocket hibernation is emulated: the object leaves memory, and its actor keeps running.',
+		detail: 'One Rivet Actor per object, with SQLite storage and alarms. Same class, same bindings.',
 	},
 	{
 		cloudflare: 'Workers KV',

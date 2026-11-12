@@ -34,7 +34,7 @@ const sections = await Promise.all(
 	['deploy', 'migrate', 'modules', 'modules/bindings', 'operations/monitoring', 'errors'].map(async (id) => {
 		const entry = (await getEntry('docs', id))!;
 		if (id === 'modules') return { href: docHref(id), title: 'Bindings', description: 'Every Cloudflare binding on OpenOrange: whether it runs, how, and what differs from Cloudflare.' };
-		if (id === 'operations/monitoring') return { href: docHref(id), title: 'Operations', description: 'Monitor, debug, and run your app in production: traces, metrics, logs, regions, and limits.' };
+		if (id === 'operations/monitoring') return { href: docHref(id), title: 'Operations', description: 'Monitor, debug, and run your app in production: traces, metrics, logs, and limits.' };
 		return { href: docHref(id), title: id === 'modules/bindings' ? 'Binding configuration' : entry.data.title, description: entry.data.description };
 	}),
 );

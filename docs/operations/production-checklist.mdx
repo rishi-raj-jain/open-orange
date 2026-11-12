@@ -29,21 +29,16 @@ orange deploy --node-count 2
 
 </Step>
 
-<Step title="Deploy next to your database">
-
-See [Regions](./regions).
-
-</Step>
-
 <Step title="Turn on monitoring">
 
-Send traces, metrics, and logs to your tools. See [Monitoring](./monitoring).
+Send traces, metrics, and logs to your tools. See [OpenTelemetry and Prometheus](./monitoring).
 
 </Step>
 
-<Step title="Keep each build ID">
+<Step title="Note each build ID">
 
-Each deploy prints one. To roll back, deploy an earlier build:
+`orange deploy` prints the ID of the build it rolls out. Note it, so you can roll back to it if
+a later deploy goes wrong. This rolls out that build again and builds nothing:
 
 ```sh
 orange deploy --cluster <cluster> --pool <pool> --build <build-id>

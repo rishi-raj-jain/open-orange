@@ -309,7 +309,6 @@ If a step fails before the switch, the freeze opens, Cloudflare takes writes aga
 ## Caveats
 
 - **Not every binding runs.** Vectorize, Images, Media, Stream, Pipelines, AI Search, mTLS certificates, and VPC throw on each call. Analytics Engine drops its writes. Some bindings need a service you supply. See [What runs where](#what-runs-where).
-- **WebSocket hibernation is emulated.** The Durable Object leaves memory and its sockets stay open, but its Rivet Actor stays running.
 - **Compatibility dates do not apply.** OpenOrange runs one profile and ignores `compatibility_date`. It warns about each flag in `compatibility_flags` that it does not apply.
 - **KV-backed Durable Objects cannot move.** Only SQLite Durable Objects (`new_sqlite_classes`) move with `orange migrate`.
 - **A D1 database takes no writes while it moves,** about 3 minutes per GB in a test.
