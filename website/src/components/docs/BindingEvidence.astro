@@ -1,0 +1,76 @@
+---
+// The recorded results behind a binding page, from the truth table in
+// packages/cloudflare-conformance. It goes inside the page's <AiContext>:
+//
+//   <BindingEvidence bindings={["durable-objects", "durable-object-facets"]} />
+//
+// It lists each check's status and every result with its outcome, and leaves
+// out the check's prose, which the page itself says once.
+import { BINDINGS } from '@/data/bindings';
+import { CLAIM_LABEL, OUTCOME_LABEL, TRUTH, inline } from '@/data/conformance';
+
+interface Props {
+	/** Slugs from src/data/binding-docs.ts. */
+	bindings: string[];
+}
+
+const { bindings } = Astro.props;
+const sections = bindings.map((slug) => {
+	const b = BINDINGS.find((x) => x.slug === slug);
+	if (!b) throw new Error(`<BindingEvidence>: no binding "${slug}" in src/data/binding-docs.ts`);
+	return b;
+});
+const run = TRUTH.sources.conformance;
+---
+
+<div id="test-evidence" class="binding-evidence">
+	<p>
+		Recorded results from the conformance run of {run.date} (Orange <code>{run.orange}</code>), {run.pass.toLocaleString('en-US')} of {run.total.toLocaleString('en-US')} tests passing across every area. Each check is <em>works</em> when every result passed and <em>partial</em> when some did. The full feature matrix is on the <a href="/compatibility/">compatibility page</a>.
+	</p>
+	{sections.map((b) => (
+		<>
+			<h5>{b.product.product}</h5>
+			<table>
+				<thead>
+					<tr>
+						<th>Check</th>
+						<th>Status</th>
+						<th>Results</th>
+					</tr>
+				</thead>
+				<tbody>
+					{b.claims.map((c) => (
+						<tr>
+							<td set:html={inline(c.title)} />
+							<td>{CLAIM_LABEL[c.status].label}</td>
+							<td>
+								<ul>
+									{c.evidence.map((e) => (
+										<li>
+											<strong>{OUTCOME_LABEL[e.orange].label}</strong>{e.counts ? ` ${e.counts.pass}/${e.counts.total}` : ''}: <span set:html={inline(e.label)} />
+										</li>
+									))}
+								</ul>
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</>
+	))}
+</div>
+
+<style>
+	.binding-evidence ul {
+		margin: 0;
+		padding-left: 1.125rem;
+	}
+	.binding-evidence li {
+		margin: 0.125rem 0;
+		padding: 0;
+		font-size: 13px;
+	}
+	.binding-evidence td:nth-child(2) {
+		white-space: nowrap;
+	}
+</style>

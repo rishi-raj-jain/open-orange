@@ -1,17 +1,19 @@
 @import 'tailwindcss';
 
 /* Two self-hosted OFL variable fonts. Inter carries headings and body;
-   JetBrains Mono is for commands, code and tabular numbers only. */
+   JetBrains Mono is for commands, code and tabular numbers only. They live in
+   src/assets so builds hash them into /_astro/, which is cached as immutable;
+   src/layouts/Base.astro preloads the same files. */
 @font-face {
 	font-family: 'Inter';
-	src: url('/fonts/inter/Inter-Variable-latin.woff2') format('woff2');
+	src: url('../assets/fonts/inter/Inter-Variable-latin.woff2') format('woff2');
 	font-weight: 100 900;
 	font-style: normal;
 	font-display: swap;
 }
 @font-face {
 	font-family: 'JetBrains Mono';
-	src: url('/fonts/jetbrains-mono/JetBrainsMono-Variable-latin.woff2') format('woff2');
+	src: url('../assets/fonts/jetbrains-mono/JetBrainsMono-Variable-latin.woff2') format('woff2');
 	font-weight: 100 800;
 	font-style: normal;
 	font-display: swap;
@@ -356,9 +358,13 @@ body {
 	@apply font-mono text-[12.5px] tabular-nums text-ink-soft;
 }
 
-/* A result row that opens on click. `summary` is the row, the rest is detail. */
+/* A result row that opens on click. `summary` is the row, the rest is detail.
+   The compatibility page has over a thousand rows; the browser skips laying
+   out the ones off screen. */
 .row {
 	@apply border-b border-line;
+	content-visibility: auto;
+	contain-intrinsic-size: auto 52px;
 }
 .row > summary,
 .row > .row-cols {
@@ -428,9 +434,6 @@ body {
 }
 .plate .muted {
 	color: rgb(245 245 244 / 0.4);
-}
-.plate .ok {
-	@apply rounded-sm bg-orange px-1.5 text-[12px] font-semibold text-white;
 }
 .plate-bar {
 	@apply flex items-center gap-2 border-b border-white/10 px-4 py-2 font-sans text-[12px] font-medium text-cream/60;

@@ -6,7 +6,15 @@ import { TITLES, docHref } from '@/components/docs/nav';
 import { NO_PAGE } from '@/components/docs/routes';
 import BindingDetail from '@/components/docs/BindingDetail.astro';
 import TipScript from '@/components/compat/TipScript.astro';
+import AiContext from '@/components/docs/AiContext.astro';
+import BindingEvidence from '@/components/docs/BindingEvidence.astro';
+import BindingStatus from '@/components/docs/BindingStatus.astro';
+import Step from '@/components/docs/Step.astro';
+import Steps from '@/components/docs/Steps.astro';
 import { bindingsForDoc } from '@/data/bindings';
+
+// Components every doc can use without an import (CLAUDE.md, "Binding page format").
+const components = { AiContext, BindingEvidence, BindingStatus, Step, Steps };
 
 type MdxModule = { Content: (props: Record<string, unknown>) => unknown; getHeadings: () => MarkdownHeading[] };
 
@@ -14,7 +22,7 @@ type MdxModule = { Content: (props: Record<string, unknown>) => unknown; getHead
 // imports each file as an MDX module instead of calling `render(entry)`:
 // Astro 5 loses `render()`'s module map when `--outDir` is outside the site
 // directory (it builds into `.astro/` and empties it), and this works either way.
-const modules = import.meta.glob<MdxModule>(['../../../../docs/*.mdx', '../../../../docs/modules/*.mdx', '../../../../docs/internals/*.mdx']);
+const modules = import.meta.glob<MdxModule>(['../../../../docs/*.mdx', '../../../../docs/modules/*.mdx', '../../../../docs/operations/*.mdx', '../../../../docs/internals/*.mdx']);
 
 export async function getStaticPaths() {
 	const entries = await getCollection('docs');
@@ -32,7 +40,9 @@ const load = modules[`../../../../${source}`];
 if (!load) throw new Error(`No MDX module for ${entry.filePath}`);
 const { Content, getHeadings } = await load();
 // Compatibility details from the conformance data, after the doc's own content.
-const bindings = bindingsForDoc(entry.id);
+// A page in the binding page format shows its status in <BindingStatus> and its
+// evidence in <BindingEvidence>, so it gets no generated section.
+const bindings = entry.body?.includes('<BindingStatus') ? [] : bindingsForDoc(entry.id);
 const headings = [
 	...getHeadings(),
 	...(bindings.length ? [{ depth: 2, slug: 'compatibility', text: 'Compatibility' }] : []),
@@ -41,11 +51,11 @@ const headings = [
 ---
 
 <Docs title={TITLES[entry.id] ?? entry.data.title} description={entry.data.description} href={docHref(entry.id)} headings={headings} source={source} wide={WIDE.has(entry.id)}>
-	<Content />
+	<Content components={components} />
 	{bindings.length > 0 && (
 		<section slot="after" id="compatibility" class="mt-16 scroll-mt-20 border-t border-line pt-10">
 			<h2 class="text-[1.75rem] font-medium leading-tight tracking-[-0.025em]">Compatibility</h2>
-			<p class="caption mt-2">From the latest conformance run. Scores on the <a href="/compatibility/" class="link">compatibility page</a>; every binding on the <a href="/docs/bindings/" class="link">status page</a>.</p>
+			<p class="caption mt-2">From the latest conformance run. Scores on the <a href="/compatibility/" class="link">compatibility page</a>; every binding on the <a href="/docs/bindings/" class="link">bindings overview</a>.</p>
 			<div class="mt-8">
 				{bindings.map((b, i) => <BindingDetail b={b} first={i === 0} />)}
 			</div>

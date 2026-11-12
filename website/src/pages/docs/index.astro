@@ -3,6 +3,7 @@ import { Code } from 'astro:components';
 import { getEntry } from 'astro:content';
 import Docs from '@/layouts/Docs.astro';
 import { docHref } from '@/components/docs/nav';
+import { DOCS_PAGES } from '@/data/docs-pages';
 
 
 // The quickstart follows the repository README. Everything else on /docs/
@@ -36,17 +37,19 @@ const steps = [
 const codeParts = (text: string) => text.split(/`([^`]+)`/);
 
 const sections = await Promise.all(
-	['deploy', 'migrate', 'modules', 'modules/bindings', 'errors'].map(async (id) => {
+	['deploy', 'migrate', 'modules', 'modules/bindings', 'operations/monitoring', 'errors'].map(async (id) => {
 		const entry = (await getEntry('docs', id))!;
 		if (id === 'modules') return { href: docHref(id), title: 'Bindings', description: 'Every Cloudflare binding on OpenOrange: whether it runs, how, and what differs from Cloudflare.' };
+		if (id === 'operations/monitoring') return { href: docHref(id), title: 'Operations', description: 'Monitor, debug, and run your app in production: traces, metrics, logs, regions, and limits.' };
 		return { href: docHref(id), title: id === 'modules/bindings' ? 'Binding configuration' : entry.data.title, description: entry.data.description };
 	}),
 );
 ---
 
 <Docs
-	title="Documentation"
-	description="Run your Cloudflare Workers and Durable Objects on Rivet with no changes to your app code."
+	title={DOCS_PAGES['/docs/'].title}
+	description={DOCS_PAGES['/docs/'].description}
+	headTitle="OpenOrange documentation"
 	href="/docs/"
 	headings={[
 		{ depth: 2, slug: 'quickstart', text: 'Quickstart' },

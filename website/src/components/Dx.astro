@@ -1,63 +1,401 @@
 ---
-// Same commands, new name. The terminal types each Wrangler command; a mouse
-// pointer barges in, double-clicks "wrangler" and it is retyped as "orange".
-// Then the pointer clicks the printed URL and a browser window opens the app.
-// Without JS or with reduced motion it shows the finished session.
+// Same commands, new name. The terminal types each Wrangler command, and a
+// mouse pointer double-clicks "wrangler" so it is retyped as "orange". After
+// `orange dev` and `orange deploy`, the pointer clicks the printed URL and the
+// app pops out over the section: Pied Piper, the coding agent from the launch
+// demo (each agent is a Durable Object), streaming its tool calls on OpenOrange.
+// With reduced motion or without JS it shows the finished session, with the
+// deployed app overlapping the terminal.
 import Argument from '@/components/Argument.astro';
+import Logo from '@/components/Logo.astro';
 import Tip from '@/components/Tip.astro';
 import { DX_COMMANDS } from '@/data/site';
 
-// Output lines as the orange CLI prints them (src/commands/dev.ts, deploy.ts).
-const OUTPUT = [
-	{ html: '<p><span class="text-cream/60">Ready on</span> <span class="dx-link" data-link>http://127.0.0.1:8787</span></p>', url: '127.0.0.1:8787' },
-	{ html: '<p><span class="text-[#4ade80]">✓</span> Deployed pied-piper to staging</p><p class="text-cream/60">  URL     <span class="dx-link" data-link>https://staging.piedpiper.com</span></p>', url: 'staging.piedpiper.com' },
+type SceneId = 'dev' | 'staging';
+
+// Output lines as the orange CLI prints them (src/commands/dev-output.ts,
+// deploy.ts). A row's `scene` is the app its link opens.
+const OUTPUT: { html: string; scene?: SceneId }[] = [
+	{
+		scene: 'dev',
+		html: '<p><span class="text-orange">●</span> <span class="font-semibold text-white">Ready</span> <span class="text-cream/50">in 1.4s</span></p><p>  <span class="text-cream/50">Local</span>   <span class="dx-link" data-link>http://127.0.0.1:8787</span></p>',
+	},
+	{
+		scene: 'staging',
+		html: '<p><span class="text-[#4ade80]">✓</span> Deployed pied-piper to staging</p><p>  <span class="text-cream/50">URL</span>     <span class="dx-link" data-link>https://staging.piedpiper.com</span></p>',
+	},
 	{ html: '<p class="font-semibold">Dry run. Nothing was built or sent to Rivet Cloud.</p>' },
 ];
 const rows = DX_COMMANDS.map((row, i) => ({ rest: row.orange.replace(/^orange/, ''), ...OUTPUT[i] }));
+
+// The app behind each URL, copied from the Pied Piper demo's UI (sidebar of
+// agents, transcript with tool-call rows, composer, runtime badge). The
+// threads and prompts are the ones recorded for the launch video.
+interface Scene {
+	id: SceneId;
+	url: string;
+	secure: boolean;
+	/** The sidebar footer: "Served by …". */
+	host: string;
+	agents: string[];
+	agent: string;
+	viewers: string[];
+	author: string;
+	prompt: string;
+	/** Tool calls in order, each with what it printed, if anything. */
+	tools: { name: string; arg: string; out?: string }[];
+	/** Paragraphs, with `code` and **bold**. */
+	answer: string[];
+	/** The pointer types the prompt. Otherwise someone else sent it and the run is under way. */
+	typed: boolean;
+}
+const SCENES: Scene[] = [
+	{
+		id: 'dev',
+		url: '127.0.0.1:8787',
+		secure: false,
+		host: 'localhost',
+		agents: ['Anton'],
+		agent: 'Anton',
+		viewers: ['Richard'],
+		author: 'Richard',
+		prompt: 'Write fib.py that prints the first 15 Fibonacci numbers, run it, and tell me their sum.',
+		tools: [
+			{ name: 'write', arg: 'fib.py' },
+			{ name: 'bash', arg: 'python3 fib.py', out: '0 1 1 2 3 5 8 13 21 34 55 89 144 233 377\nsum: 986' },
+		],
+		answer: ['Richard, I wrote `fib.py` and ran it. It printed the first 15 Fibonacci numbers, starting from 0.', 'Their sum is **986**.'],
+		typed: true,
+	},
+	{
+		id: 'staging',
+		url: 'staging.piedpiper.com',
+		secure: true,
+		host: 'Rivet Cloud',
+		agents: ['Anton', 'Middle-out', 'Hooli audit'],
+		agent: 'Middle-out',
+		viewers: ['Richard', 'Gilfoyle'],
+		author: 'Gilfoyle',
+		prompt: 'Run middle-out on season-finale.mov and report the Weissman score.',
+		tools: [
+			{ name: 'read', arg: 'compress.toml' },
+			{ name: 'bash', arg: './middle-out season-finale.mov', out: 'season-finale.mov  4.2 GB → 806 MB\nweissman score     5.2' },
+		],
+		answer: ['Gilfoyle, middle-out took `season-finale.mov` from 4.2 GB to 806 MB.', 'The Weissman score is **5.2**.'],
+		typed: false,
+	},
+];
+// This browser is Richard's.
+const ME = 'Richard';
+
+// Pied Piper's avatar colors (src/client/identity.ts): a stable color per name.
+const PALETTE = ['#028e6b', '#0b62c4', '#8250df', '#a15c07', '#c2410c', '#0e7490', '#be185d', '#4d7c0f'];
+const colorFor = (name: string) => {
+	let hash = 0;
+	for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) | 0;
+	return PALETTE[Math.abs(hash) % PALETTE.length];
+};
+const esc = (text: string) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+const inline = (text: string) =>
+	esc(text)
+		.replace(/`([^`]+)`/g, '<code>$1</code>')
+		.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+const PIED_PIPER_WORDMARK = 'M49.40 3.30C48.77 3.34 48.80 3.48 48.60 3.64C48.40 3.81 48.29 3.41 48.20 4.30C48.12 5.19 48.16 8.07 48.08 9.00C47.99 9.93 47.88 9.71 47.70 9.91C47.52 10.11 47.52 10.19 47.00 10.20C46.48 10.20 45.35 9.91 44.60 9.93C43.85 9.95 43.07 10.07 42.50 10.30C41.93 10.52 41.53 10.88 41.17 11.30C40.81 11.72 40.55 11.87 40.33 12.80C40.11 13.73 39.91 15.63 39.87 16.90C39.83 18.17 39.87 19.36 40.10 20.40C40.32 21.44 40.72 22.46 41.20 23.14C41.68 23.81 42.38 24.17 43.00 24.43C43.62 24.68 44.10 24.76 44.90 24.66C45.70 24.56 46.97 23.87 47.80 23.83C48.63 23.80 49.18 24.34 49.90 24.45C50.62 24.55 51.60 24.53 52.10 24.47C52.60 24.41 52.69 24.28 52.89 24.10C53.09 23.92 53.23 26.67 53.30 23.40C53.36 20.13 53.46 7.83 53.31 4.50C53.16 1.17 53.05 3.61 52.40 3.40C51.75 3.20 50.03 3.26 49.40 3.30ZM20.70 3.40C20.27 3.55 19.52 3.85 19.21 4.30C18.89 4.75 18.73 5.55 18.81 6.10C18.90 6.65 19.27 7.26 19.74 7.60C20.20 7.94 21.02 8.20 21.60 8.11C22.18 8.03 22.86 7.59 23.20 7.10C23.53 6.61 23.67 5.75 23.59 5.20C23.50 4.65 23.00 4.08 22.70 3.77C22.40 3.47 22.13 3.44 21.80 3.38C21.47 3.32 21.13 3.24 20.70 3.40ZM79.50 3.38C78.97 3.49 78.31 3.90 78.00 4.34C77.69 4.77 77.50 5.43 77.63 6.00C77.76 6.57 78.30 7.39 78.80 7.73C79.30 8.07 80.06 8.17 80.60 8.05C81.14 7.92 81.74 7.49 82.03 7.00C82.31 6.51 82.43 5.66 82.30 5.10C82.16 4.54 81.67 3.95 81.20 3.66C80.73 3.37 80.03 3.26 79.50 3.38ZM115.40 9.90C114.87 9.92 114.73 10.05 114.50 10.27C114.27 10.49 114.30 9.11 114.03 11.20C113.75 13.29 113.00 20.75 112.85 22.80C112.70 24.85 112.98 23.30 113.16 23.50C113.33 23.70 113.24 23.85 113.90 24.01C114.56 24.16 116.43 24.41 117.10 24.41C117.77 24.42 117.70 24.21 117.90 24.02C118.10 23.84 118.15 24.32 118.30 23.30C118.46 22.28 118.64 19.07 118.80 17.90C118.96 16.73 119.03 16.70 119.27 16.30C119.50 15.90 119.69 15.68 120.20 15.52C120.71 15.37 121.83 15.45 122.30 15.36C122.77 15.27 122.81 15.24 123.01 15.00C123.20 14.76 123.39 14.47 123.49 13.90C123.58 13.33 123.62 12.11 123.59 11.60C123.56 11.09 123.46 11.05 123.30 10.85C123.14 10.65 123.22 10.37 122.60 10.40C121.98 10.44 120.42 11.09 119.60 11.04C118.78 10.98 118.40 10.29 117.70 10.10C117.00 9.91 115.93 9.87 115.40 9.90ZM12.10 10.00C11.28 10.09 10.28 10.84 9.50 10.89C8.72 10.93 8.13 10.38 7.40 10.25C6.67 10.13 5.61 10.11 5.10 10.13C4.59 10.16 4.53 10.26 4.33 10.40C4.12 10.54 3.99 7.95 3.88 11.00C3.76 14.05 3.63 25.43 3.62 28.70C3.62 31.97 3.70 30.17 3.85 30.60C3.99 31.03 3.92 31.28 4.50 31.31C5.08 31.34 6.60 31.01 7.30 30.77C8.00 30.54 8.41 30.20 8.71 29.90C9.00 29.60 9.01 29.73 9.08 29.00C9.15 28.27 9.06 26.21 9.13 25.50C9.20 24.79 8.61 24.94 9.50 24.75C10.39 24.56 13.45 24.56 14.50 24.34C15.55 24.11 15.45 23.82 15.82 23.40C16.19 22.98 16.45 22.87 16.71 21.80C16.98 20.73 17.42 18.53 17.39 17.00C17.37 15.47 16.85 13.56 16.57 12.60C16.29 11.64 16.06 11.65 15.70 11.27C15.34 10.89 15.03 10.51 14.43 10.30C13.83 10.09 12.92 9.90 12.10 10.00ZM70.30 9.99C69.63 10.10 68.60 10.72 67.80 10.76C67.00 10.80 66.23 10.29 65.50 10.20C64.77 10.12 63.88 10.20 63.40 10.25C62.92 10.30 62.81 10.37 62.60 10.53C62.39 10.69 62.24 7.99 62.12 11.20C62.01 14.41 61.90 26.52 61.90 29.80C61.90 33.08 62.00 30.63 62.13 30.90C62.26 31.17 62.14 31.42 62.70 31.39C63.26 31.37 64.81 30.99 65.50 30.74C66.19 30.49 66.55 30.24 66.85 29.90C67.15 29.56 67.19 29.43 67.29 28.70C67.38 27.97 67.32 26.17 67.42 25.50C67.52 24.83 67.01 24.87 67.88 24.70C68.74 24.53 71.56 24.71 72.60 24.49C73.64 24.27 73.69 23.85 74.10 23.38C74.51 22.92 74.81 22.80 75.07 21.70C75.33 20.60 75.70 18.33 75.66 16.80C75.62 15.27 75.23 13.53 74.82 12.50C74.41 11.47 73.70 11.05 73.20 10.65C72.70 10.25 72.28 10.18 71.80 10.07C71.32 9.96 70.97 9.87 70.30 9.99ZM104.90 10.00C103.92 10.11 102.43 10.43 101.70 10.70C100.97 10.96 100.82 11.27 100.49 11.60C100.17 11.93 100.00 11.78 99.77 12.70C99.54 13.62 99.20 15.93 99.10 17.10C99.01 18.27 99.11 18.88 99.22 19.70C99.33 20.52 99.43 21.33 99.76 22.00C100.09 22.67 100.66 23.31 101.20 23.73C101.74 24.16 101.95 24.40 103.00 24.56C104.05 24.72 106.23 24.74 107.50 24.68C108.77 24.62 109.85 24.50 110.60 24.22C111.35 23.94 111.76 23.37 111.99 23.00C112.22 22.63 112.07 22.32 111.97 22.00C111.88 21.68 111.70 21.32 111.41 21.10C111.11 20.88 111.12 20.75 110.20 20.70C109.28 20.64 106.73 20.80 105.90 20.75C105.07 20.70 105.35 20.54 105.21 20.40C105.07 20.26 104.94 20.09 105.06 19.90C105.17 19.71 105.19 19.38 105.90 19.24C106.61 19.11 108.45 19.30 109.30 19.10C110.15 18.89 110.56 18.53 111.01 18.00C111.45 17.47 111.89 16.82 111.99 15.90C112.08 14.98 111.79 13.28 111.58 12.50C111.36 11.72 111.05 11.54 110.71 11.20C110.36 10.86 110.02 10.67 109.50 10.48C108.98 10.28 108.37 10.12 107.60 10.04C106.83 9.96 105.88 9.89 104.90 10.00ZM22.20 10.10C21.55 10.10 20.13 10.18 19.60 10.30C19.07 10.41 19.14 10.58 19.01 10.80C18.87 11.02 18.80 9.50 18.77 11.60C18.75 13.70 18.77 21.30 18.86 23.40C18.95 25.50 19.04 24.01 19.30 24.21C19.56 24.40 19.75 24.55 20.40 24.59C21.05 24.62 22.64 24.49 23.20 24.39C23.76 24.30 23.61 24.20 23.75 24.00C23.89 23.80 23.98 25.30 24.03 23.20C24.09 21.10 24.16 13.55 24.08 11.40C23.99 9.25 23.82 10.52 23.51 10.30C23.20 10.08 22.85 10.10 22.20 10.10ZM29.80 10.10C28.52 10.29 27.94 10.68 27.31 11.30C26.67 11.92 26.28 12.65 26.00 13.80C25.73 14.95 25.64 17.03 25.64 18.20C25.63 19.37 25.79 20.05 25.97 20.80C26.15 21.55 26.40 22.17 26.71 22.70C27.03 23.23 27.41 23.69 27.88 24.00C28.34 24.31 28.40 24.46 29.50 24.57C30.60 24.68 33.18 24.74 34.50 24.65C35.82 24.57 36.81 24.26 37.40 24.05C37.99 23.85 37.91 23.64 38.05 23.40C38.20 23.16 38.32 22.99 38.24 22.60C38.17 22.21 37.91 21.38 37.60 21.07C37.29 20.76 37.23 20.80 36.40 20.73C35.57 20.66 33.35 20.72 32.60 20.66C31.85 20.61 32.07 20.53 31.91 20.40C31.75 20.27 31.58 20.07 31.64 19.90C31.71 19.73 31.59 19.51 32.30 19.36C33.01 19.20 34.97 19.26 35.90 18.98C36.83 18.70 37.48 18.06 37.90 17.66C38.32 17.27 38.30 17.06 38.41 16.60C38.51 16.14 38.66 15.67 38.55 14.90C38.45 14.13 38.06 12.66 37.77 12.00C37.47 11.34 37.26 11.24 36.80 10.93C36.34 10.62 36.17 10.28 35.00 10.14C33.83 10.00 31.08 9.90 29.80 10.10ZM78.90 10.10C78.25 10.13 77.88 10.27 77.58 10.50C77.27 10.73 77.16 9.35 77.10 11.50C77.03 13.65 77.12 21.30 77.19 23.40C77.25 25.50 77.33 23.93 77.48 24.10C77.63 24.28 77.55 24.37 78.10 24.45C78.65 24.53 80.17 24.61 80.80 24.55C81.43 24.50 81.64 24.35 81.90 24.11C82.16 23.86 82.26 25.18 82.34 23.10C82.41 21.02 82.41 13.65 82.37 11.60C82.33 9.55 82.24 11.02 82.10 10.81C81.96 10.59 82.03 10.43 81.50 10.32C80.97 10.20 79.55 10.06 78.90 10.10ZM92.60 10.10C91.68 10.14 90.53 10.80 89.70 10.82C88.87 10.85 88.32 10.36 87.60 10.25C86.88 10.13 85.90 10.13 85.40 10.16C84.90 10.19 84.82 10.27 84.60 10.44C84.38 10.62 84.22 8.01 84.11 11.20C84.00 14.39 83.93 26.33 83.94 29.60C83.95 32.87 84.03 30.51 84.17 30.80C84.32 31.09 84.20 31.37 84.80 31.36C85.40 31.34 87.10 30.95 87.80 30.70C88.50 30.44 88.76 30.12 89.03 29.80C89.29 29.48 89.32 29.48 89.40 28.80C89.47 28.12 89.38 26.38 89.46 25.70C89.54 25.02 89.03 24.96 89.90 24.74C90.77 24.53 93.67 24.61 94.70 24.40C95.73 24.18 95.73 23.85 96.10 23.47C96.47 23.09 96.65 23.13 96.92 22.10C97.19 21.07 97.71 18.85 97.72 17.30C97.74 15.75 97.44 13.92 97.02 12.80C96.60 11.68 95.94 11.02 95.20 10.57C94.46 10.11 93.52 10.05 92.60 10.10ZM46.52 13.90C46.84 13.89 47.42 13.93 47.69 14.20C47.97 14.47 48.11 14.67 48.17 15.50C48.23 16.33 48.15 18.46 48.05 19.20C47.96 19.94 47.81 19.78 47.60 19.97C47.39 20.15 47.13 20.36 46.80 20.30C46.47 20.25 45.86 20.03 45.60 19.62C45.34 19.22 45.27 18.67 45.23 17.90C45.19 17.13 45.27 15.60 45.37 15.00C45.46 14.40 45.61 14.46 45.80 14.27C45.99 14.09 46.21 13.91 46.52 13.90ZM10.22 14.40C10.60 14.30 11.17 14.47 11.46 14.90C11.75 15.33 11.92 16.20 11.97 17.00C12.02 17.80 11.88 19.12 11.75 19.70C11.63 20.28 11.42 20.32 11.21 20.50C11.00 20.68 10.80 20.81 10.50 20.76C10.20 20.71 9.64 20.55 9.40 20.22C9.16 19.89 9.07 19.59 9.04 18.80C9.00 18.01 8.99 16.23 9.19 15.50C9.38 14.77 9.85 14.50 10.22 14.40ZM68.47 14.40C68.71 14.37 68.97 14.40 69.20 14.52C69.43 14.63 69.64 14.62 69.84 15.10C70.03 15.58 70.33 16.58 70.35 17.40C70.36 18.22 70.20 19.43 69.92 20.00C69.65 20.57 69.07 20.75 68.70 20.79C68.33 20.84 67.93 20.61 67.70 20.27C67.47 19.94 67.40 19.60 67.34 18.80C67.29 18.00 67.29 16.18 67.37 15.50C67.44 14.82 67.62 14.89 67.80 14.71C67.98 14.52 68.24 14.43 68.47 14.40ZM90.67 14.40C91.01 14.44 91.61 14.55 91.89 15.00C92.17 15.45 92.32 16.28 92.35 17.10C92.39 17.92 92.22 19.32 92.10 19.90C91.97 20.48 91.81 20.44 91.61 20.60C91.41 20.76 91.20 20.91 90.90 20.88C90.60 20.84 90.05 20.69 89.80 20.38C89.55 20.07 89.46 19.80 89.40 19.00C89.35 18.20 89.37 16.31 89.45 15.60C89.54 14.89 89.70 14.97 89.90 14.77C90.10 14.57 90.34 14.36 90.67 14.40Z';
 ---
 
 <Argument id="dx" split flip heading="Don't sacrifice your DX.">
 	<Fragment slot="lede">
 		Your <Tip tip="Bindings, environments, build commands and .dev.vars work as they do with Wrangler." align="start">wrangler.jsonc</Tip> stays the source of truth. Same commands, new name.
 	</Fragment>
-	<div class="plate relative" data-dx>
-		<div class="plate-bar">
-			<span class="flex gap-1.5" aria-hidden="true"><span class="h-2.5 w-2.5 rounded-full bg-white/15"></span><span class="h-2.5 w-2.5 rounded-full bg-white/15"></span><span class="h-2.5 w-2.5 rounded-full bg-white/15"></span></span>
-			<span class="ml-2">~/pied-piper</span>
-		</div>
-		<div class="min-h-[17rem] whitespace-pre px-5 py-4" data-dx-body aria-label="orange dev, orange deploy -e staging, orange deploy --dry-run">
-			{rows.map((row) => (
-				<div class="pb-2">
-					<p><span class="prompt">$ </span><span class="text-orange">orange</span>{row.rest}</p>
-					<Fragment set:html={row.html} />
-				</div>
-			))}
-		</div>
-
-		<!-- The app, opened from the printed URL. -->
-		<div class="dx-browser theme-light absolute inset-x-6 bottom-5 top-12 flex flex-col overflow-hidden rounded-xl bg-white font-sans text-ink shadow-2xl ring-1 ring-black/10" data-browser aria-hidden="true">
-			<div class="flex items-center gap-3 border-b border-line bg-paper-mid px-3 py-2">
-				<span class="flex gap-1.5"><span class="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" data-close></span><span class="h-2.5 w-2.5 rounded-full bg-[#febc2e]"></span><span class="h-2.5 w-2.5 rounded-full bg-[#28c840]"></span></span>
-				<span class="flex-1 truncate rounded-md bg-white px-2.5 py-0.5 text-center text-[11px] text-ink-faint" data-url></span>
+	<div class="dx" data-dx>
+		<div class="plate dx-win dx-term" data-term>
+			<div class="dx-bar">
+				<span class="dx-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+				<span class="dx-title">pied-piper — zsh</span>
 			</div>
-			<div class="flex flex-1 flex-col justify-center gap-3 bg-[#f3faf5] px-6 py-4">
-				<p class="flex items-center gap-2 text-[15px] font-semibold text-[#1f7a46]">
-					<svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#1f7a46" /><path d="M6 13.5c2.5-1 4-3.5 4.5-7M10.5 6.5c1 2.5 2.4 4.4 4 5.2" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none" /></svg>
-					Pied Piper
-				</p>
-				<p class="text-[19px] font-semibold leading-tight tracking-[-0.02em]">Middle-out compression.</p>
-				<div class="rounded-lg bg-white p-3 ring-1 ring-black/5">
-					<div class="flex justify-between text-[11px] text-ink-faint"><span>season-finale.mov</span><span>Weissman score 5.2</span></div>
-					<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-[#1f7a46]/15"><div class="dx-progress h-full rounded-full bg-[#1f7a46]"></div></div>
+			<div class="dx-body" data-dx-body>
+				<div data-ghost>
+					{rows.map((row) => (
+						<div class="dx-row">
+							<p><span class="prompt">$ </span><span class="text-orange">orange</span>{row.rest}</p>
+							<Fragment set:html={row.html} />
+						</div>
+					))}
 				</div>
 			</div>
 		</div>
 
+		<!-- The app, opened from the printed URL. Pied Piper's own palette and
+		     layout, sized in em so the whole window scales with its width. -->
+		<div class="dx-win dx-browser theme-light" data-browser aria-hidden="true">
+			<div class="dx-bar">
+				<span class="dx-lights" data-lights><i data-close></i><i></i><i></i></span>
+				<span class="dx-addr">
+					<svg class="dx-lock" data-lock viewBox="0 0 24 24"><rect width="16" height="11" x="4" y="11" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.4" /></svg>
+					<span data-url>staging.piedpiper.com</span>
+				</span>
+			</div>
+			<div class="dx-page">
+				{SCENES.map((scene) => (
+					<div
+						class="pp"
+						data-scene={scene.id}
+						data-url={scene.url}
+						data-secure={scene.secure ? '' : undefined}
+						data-typed={scene.typed ? '' : undefined}
+						data-active={scene.id === 'staging' ? '' : undefined}
+					>
+						<header class="pp-top">
+							<svg class="pp-waves" viewBox="0 0 890 40" preserveAspectRatio="none">
+								<path d="M0 26C90 14 170 34 280 24S470 8 590 20 790 34 890 18V40H0Z" fill="#03735a" opacity=".85" />
+								<path d="M0 33C120 24 210 40 330 31S540 20 660 29 820 38 890 30V40H0Z" fill="#025f47" opacity=".95" />
+								<path d="M0 12C110 4 200 20 320 12S520 0 640 9 800 18 890 6V0H0Z" fill="#0ba680" opacity=".6" />
+							</svg>
+							<svg class="pp-word" viewBox="3 1 121 33"><use href="#dx-pp-wordmark" /></svg>
+							<span class="pp-crumb">/<b>{scene.agent}</b></span>
+							<span class="pp-pill">Working</span>
+							<span class="pp-presence">
+								{scene.viewers.map((name) => <span class="pp-av" style={`--s:1.57;background:${colorFor(name)}`}><i>{name[0]}</i></span>)}
+								<span class="pp-count">{scene.viewers.length} viewing</span>
+							</span>
+						</header>
+						<div class="pp-badge">
+							<Logo size={64} />
+							<span>Running on <b>OpenOrange</b></span>
+						</div>
+						<div class="pp-main">
+							<aside class="pp-side">
+								<p class="pp-side-head"><span>Agents<span class="pp-n">{scene.agents.length}</span></span><span class="pp-new">New</span></p>
+								{scene.agents.map((name) => (
+									<p class:list={['pp-agent', { sel: name === scene.agent }]}>
+										<span class="pp-agent-av"><i>{name[0]}</i></span>
+										<span class="pp-meta">
+											<span class="pp-name">{name}</span>
+											<span class="pp-sub"><span class="pp-idle">Idle</span><span class="pp-busy">Working…</span></span>
+										</span>
+										{name === scene.agent && (
+											<span class="pp-row-viewers">
+												{scene.viewers.map((viewer) => <span class="pp-av" style={`--s:1.14;background:${colorFor(viewer)}`}><i>{viewer[0]}</i></span>)}
+											</span>
+										)}
+										{name === scene.agent && <span class="pp-dot" />}
+									</p>
+								))}
+								<p class="pp-host">Served by <b>{scene.host}</b></p>
+							</aside>
+							<section class="pp-chat">
+								<div class="pp-msgs">
+									<div class="pp-flow">
+										{scene.typed && (
+											<div class="pp-empty" data-empty hidden>
+												<span class="pp-bot-av pp-big"><i>{scene.agent[0]}</i></span>
+												<p class="pp-empty-name">{scene.agent}</p>
+												<p>Ask for code. The agent works in its own VM, and everyone in this thread sees it live.</p>
+											</div>
+										)}
+										<div class="pp-msg" data-user>
+											<span class="pp-av" style={`--s:2;background:${colorFor(scene.author)}`}><i>{scene.author[0]}</i></span>
+											<div>
+												<p class="pp-who"><b>{scene.author}</b></p>
+												<p class="pp-bubble" data-prompt>{scene.prompt}</p>
+											</div>
+										</div>
+										<div class="pp-msg" data-bot>
+											<span class="pp-bot-av"><i>{scene.agent[0]}</i></span>
+											<div class="min-w-0">
+												<p class="pp-who">
+													<b>{scene.agent}</b>
+													<span class="pp-tag">Agent</span>
+													<span data-count>{scene.tools.length} tools</span>
+													<span class="pp-live">working</span>
+												</p>
+												<p class="pp-thinking" data-thinking hidden>Thinking…</p>
+												<div class="pp-tools" data-tools>
+													{scene.tools.map((tool) => (
+														<Fragment>
+															<p class="pp-tool" data-tool data-done>
+																<span class="pp-t">{tool.name}</span>
+																<span class="pp-a">{tool.arg}</span>
+																<span class="pp-s" />
+															</p>
+															{tool.out && <pre class="pp-out">{tool.out}</pre>}
+														</Fragment>
+													))}
+												</div>
+												<div class="pp-answer" data-answer>
+													{scene.answer.map((paragraph) => <p set:html={inline(paragraph)} />)}
+												</div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="pp-composer">
+									<div class="pp-input" data-input>
+										<span class="pp-av" style={`--s:1.43;background:${colorFor(ME)}`}><i>{ME[0]}</i></span>
+										<span class="pp-field">
+											<span class="pp-line"><span data-draft></span><span class="pp-caret"></span><span class="pp-ph">Message {scene.agent}</span></span>
+										</span>
+										<span class="pp-btn pp-send" data-send>
+											<svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
+										</span>
+										<span class="pp-btn pp-stop">
+											<svg viewBox="0 0 24 24"><rect width="12" height="12" x="6" y="6" rx="2" /></svg>
+										</span>
+									</div>
+								</div>
+							</section>
+						</div>
+					</div>
+				))}
+			</div>
+		</div>
+
+		<svg class="dx-sprite" aria-hidden="true">
+			<symbol id="dx-pp-wordmark" viewBox="3 1 121 33"><path fill="currentColor" fill-rule="evenodd" d={PIED_PIPER_WORDMARK} /></symbol>
+		</svg>
+		<script type="application/json" data-dx-rows set:html={JSON.stringify(rows)} />
 	</div>
-	<script type="application/json" data-dx-rows set:html={JSON.stringify(rows)} />
 </Argument>
 
 <style is:global>
+	/* The section is the stage: the pointer and the app window are placed in
+	   its coordinates, so they scroll with the page. It clips sideways so the
+	   pointer can come in from the edge without widening the page. */
+	#dx {
+		position: relative;
+		overflow-x: clip;
+	}
+	.dx-sprite {
+		position: absolute;
+		width: 0;
+		height: 0;
+		overflow: hidden;
+	}
+
+	/* macOS windows: traffic lights, a centered title, a soft gradient bar. */
+	.dx .dx-win {
+		border: 0;
+		border-radius: 12px;
+		overflow: hidden;
+	}
+	.dx-bar {
+		position: relative;
+		display: grid;
+		grid-template-columns: minmax(3.75rem, 1fr) minmax(0, 22rem) minmax(3.75rem, 1fr);
+		align-items: center;
+		height: 2.25rem;
+		padding: 0 0.75rem;
+		font: 500 12px/1 var(--font-sans);
+	}
+	.dx-lights {
+		display: flex;
+		gap: 8px;
+	}
+	.dx-lights i {
+		position: relative;
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #ff5f57;
+		box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.22);
+	}
+	.dx-lights i:nth-child(2) {
+		background: #febc2e;
+	}
+	.dx-lights i:nth-child(3) {
+		background: #28c840;
+	}
+	/* Hovering the buttons shows their glyphs, as on macOS. */
+	.dx-lights[data-hover] i::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: center / 100% no-repeat
+			url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.75 3.75l4.5 4.5M8.25 3.75l-4.5 4.5' stroke='%234d0000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
+	}
+	.dx-lights[data-hover] i:nth-child(2)::after {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6h6' stroke='%23995700' stroke-width='1.3' stroke-linecap='round'/%3E%3C/svg%3E");
+	}
+	.dx-lights[data-hover] i:nth-child(3)::after {
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 3v6M3 6h6' stroke='%23006500' stroke-width='1.3' stroke-linecap='round'/%3E%3C/svg%3E");
+	}
+	.dx-title {
+		grid-column: 2;
+		overflow: hidden;
+		text-align: center;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* The terminal. */
+	.dx .dx-term {
+		position: relative;
+		box-shadow:
+			0 0 0 0.5px rgb(0 0 0 / 0.5),
+			0 2px 4px rgb(0 0 0 / 0.08),
+			0 16px 32px -12px rgb(0 0 0 / 0.32),
+			0 32px 64px -24px rgb(0 0 0 / 0.3);
+	}
+	.dark .dx .dx-term {
+		box-shadow:
+			0 0 0 1px rgb(255 255 255 / 0.08),
+			0 24px 56px -16px rgb(0 0 0 / 0.8);
+	}
+	.dx-term .dx-bar {
+		background: linear-gradient(#3a3735, #2b2927);
+		border-bottom: 1px solid #0f0e0e;
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+		color: rgb(245 245 244 / 0.55);
+	}
+	.dark .dx-term .dx-bar {
+		background: linear-gradient(#45413e, #36322f);
+	}
+	/* While the app is in front, the terminal is the inactive window. */
+	.dx-term::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: rgb(0 0 0 / 0.28);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.4s;
+	}
+	.dx-term[data-dim]::after {
+		opacity: 1;
+	}
+	.dx-term[data-dim] .dx-lights i {
+		background: rgb(255 255 255 / 0.16);
+		box-shadow: none;
+	}
+	.dx-body {
+		position: relative;
+		min-height: 17rem;
+		padding: 1rem 1.25rem;
+	}
+	/* Phones: small enough that the deploy URL keeps its line. */
+	@media (max-width: 639px) {
+		.dx .dx-body {
+			padding-inline: 1rem;
+			font-size: 12px;
+		}
+	}
+	.dx-body p {
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+	.dx-row {
+		padding-bottom: 0.5rem;
+	}
+	/* The finished session stays in place, invisible, under the live one: it
+	   holds the terminal's final height and is what screen readers read. */
+	.dx[data-live] [data-ghost] {
+		opacity: 0;
+	}
+	.dx-live {
+		position: absolute;
+		inset: 0;
+		padding: inherit;
+	}
 	@keyframes dx-caret {
 		50% {
 			opacity: 0;
@@ -80,100 +418,880 @@ const rows = DX_COMMANDS.map((row, i) => ({ rest: row.orange.replace(/^orange/, 
 		color: #fff;
 		text-decoration-color: #fff;
 	}
-	/* The fake pointer lives on the page, not in the terminal, so it can come
-	   in from anywhere. macOS arrow and pointing hand, with the system shadow. */
-	.dx-cursor {
-		position: fixed;
+	/* A double-clicked word, in the site's terminal selection color. */
+	.dx-sel {
+		background: #f26b1d;
+		color: #111;
+	}
+
+	/* The browser window. It pops out over the section, placed by the script;
+	   with reduced motion or without JS it sits under the terminal instead. */
+	.dx-browser {
+		position: absolute;
 		left: 0;
 		top: 0;
-		z-index: 60;
-		width: 28px;
-		height: 28px;
+		z-index: 20;
+		display: flex;
+		flex-direction: column;
+		width: 46rem;
+		height: 29rem;
+		visibility: hidden;
+		background: #fff;
+		color: #16191d;
+		box-shadow:
+			0 0 0 0.5px rgb(0 0 0 / 0.28),
+			0 2px 6px rgb(0 0 0 / 0.06),
+			0 24px 48px -12px rgb(0 0 0 / 0.34),
+			0 56px 110px -28px rgb(0 0 0 / 0.38);
+	}
+	.dark .dx-browser {
+		box-shadow:
+			0 0 0 0.5px rgb(0 0 0 / 0.6),
+			0 28px 64px -12px rgb(0 0 0 / 0.75);
+	}
+	.dx-browser[data-open] {
+		visibility: visible;
+	}
+	.dx-browser .dx-bar {
+		flex: none;
+		background: linear-gradient(#f8f7f6, #e8e6e4);
+		border-bottom: 1px solid #d3d0cd;
+		box-shadow: inset 0 1px 0 #fff;
+		color: #44403c;
+	}
+	.dx-addr {
+		grid-column: 2;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.375rem;
+		min-width: 0;
+		padding: 0.3rem 0.75rem;
+		border-radius: 7px;
+		background: rgb(0 0 0 / 0.055);
+		white-space: nowrap;
+	}
+	.dx-addr span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.dx-lock {
+		flex: none;
+		width: 10px;
+		height: 10px;
+		fill: currentColor;
+		color: #78716c;
+	}
+	.dx-page {
+		position: relative;
+		flex: 1;
+		min-height: 0;
+		container-type: inline-size;
+	}
+	@media (prefers-reduced-motion: reduce), (scripting: none) {
+		.dx-browser {
+			position: relative;
+			z-index: 1;
+			visibility: visible;
+			width: auto;
+			height: auto;
+			aspect-ratio: 4 / 3;
+			margin: -3rem -0.5rem 0 10%;
+		}
+		.dx .dx-body {
+			padding-bottom: 3.75rem;
+		}
+	}
+	@media (max-width: 639px) and (prefers-reduced-motion: reduce), (max-width: 639px) and (scripting: none) {
+		.dx-browser {
+			aspect-ratio: 5 / 6;
+			margin: -2.5rem -0.5rem 0;
+		}
+	}
+
+	/* Pied Piper (src/client/styles.css of the demo), in em so it scales. */
+	.pp {
+		--pp-brand: #028e6b;
+		--pp-ink: #046a50;
+		--pp-tint: #e7f5f0;
+		--pp-subtle: #f8f9fa;
+		--pp-hover: #f1f3f4;
+		--pp-line: #ebedef;
+		--pp-line-2: #dcdfe3;
+		--pp-text: #16191d;
+		--pp-text-2: #454c54;
+		--pp-muted: #80878f;
+		position: absolute;
+		inset: 0;
+		display: none;
+		grid-template-rows: 3.3em minmax(0, 1fr);
+		background: #fff;
+		color: var(--pp-text);
+		font: 400 clamp(10px, 1.6cqi, 12.5px) / 1.57 var(--font-sans);
+		letter-spacing: 0;
+		text-align: left;
+	}
+	.pp[data-active] {
+		display: grid;
+	}
+	.pp i {
+		font-style: normal;
+	}
+
+	.pp-top {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 0.65em;
+		overflow: hidden;
+		padding: 0 20em 0 1.3em;
+		background: var(--pp-brand);
+		color: #fff;
+		white-space: nowrap;
+	}
+	.pp-top > * {
+		position: relative;
+	}
+	.pp-top > .pp-waves {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+	}
+	.pp-word {
+		flex: none;
+		width: 5.1em;
+		height: 1.4em;
+		margin: 0.2em 0.2em 0 0;
+	}
+	.pp-crumb {
+		display: flex;
+		gap: 0.65em;
+		color: rgb(255 255 255 / 0.55);
+		font-weight: 500;
+	}
+	.pp-crumb b {
+		color: #fff;
+		font-weight: 600;
+	}
+	.pp-pill {
+		display: none;
+		align-items: center;
+		gap: 0.45em;
+		padding: 0 0.75em 0 0.6em;
+		border-radius: 999px;
+		background: rgb(0 40 30 / 0.25);
+		font-size: 0.86em;
+		font-weight: 500;
+		line-height: 1.7;
+	}
+	.pp-pill::before {
+		content: '';
+		width: 0.45em;
+		height: 0.45em;
+		border-radius: 50%;
+		background: #5ff0c0;
+		animation: pp-pulse 1.6s ease-in-out infinite;
+	}
+	.pp[data-busy] .pp-pill {
+		display: inline-flex;
+	}
+	.pp-presence {
+		display: flex;
+		align-items: center;
+		margin-left: auto;
+		padding: 0.2em 0.75em 0.2em 0.25em;
+		border-radius: 999px;
+		background: rgb(0 40 30 / 0.22);
+	}
+	.pp-presence .pp-av {
+		margin-right: -0.4em;
+		box-shadow: 0 0 0 0.14em #037557;
+	}
+	.pp-count {
+		margin-left: 0.95em;
+		color: rgb(255 255 255 / 0.85);
+		font-size: 0.86em;
+		font-weight: 500;
+	}
+	.pp-av {
+		display: inline-grid;
+		flex: none;
+		place-items: center;
+		width: calc(var(--s) * 1em);
+		height: calc(var(--s) * 1em);
+		border-radius: 50%;
+		color: #fff;
+		font-weight: 600;
+		line-height: 1;
+	}
+	.pp-av i {
+		font-size: calc(var(--s) * 0.5em);
+	}
+
+	/* The demo's "Running on OpenOrange" badge: big on purpose. */
+	.pp-badge {
+		position: absolute;
+		top: 0.5em;
+		right: 0.8em;
+		z-index: 3;
+		display: flex;
+		align-items: center;
+		gap: 0.7em;
+		padding: 0.45em 1.1em 0.45em 0.55em;
+		border: 0.15em solid #f26b1d;
+		border-radius: 0.95em;
+		background: #fff;
+		color: #16191d;
+		box-shadow:
+			0 0.55em 1.9em rgb(16 24 40 / 0.18),
+			0 1px 3px rgb(16 24 40 / 0.12);
+		white-space: nowrap;
+	}
+	.pp-badge img {
+		width: 2.6em;
+		height: 2.6em;
+	}
+	.pp-badge span {
+		font-size: 1.2em;
+		line-height: 1.1;
+	}
+	.pp-badge b {
+		font-weight: 700;
+	}
+
+	.pp-main {
+		display: grid;
+		grid-template-columns: 15.5em minmax(0, 1fr);
+		min-height: 0;
+	}
+	.pp-side {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15em;
+		min-height: 0;
+		padding: 0.85em 0.7em;
+		border-right: 1px solid var(--pp-line);
+		background: var(--pp-subtle);
+	}
+	.pp-side-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.3em 0.45em 0.55em 0.55em;
+		color: var(--pp-muted);
+		font-size: 0.79em;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+	.pp-n {
+		margin-left: 0.5em;
+		padding: 0 0.55em;
+		border: 1px solid var(--pp-line);
+		border-radius: 999px;
+		background: var(--pp-hover);
+		color: var(--pp-text-2);
+		letter-spacing: 0;
+	}
+	.pp-new {
+		padding: 0.25em 1.05em;
+		border-radius: 0.7em;
+		background: var(--pp-brand);
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+		color: #fff;
+		font-size: 1.09em;
+		letter-spacing: 0;
+		text-transform: none;
+	}
+	.pp-agent {
+		display: flex;
+		align-items: center;
+		gap: 0.7em;
+		padding: 0.5em 0.57em;
+		border-radius: 0.57em;
+	}
+	.pp-agent.sel {
+		background: #fff;
+		box-shadow:
+			0 0 0 1px var(--pp-line-2),
+			0 1px 2px rgb(16 24 40 / 0.05);
+	}
+	.pp-agent-av {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: 2em;
+		height: 2em;
+		border: 1px solid var(--pp-line-2);
+		border-radius: 0.57em;
+		background: #fff;
+		color: var(--pp-text-2);
+		font-weight: 600;
+	}
+	.pp-agent-av i {
+		font-size: 0.86em;
+	}
+	.pp-agent.sel .pp-agent-av {
+		border-color: var(--pp-brand);
+		background: var(--pp-brand);
+		color: #fff;
+	}
+	.pp-meta {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		line-height: 1.3;
+	}
+	.pp-name {
+		overflow: hidden;
+		font-size: 0.96em;
+		font-weight: 500;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pp-agent.sel .pp-name {
+		font-weight: 600;
+	}
+	.pp-sub {
+		color: var(--pp-muted);
+		font-size: 0.86em;
+	}
+	.pp-busy,
+	.pp[data-busy] .sel .pp-idle {
+		display: none;
+	}
+	.pp[data-busy] .sel .pp-busy {
+		display: inline;
+		color: var(--pp-ink);
+	}
+	.pp-row-viewers {
+		display: inline-flex;
+		margin-left: auto;
+		padding-left: 0.3em;
+	}
+	.pp-row-viewers .pp-av {
+		margin-left: -0.35em;
+		box-shadow: 0 0 0 0.14em #fff;
+	}
+	.pp-dot {
+		display: none;
+		flex: none;
+		width: 0.5em;
+		height: 0.5em;
+		margin-left: 0.6em;
+		border-radius: 50%;
+		background: var(--pp-brand);
+		box-shadow: 0 0 0 0.21em rgb(2 142 107 / 0.18);
+		animation: pp-pulse 1.6s ease-in-out infinite;
+	}
+	.pp[data-busy] .pp-dot {
+		display: block;
+	}
+	.pp-host {
+		margin-top: auto;
+		padding: 0.7em 0.57em 0.15em;
+		border-top: 1px solid var(--pp-line);
+		color: var(--pp-muted);
+		font-size: 0.86em;
+	}
+	.pp-host b {
+		color: var(--pp-text-2);
+		font-weight: 600;
+	}
+
+	/* The transcript: a centered column that shows its newest end. */
+	.pp-chat {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		min-height: 0;
+	}
+	.pp-msgs {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		justify-content: flex-end;
+		min-height: 0;
+		overflow: hidden;
+	}
+	.pp-flow {
+		display: flex;
+		flex: none;
+		flex-direction: column;
+		gap: 1.5em;
+		min-height: 100%;
+		padding: 1.6em 2em 0.6em;
+	}
+	.pp-flow > * {
+		width: 100%;
+		max-width: 46em;
+		margin-inline: auto;
+	}
+	.pp-msg {
+		display: grid;
+		grid-template-columns: 2em minmax(0, 1fr);
+		column-gap: 0.85em;
+	}
+	.pp-who {
+		display: flex;
+		align-items: center;
+		gap: 0.55em;
+		margin-bottom: 0.15em;
+		color: var(--pp-muted);
+		font-size: 0.86em;
+		line-height: 1.67;
+		white-space: nowrap;
+	}
+	.pp-who b {
+		color: var(--pp-text);
+		font-size: 1.12em;
+		font-weight: 600;
+	}
+	.pp-tag {
+		padding: 0 0.42em;
+		border-radius: 0.33em;
+		background: var(--pp-tint);
+		color: var(--pp-ink);
+		font-size: 0.83em;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		line-height: 1.6;
+		text-transform: uppercase;
+	}
+	.pp-live {
+		display: none;
+		align-items: center;
+		gap: 0.5em;
+		color: var(--pp-ink);
+	}
+	.pp-live::before {
+		content: '';
+		width: 0.5em;
+		height: 0.5em;
+		border-radius: 50%;
+		background: var(--pp-brand);
+		animation: pp-pulse 1.6s ease-in-out infinite;
+	}
+	.pp[data-busy] .pp-live {
+		display: inline-flex;
+	}
+	.pp-bot-av {
+		display: grid;
+		place-items: center;
+		width: 2em;
+		height: 2em;
+		border-radius: 0.57em;
+		background: var(--pp-brand);
+		box-shadow: 0 1px 2px rgb(16 24 40 / 0.05);
+		color: #fff;
+		font-weight: 600;
+	}
+	.pp-bot-av i {
+		font-size: 0.93em;
+	}
+	.pp-thinking {
+		color: var(--pp-muted);
+		animation: pp-fade 1.4s ease-in-out infinite;
+	}
+	.pp-tools {
+		margin: 0.55em 0 0.85em;
+		padding: 0.4em 1em 0.6em;
+		border: 1px solid var(--pp-line);
+		border-radius: 0.85em;
+		background: var(--pp-subtle);
+	}
+	.pp-tool {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: start;
+		column-gap: 0.75em;
+		padding-top: 0.3em;
+		font: 0.89em / 1.76 var(--font-mono);
+	}
+	.pp-t {
+		margin-top: 0.15em;
+		padding: 0 0.5em;
+		border: 1px solid rgb(2 142 107 / 0.22);
+		border-radius: 0.4em;
+		background: #fff;
+		color: var(--pp-ink);
+		font-size: 0.88em;
+		font-weight: 600;
+		line-height: 1.64;
+	}
+	.pp-a {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pp-tool:not([data-done]) .pp-s::before {
+		content: '';
+		display: inline-block;
+		width: 0.8em;
+		height: 0.8em;
+		border: 0.12em solid var(--pp-brand);
+		border-top-color: transparent;
+		border-radius: 50%;
+		vertical-align: -0.05em;
+		animation: pp-spin 0.8s linear infinite;
+	}
+	.pp-out {
+		margin: 0.45em 0;
+		padding: 0.7em 1em;
+		overflow: hidden;
+		border: 1px solid var(--pp-line);
+		border-radius: 0.57em;
+		background: #fff;
+		font: 0.86em / 1.5 var(--font-mono);
+		white-space: pre;
+	}
+	.pp-answer p {
+		margin-bottom: 0.7em;
+		overflow-wrap: anywhere;
+	}
+	.pp-answer p:last-child {
+		margin-bottom: 0;
+	}
+	.pp-answer b {
+		font-weight: 600;
+	}
+	.pp-answer code {
+		padding: 0 0.36em;
+		border: 1px solid var(--pp-line);
+		border-radius: 0.36em;
+		background: var(--pp-hover);
+		font: 0.89em var(--font-mono);
+	}
+	.pp-answer code:empty {
+		display: none;
+	}
+	.pp-answer .pp-cur::after {
+		content: '▍';
+		color: var(--pp-brand);
+		animation: pp-blink 1s steps(2) infinite;
+	}
+	.pp-empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.45em;
+		max-width: 26em !important;
+		margin-block: auto;
+		padding: 1em 0;
+		color: var(--pp-muted);
+		text-align: center;
+	}
+	.pp-big {
+		width: 3.4em;
+		height: 3.4em;
+		border-radius: 1em;
+		box-shadow:
+			0 4px 16px rgb(16 24 40 / 0.08),
+			0 1px 3px rgb(16 24 40 / 0.06);
+	}
+	.pp-big i {
+		font-size: 1.43em;
+	}
+	.pp-empty-name {
+		margin-top: 0.5em;
+		color: var(--pp-text);
+		font-size: 1.29em;
+		font-weight: 600;
+	}
+
+	.pp-composer {
+		position: relative;
+		flex: none;
+		padding: 0.55em 2em 1.3em;
+	}
+	.pp-composer::before {
+		content: '';
+		position: absolute;
+		top: -2em;
+		right: 0;
+		left: 0;
+		height: 2em;
+		background: linear-gradient(rgb(255 255 255 / 0), #fff);
 		pointer-events: none;
-		filter: drop-shadow(0 1px 1.2px rgb(0 0 0 / 0.45));
-		will-change: transform;
+	}
+	.pp-input {
+		display: flex;
+		align-items: center;
+		gap: 0.7em;
+		max-width: 46em;
+		min-height: 3.6em;
+		margin: 0 auto;
+		padding: 0 0.55em 0 1em;
+		border: 1px solid var(--pp-line-2);
+		border-radius: 1em;
+		background: #fff;
+		box-shadow:
+			0 4px 16px rgb(16 24 40 / 0.08),
+			0 1px 3px rgb(16 24 40 / 0.06);
+		transition:
+			border-color 0.12s,
+			box-shadow 0.12s;
+	}
+	.pp-input[data-focus] {
+		border-color: var(--pp-brand);
+		box-shadow:
+			0 4px 16px rgb(16 24 40 / 0.08),
+			0 0 0 3px rgb(2 142 107 / 0.12);
+	}
+	/* One line that keeps its end in view while the prompt is typed. */
+	.pp-field {
+		display: flex;
+		flex: 1;
+		justify-content: flex-end;
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+	.pp-line {
+		display: flex;
+		flex: none;
+		align-items: center;
+		min-width: 100%;
+	}
+	.pp-ph {
+		color: var(--pp-muted);
+	}
+	[data-draft]:not(:empty) ~ .pp-ph {
+		display: none;
+	}
+	.pp-caret {
+		width: 1px;
+		height: 1.3em;
+		margin: 0 1px;
+		background: var(--pp-text);
+		animation: pp-blink 1s steps(2) infinite;
+	}
+	.pp-input:not([data-focus]) .pp-caret {
+		display: none;
+	}
+	.pp-btn {
+		display: grid;
+		flex: none;
+		place-items: center;
+		width: 2.45em;
+		height: 2.45em;
+		border-radius: 0.7em;
+	}
+	.pp-btn svg {
+		width: 1.15em;
+		height: 1.15em;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 2;
+	}
+	.pp-send {
+		background: var(--pp-hover);
+		color: var(--pp-muted);
+	}
+	.pp-send[data-ready] {
+		background: var(--pp-brand);
+		color: #fff;
+	}
+	.pp-stop {
+		display: none;
+		background: #fdecea;
+		color: #c0362c;
+	}
+	.pp-stop svg {
+		fill: currentColor;
+		stroke: none;
+	}
+	.pp[data-busy] .pp-send {
+		display: none;
+	}
+	.pp[data-busy] .pp-stop {
+		display: grid;
+	}
+
+	/* A phone-sized window: no sidebar, tighter margins, a smaller badge. */
+	@container (max-width: 520px) {
+		.pp-main {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.pp-side,
+		.pp-presence {
+			display: none;
+		}
+		.pp-top {
+			padding-right: 1em;
+		}
+		.pp-badge {
+			font-size: 0.78em;
+		}
+		.pp-flow {
+			gap: 1.2em;
+			padding: 1.3em 1.1em 0.5em;
+		}
+		.pp-composer {
+			padding: 0.5em 1.1em 1em;
+		}
+		.pp-tools {
+			padding: 0.35em 0.75em 0.5em;
+		}
+	}
+
+	@keyframes pp-pulse {
+		50% {
+			box-shadow: 0 0 0 0.35em rgb(2 142 107 / 0.08);
+		}
+	}
+	@keyframes pp-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+	@keyframes pp-blink {
+		50% {
+			opacity: 0;
+		}
+	}
+	@keyframes pp-fade {
+		50% {
+			opacity: 0.4;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.pp *,
+		.pp *::before,
+		.pp *::after {
+			animation: none !important;
+		}
+	}
+
+	/* The pointer. Its box is the hot spot, so a click can shrink it in place
+	   and the arrow and the hand can swap without moving it. */
+	.dx-cursor {
+		position: absolute;
+		left: 0;
+		top: 0;
+		z-index: 40;
+		pointer-events: none;
+		will-change: translate;
+	}
+	.dx-cursor-icon {
+		position: absolute;
+		transform-origin: 0 0;
 	}
 	.dx-cursor svg {
 		position: absolute;
-		inset: 0;
+		width: 28px;
+		height: 28px;
+		filter: drop-shadow(0 1px 1.2px rgb(0 0 0 / 0.45));
 	}
-	.dx-cursor .hand,
-	.dx-cursor[data-hand] .arrow {
+	.dx-cursor .dx-arrow {
+		left: -8.5px;
+		top: -5px;
+	}
+	.dx-cursor .dx-hand {
+		display: none;
+		left: -9.6px;
+		top: -3.6px;
+	}
+	.dx-cursor[data-hand] .dx-arrow {
 		display: none;
 	}
-	.dx-cursor[data-hand] .hand {
+	.dx-cursor[data-hand] .dx-hand {
 		display: block;
 	}
-	.dx-sel {
-		background: rgb(255 255 255 / 0.28);
-	}
-	.dx-browser {
-		opacity: 0;
-		transform: translateY(10px) scale(0.96);
+	/* Where a click lands. */
+	.dx-ripple {
+		position: absolute;
+		z-index: 39;
+		width: 30px;
+		height: 30px;
+		margin: -15px 0 0 -15px;
+		border: 2px solid #f26b1d;
+		border-radius: 50%;
+		background: rgb(242 107 29 / 0.16);
 		pointer-events: none;
-		transition:
-			opacity 0.25s,
-			transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15);
-	}
-	.dx-browser[data-open] {
-		opacity: 1;
-		transform: none;
-	}
-	.dx-progress {
-		width: 8%;
-	}
-	.dx-browser[data-open] .dx-progress {
-		width: 94%;
-		transition: width 1.6s ease-out 0.3s;
 	}
 </style>
 
 <script>
+	interface Row {
+		rest: string;
+		html: string;
+		scene?: string;
+	}
 	const root = document.querySelector<HTMLElement>('[data-dx]');
-	if (root && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+	const stage = root?.closest<HTMLElement>('section');
+	if (root && stage && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		const term = root.querySelector<HTMLElement>('[data-term]')!;
 		const body = root.querySelector<HTMLElement>('[data-dx-body]')!;
 		const browser = root.querySelector<HTMLElement>('[data-browser]')!;
-		const rows = JSON.parse(document.querySelector('[data-dx-rows]')!.textContent!) as { rest: string; html: string; url?: string }[];
+		const lights = browser.querySelector<HTMLElement>('[data-lights]')!;
+		const rows = JSON.parse(root.querySelector('[data-dx-rows]')!.textContent!) as Row[];
 
+		// The animation runs only while the terminal is on screen.
 		let visible = false;
 		let wake: (() => void) | null = null;
-		new IntersectionObserver(([e]) => {
-			visible = e.isIntersecting;
-			if (visible && wake) { wake(); wake = null; }
-		}).observe(root);
+		new IntersectionObserver(
+			([entry]) => {
+				visible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
+				if (visible && wake) {
+					const resume = wake;
+					wake = null;
+					resume();
+				}
+			},
+			{ threshold: [0, 0.3] },
+		).observe(term);
 		// Waits `ms`, and longer while the terminal is off screen.
 		const sleep = (ms: number) => new Promise<void>((done) => setTimeout(() => (visible ? done() : (wake = done)), ms));
 		const span = (cls = '', text = '') => Object.assign(document.createElement('span'), { className: cls, textContent: text });
-		const caret = span('dx-caret');
-		caret.setAttribute('aria-hidden', 'true');
-		const type = async (el: HTMLElement, text: string, ms = 55) => {
-			for (const ch of text) { el.textContent += ch; await sleep(ms + Math.random() * 40); }
+		const type = async (el: HTMLElement, text: string, ms = 40, jitter = 36) => {
+			for (const ch of text) {
+				el.textContent += ch;
+				await sleep(ms + Math.random() * jitter);
+			}
 		};
+		const show = (el: HTMLElement) => {
+			el.hidden = false;
+			el.animate([{ opacity: 0, translate: '0 0.4em' }, { opacity: 1, translate: '0 0' }], { duration: 260, easing: 'ease-out' });
+		};
+		// A damped spring as a CSS linear() easing: quick, with one soft overshoot.
+		const SPRING = (() => {
+			if (!CSS.supports('animation-timing-function', 'linear(0, 1)')) return 'cubic-bezier(0.3, 1.3, 0.5, 1)';
+			const zeta = 0.66, omega = 17, damped = omega * Math.sqrt(1 - zeta * zeta);
+			const points = Array.from({ length: 41 }, (_, i) => {
+				const t = (i / 40) * 0.7;
+				return (1 - Math.exp(-zeta * omega * t) * (Math.cos(damped * t) + ((zeta * omega) / damped) * Math.sin(damped * t))).toFixed(3);
+			});
+			points[40] = '1';
+			return `linear(${points.join(', ')})`;
+		})();
 
-		// The pointer: a fixed element on the page, positioned in viewport
-		// coordinates. It glides along a curve, eases in and out, and stays
-		// pinned to whatever it is over while the page scrolls.
+		// The pointer lives in the section, in its coordinates, so it scrolls
+		// with the page. Its position is the `translate` property and a click
+		// scales the icon inside it around the hot spot, so a click never moves it.
 		const cursor = document.createElement('div');
 		cursor.className = 'dx-cursor';
-		cursor.style.display = 'none';
+		cursor.hidden = true;
 		cursor.setAttribute('aria-hidden', 'true');
 		cursor.innerHTML =
-			'<svg class="arrow" viewBox="0 0 28 28"><polygon fill="#fff" points="8.2,20.9 8.2,4.9 19.8,16.5 13,16.5 12.6,16.6"/><polygon fill="#fff" points="17.3,21.6 13.7,23.1 9,12 12.7,10.5"/><rect x="12.5" y="13.6" transform="matrix(0.9221 -0.3871 0.3871 0.9221 -5.7605 6.5909)" width="2" height="8"/><polygon points="9.2,7.3 9.2,18.5 12.2,15.6 12.6,15.5 17.4,15.5"/></svg>' +
-			'<svg class="hand" viewBox="0 0 28 28"><g transform="translate(3.5 2.5) scale(0.88)" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path fill="#fff" d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15V4a2 2 0 0 1 4 0v5.5a2 2 0 0 1 3 0V10a2 2 0 0 1 4 0Z"/><path fill="none" d="M11 9.5V12M14 10v2M18 11v1.5"/></g></svg>';
-		document.body.append(cursor);
-		// Hot spots: the arrow's tip, the hand's fingertip.
-		const HOT = { arrow: { x: 8.5, y: 5 }, hand: { x: 9.6, y: 3.6 } };
-		let cur = { x: -60, y: innerHeight * 0.6 };
+			'<div class="dx-cursor-icon">' +
+			'<svg class="dx-arrow" viewBox="0 0 28 28"><polygon fill="#fff" points="8.2,20.9 8.2,4.9 19.8,16.5 13,16.5 12.6,16.6"/><polygon fill="#fff" points="17.3,21.6 13.7,23.1 9,12 12.7,10.5"/><rect x="12.5" y="13.6" transform="matrix(0.9221 -0.3871 0.3871 0.9221 -5.7605 6.5909)" width="2" height="8"/><polygon points="9.2,7.3 9.2,18.5 12.2,15.6 12.6,15.5 17.4,15.5"/></svg>' +
+			'<svg class="dx-hand" viewBox="0 0 28 28"><g transform="translate(3.5 2.5) scale(0.88)" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path fill="#fff" d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15V4a2 2 0 0 1 4 0v5.5a2 2 0 0 1 3 0V10a2 2 0 0 1 4 0Z"/><path fill="none" d="M11 9.5V12M14 10v2M18 11v1.5"/></g></svg>' +
+			'</div>';
+		const icon = cursor.firstElementChild as HTMLElement;
+		stage.append(cursor);
+		let cur = { x: -60, y: 0 };
 		let pinned: { el: Element; fx: number; fy: number } | null = null;
+		let gliding = false;
 		const at = (el: Element, fx: number, fy: number) => {
-			const r = el.getBoundingClientRect();
-			return { x: r.left + r.width * fx, y: r.top + r.height * fy };
+			const r = el.getBoundingClientRect(), s = stage.getBoundingClientRect();
+			return { x: r.left - s.left + r.width * fx, y: r.top - s.top + r.height * fy };
 		};
-		const draw = () => {
-			const hot = cursor.hasAttribute('data-hand') ? HOT.hand : HOT.arrow;
-			cursor.style.transform = `translate(${cur.x - hot.x}px, ${cur.y - hot.y}px)`;
-		};
-		addEventListener('scroll', () => { if (pinned) { cur = at(pinned.el, pinned.fx, pinned.fy); draw(); } }, { passive: true });
+		const draw = () => cursor.style.setProperty('translate', `${cur.x}px ${cur.y}px`);
 		const ease = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 		const glide = (to: () => { x: number; y: number }, ms: number) =>
 			new Promise<void>((done) => {
@@ -184,102 +1302,296 @@ const rows = DX_COMMANDS.map((row, i) => ({ rest: row.orange.replace(/^orange/, 
 					const c = { x: (from.x + end.x) / 2 - (end.y - from.y) * bend, y: (from.y + end.y) / 2 + (end.x - from.x) * bend };
 					cur = { x: (1 - e) ** 2 * from.x + 2 * (1 - e) * e * c.x + e * e * end.x, y: (1 - e) ** 2 * from.y + 2 * (1 - e) * e * c.y + e * e * end.y };
 					draw();
-					if (k < 1) requestAnimationFrame(tick); else done();
+					if (k < 1) requestAnimationFrame(tick);
+					else done();
 				};
 				requestAnimationFrame(tick);
 			});
-		const moveTo = async (el: Element, fx = 0.5, fy = 0.7, ms = 750) => {
+		const moveTo = async (el: Element, fx = 0.5, fy = 0.6, ms = 700) => {
 			pinned = null;
-			cursor.style.display = '';
+			cursor.hidden = false;
+			gliding = true;
 			await glide(() => at(el, fx, fy), ms);
+			gliding = false;
 			pinned = { el, fx, fy };
 		};
-		// Come in from off the page: a far side of the viewport, away from the terminal.
-		const enterFrom = () => {
-			const r = root.getBoundingClientRect();
-			const right = r.left + r.width / 2 < innerWidth / 2;
-			cur = { x: right ? innerWidth + 40 : -40, y: Math.max(40, Math.min(innerHeight - 40, r.top + r.height * (0.2 + Math.random() * 0.9))) };
+		// From the side of the page away from the terminal.
+		const farSide = () => {
+			const s = stage.getBoundingClientRect(), t = term.getBoundingClientRect();
+			return t.left + t.width / 2 - s.left < s.width / 2 ? s.width + 50 : -50;
+		};
+		const enter = () => {
+			const s = stage.getBoundingClientRect(), t = term.getBoundingClientRect();
+			cur = { x: farSide(), y: t.top - s.top + t.height * (0.35 + Math.random() * 0.5) };
 			draw();
 		};
 		const leave = async () => {
 			pinned = null;
-			const r = root.getBoundingClientRect();
-			const right = r.left + r.width / 2 < innerWidth / 2;
-			await glide(() => ({ x: right ? innerWidth + 60 : -60, y: Math.min(innerHeight + 60, cur.y + 160) }), 900);
-			cursor.style.display = 'none';
+			const x = farSide(), y = cur.y + 140;
+			await glide(() => ({ x, y }), 900);
+			cursor.hidden = true;
 		};
-		const hand = (on: boolean) => { cursor.toggleAttribute('data-hand', on); draw(); };
+		const hand = (on: boolean) => cursor.toggleAttribute('data-hand', on);
+		const ripple = () => {
+			const ring = document.createElement('div');
+			ring.className = 'dx-ripple';
+			Object.assign(ring.style, { left: `${cur.x}px`, top: `${cur.y}px` });
+			stage.append(ring);
+			ring.animate([{ scale: '0.3', opacity: 0.9 }, { scale: '1', opacity: 0 }], { duration: 480, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' }).finished.then(() => ring.remove());
+		};
 		const click = async (times = 1) => {
 			for (let i = 0; i < times; i++) {
-				cursor.animate([{ scale: '1' }, { scale: '0.86' }, { scale: '1' }], { duration: 130 });
-				await sleep(150);
+				ripple();
+				icon.animate([{ scale: '1' }, { scale: '0.82' }, { scale: '1' }], { duration: 150, easing: 'ease-out' });
+				await sleep(times > 1 ? 120 : 170);
+			}
+		};
+
+		// The browser window: over the terminal, pulled toward the middle of
+		// the section, and wider and taller than the terminal so it pops out.
+		const place = () => {
+			const s = stage.getBoundingClientRect(), t = term.getBoundingClientRect();
+			const narrow = s.width < 640, gutter = s.width < 1024 ? 12 : 24;
+			const w = Math.round(Math.min(740, s.width - gutter * 2, narrow ? Infinity : t.width * 1.25));
+			const h = Math.round(w * (w < 520 ? 1.18 : 0.62));
+			const tx = t.left - s.left + t.width / 2, ty = t.top - s.top + t.height / 2;
+			const cx = tx + (s.width / 2 - tx) * 0.4;
+			const x = Math.max(gutter, Math.min(s.width - gutter - w, cx - w / 2));
+			Object.assign(browser.style, { left: `${x}px`, top: `${Math.round(ty - h / 2)}px`, width: `${w}px`, height: `${h}px` });
+		};
+		new ResizeObserver(() => {
+			if (browser.hasAttribute('data-open')) place();
+			if (pinned && !gliding) {
+				cur = at(pinned.el, pinned.fx, pinned.fy);
+				draw();
+			}
+		}).observe(stage);
+
+		// Each scene's moving parts. The markup is the finished run; `reset`
+		// takes a scene back to its start and `play` runs it again.
+		const scenes = new Map(
+			[...browser.querySelectorAll<HTMLElement>('[data-scene]')].map((el) => {
+				const q = (sel: string) => el.querySelector<HTMLElement>(sel)!;
+				const answer = q('[data-answer]');
+				const paragraphs = [...answer.children].map((p) => {
+					const texts: [Text, string][] = [];
+					const walk = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+					for (let n = walk.nextNode(); n; n = walk.nextNode()) texts.push([n as Text, (n as Text).data]);
+					return { p: p as HTMLElement, texts };
+				});
+				const scene = {
+					el,
+					url: el.dataset.url!,
+					secure: el.hasAttribute('data-secure'),
+					typed: el.hasAttribute('data-typed'),
+					empty: el.querySelector<HTMLElement>('[data-empty]'),
+					user: q('[data-user]'),
+					bot: q('[data-bot]'),
+					prompt: q('[data-prompt]').textContent!,
+					thinking: q('[data-thinking]'),
+					tools: q('[data-tools]'),
+					steps: [...q('[data-tools]').children] as HTMLElement[],
+					count: q('[data-count]'),
+					paragraphs,
+					agentRow: q('.pp-agent.sel'),
+					input: q('[data-input]'),
+					draft: q('[data-draft]'),
+					send: q('[data-send]'),
+				};
+				return [el.dataset.scene!, scene] as const;
+			}),
+		);
+		type Scene = NonNullable<ReturnType<typeof scenes.get>>;
+
+		const reset = (s: Scene) => {
+			s.el.toggleAttribute('data-busy', !s.typed);
+			if (s.empty) s.empty.hidden = false;
+			s.user.hidden = s.bot.hidden = s.typed;
+			s.thinking.hidden = false;
+			s.tools.hidden = true;
+			for (const step of s.steps) {
+				step.hidden = true;
+				step.removeAttribute('data-done');
+			}
+			s.count.textContent = '';
+			for (const { p, texts } of s.paragraphs) {
+				p.hidden = true;
+				for (const [node] of texts) node.data = '';
+			}
+			s.draft.textContent = '';
+			s.input.removeAttribute('data-focus');
+			s.send.removeAttribute('data-ready');
+		};
+
+		const play = async (s: Scene) => {
+			if (s.typed) {
+				// Richard types the prompt and sends it.
+				await moveTo(s.input, 0.45, 0.55, 700);
+				await click();
+				s.input.setAttribute('data-focus', '');
+				await sleep(200);
+				await type(s.draft, s.prompt, 11, 12);
+				s.send.setAttribute('data-ready', '');
+				await sleep(250);
+				await moveTo(s.send, 0.5, 0.5, 420);
+				hand(true);
+				await sleep(120);
+				await click();
+				s.draft.textContent = '';
+				s.send.removeAttribute('data-ready');
+				s.input.removeAttribute('data-focus');
+				if (s.empty) s.empty.hidden = true;
+				show(s.user);
+				s.el.setAttribute('data-busy', '');
+				await sleep(350);
+				show(s.bot);
+				hand(false);
+			} else {
+				// Gilfoyle's run is already under way; the pointer watches it.
+				const row = s.agentRow.getBoundingClientRect().width > 0 ? s.agentRow : s.input;
+				void moveTo(row, 0.6, 0.6, 800);
+			}
+			await sleep(650);
+			s.thinking.hidden = true;
+			s.tools.hidden = false;
+			let tools = 0;
+			for (const step of s.steps) {
+				show(step);
+				if (!step.hasAttribute('data-tool')) {
+					await sleep(350);
+					continue;
+				}
+				tools++;
+				s.count.textContent = `${tools} tool${tools === 1 ? '' : 's'}`;
+				await sleep(550 + Math.random() * 450);
+				step.setAttribute('data-done', '');
+			}
+			await sleep(300);
+			// The answer streams in a word at a time.
+			for (const { p, texts } of s.paragraphs) {
+				p.hidden = false;
+				p.classList.add('pp-cur');
+				for (const [node, text] of texts) {
+					for (const word of text.match(/\S+\s*|\s+/g) ?? []) {
+						node.data += word;
+						await sleep(26 + Math.random() * 34);
+					}
+				}
+				p.classList.remove('pp-cur');
+			}
+			s.el.removeAttribute('data-busy');
+		};
+
+		const open = async (s: Scene, link: HTMLElement) => {
+			for (const other of scenes.values()) other.el.toggleAttribute('data-active', other === s);
+			browser.querySelector('[data-url]')!.textContent = s.url;
+			browser.querySelector<SVGElement>('[data-lock]')!.style.display = s.secure ? '' : 'none';
+			reset(s);
+			place();
+			// It grows out of the link that was clicked.
+			const b = browser.getBoundingClientRect(), l = link.getBoundingClientRect();
+			browser.style.transformOrigin = `${l.left + l.width * 0.3 - b.left}px ${l.top + l.height / 2 - b.top}px`;
+			browser.setAttribute('data-open', '');
+			term.setAttribute('data-dim', '');
+			await browser.animate([{ transform: 'scale(0.04)', opacity: 0 }, { opacity: 1, offset: 0.2 }, { transform: 'none', opacity: 1 }], { duration: 700, easing: SPRING }).finished;
+		};
+		const close = async () => {
+			await moveTo(browser.querySelector('[data-close]')!, 0.5, 0.5, 650);
+			lights.setAttribute('data-hover', '');
+			await sleep(260);
+			await click();
+			// And shrinks back into it.
+			const shrink = browser.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(0.04)', opacity: 0 }], {
+				duration: 320,
+				easing: 'cubic-bezier(0.55, 0, 0.8, 0.4)',
+				fill: 'forwards',
+			});
+			term.removeAttribute('data-dim');
+			await shrink.finished;
+			browser.removeAttribute('data-open');
+			lights.removeAttribute('data-hover');
+			shrink.cancel();
+			pinned = null;
+		};
+
+		// The live session types over the finished one.
+		const live = document.createElement('div');
+		live.className = 'dx-live';
+		live.setAttribute('aria-hidden', 'true');
+		body.append(live);
+		root.setAttribute('data-live', '');
+		const caret = span('dx-caret');
+
+		const command = async (row: Row, first: boolean) => {
+			const block = document.createElement('div');
+			block.className = 'dx-row';
+			const line = document.createElement('p');
+			const word = span(), rest = span();
+			line.append(span('prompt', '$ '), word, rest, caret);
+			block.append(line);
+			live.append(block);
+			caret.hidden = false;
+			await sleep(first ? 500 : 350);
+			await type(word, 'wrangler');
+			await type(rest, row.rest);
+			await sleep(220);
+
+			// The pointer double-clicks "wrangler", and "orange" is typed over it.
+			const arriving = cursor.hidden;
+			if (arriving) enter();
+			await moveTo(word, 0.42, 0.72, arriving ? 1000 : 600);
+			await click(2);
+			word.classList.add('dx-sel');
+			caret.hidden = true;
+			line.insertBefore(caret, rest);
+			await sleep(420);
+			word.className = 'text-orange';
+			word.textContent = '';
+			caret.hidden = false;
+			await type(word, 'orange', 60, 30);
+			await sleep(280);
+			caret.remove();
+			block.insertAdjacentHTML('beforeend', row.html);
+			await sleep(450);
+
+			// Then it clicks the printed URL, and the app pops out.
+			const link = block.querySelector<HTMLElement>('[data-link]');
+			const scene = row.scene ? scenes.get(row.scene) : undefined;
+			if (link && scene) {
+				await moveTo(link, 0.3, 0.75, 600);
+				hand(true);
+				link.dataset.hover = '';
+				await sleep(220);
+				await click();
+				const opening = open(scene, link);
+				await sleep(120);
+				hand(false);
+				delete link.dataset.hover;
+				await opening;
+				await play(scene);
+				await sleep(1300);
+				await close();
+			} else {
+				await sleep(500);
+				await leave();
 			}
 		};
 
 		const run = async () => {
 			for (;;) {
-				body.replaceChildren();
-				for (const row of rows) {
-					const block = document.createElement('div');
-					block.className = 'pb-2';
-					const line = document.createElement('p');
-					const word = span(), rest = span();
-					line.append(span('prompt', '$ '), word, rest, caret);
-					block.append(line);
-					body.append(block);
-					await sleep(350);
-					await type(word, 'wrangler');
-					await type(rest, row.rest);
-					await sleep(200);
-
-					// The pointer barges in from off the page and double-clicks "wrangler".
-					enterFrom();
-					await moveTo(word, 0.45, 0.75, 1300);
-					await click(2);
-					word.classList.add('dx-sel');
-					line.insertBefore(caret, rest);
-					caret.style.display = 'none';
-					await sleep(450);
-					word.classList.remove('dx-sel');
-					word.textContent = '';
-					word.className = 'text-orange';
-					caret.style.display = '';
-					await type(word, 'orange', 70);
-					await sleep(250);
-					caret.remove();
-
-					block.insertAdjacentHTML('beforeend', row.html);
-					await sleep(500);
-
-					// Then it clicks the URL, and the app opens.
-					const link = block.querySelector<HTMLElement>('[data-link]');
-					if (link && row.url) {
-						await moveTo(link, 0.35, 0.8, 650);
-						hand(true);
-						link.dataset.hover = '';
-						await sleep(200);
-						await click();
-						root.querySelector('[data-url]')!.textContent = row.url;
-						browser.toggleAttribute('data-open', true);
-						hand(false);
-						await sleep(400);
-						await moveTo(browser.querySelector('[data-browser] .dx-progress')!, 0.6, 0.5, 600);
-						await sleep(1700);
-						await moveTo(root.querySelector('[data-close]')!, 0.5, 0.6, 600);
-						hand(true);
-						await click();
-						hand(false);
-						browser.removeAttribute('data-open');
-						delete link.dataset.hover;
-						await sleep(350);
-					} else {
-						await sleep(400);
-					}
-					await leave();
-				}
-				await sleep(3500);
+				live.replaceChildren();
+				for (const [i, row] of rows.entries()) await command(row, i === 0);
+				await sleep(3200);
 			}
 		};
-		run();
+		run().catch((error) => {
+			// Fall back to the finished session.
+			console.error(error);
+			live.remove();
+			cursor.remove();
+			root.removeAttribute('data-live');
+			browser.removeAttribute('data-open');
+			term.removeAttribute('data-dim');
+		});
 	}
 </script>

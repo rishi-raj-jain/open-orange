@@ -6,8 +6,9 @@
 //   and `kv.mdx` from docs/modules/ become `/docs/bindings/kv/`. Relative
 //   links to other repository files go to GitHub.
 // - An HTML `<img>` or `<picture>` with a relative `src` becomes a Markdown
-//   image, so Astro bundles the file like `![](../images/x.svg)`. A `<picture>`
-//   keeps only its light image, since the site has no dark mode.
+//   image, so Astro bundles the file like `![](../images/x.svg)`. A block
+//   `<picture>` with a `prefers-color-scheme: dark` source becomes two images,
+//   shown by the site's theme (`.docs-light` and `.docs-dark` in prose.css).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { docRoute } from './routes';
@@ -21,6 +22,7 @@ type Node = {
 	name?: string | null;
 	attributes?: Attribute[];
 	children?: Node[];
+	data?: { hProperties?: Record<string, unknown> };
 };
 type File = { path?: string; history?: string[] };
 
@@ -55,14 +57,26 @@ const attribute = (node: Node, name: string) => {
 
 const isJsx = (node: Node) => node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement';
 
-/** A Markdown image for a JSX `<img>` or `<picture>` with a relative source. */
-function toImage(node: Node): Node | undefined {
+/** Markdown images for a JSX `<img>` or `<picture>` with a relative source. */
+function toImages(node: Node): Node[] | undefined {
 	if (!isJsx(node)) return;
 	const img = node.name === 'img' ? node : node.name === 'picture' ? node.children?.find((child) => isJsx(child) && child.name === 'img') : undefined;
 	const src = img && attribute(img, 'src');
 	if (!img || !src || !isRelative(src)) return;
-	const image: Node = { type: 'image', url: src, alt: attribute(img, 'alt') ?? '' };
-	return node.type === 'mdxJsxFlowElement' ? { type: 'paragraph', children: [image] } : image;
+	const alt = attribute(img, 'alt') ?? '';
+	const image: Node = { type: 'image', url: src, alt };
+	if (node.type !== 'mdxJsxFlowElement') return [image];
+	const dark = node.name === 'picture'
+		? node.children?.find((child) => isJsx(child) && child.name === 'source' && /prefers-color-scheme:\s*dark/.test(attribute(child, 'media') ?? ''))
+		: undefined;
+	const darkSrc = dark && attribute(dark, 'srcset');
+	if (!darkSrc || !isRelative(darkSrc)) return [{ type: 'paragraph', children: [image] }];
+	const themed = (className: string, url: string): Node => ({
+		type: 'paragraph',
+		data: { hProperties: { className: [className] } },
+		children: [{ type: 'image', url, alt }],
+	});
+	return [themed('docs-light', src), themed('docs-dark', darkSrc)];
 }
 
 function visit(node: Node, fromDir: string) {
@@ -74,9 +88,11 @@ function visit(node: Node, fromDir: string) {
 	}
 	const children = node.children ?? [];
 	for (let i = 0; i < children.length; i++) {
-		const image = toImage(children[i]);
-		if (image) children[i] = image;
-		else visit(children[i], fromDir);
+		const images = toImages(children[i]);
+		if (images) {
+			children.splice(i, 1, ...images);
+			i += images.length - 1;
+		} else visit(children[i], fromDir);
 	}
 }
 

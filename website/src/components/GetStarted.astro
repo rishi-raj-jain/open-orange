@@ -1,5 +1,10 @@
 ---
 import { AGENT_PROMPT, GET_STARTED } from '@/data/site';
+
+// `backticks` in a step's body are inline code.
+const prose = (text: string) => text.split('`').map((part, i) => ({ part, code: i % 2 === 1 }));
+// The CLI's status marks: orange for dev, green for a finished deploy.
+const MARK: Record<string, string> = { '●': 'text-orange', '✓': 'text-[#4ade80]' };
 ---
 
 <section id="get-started" class="scroll-mt-20 rule">
@@ -43,16 +48,21 @@ import { AGENT_PROMPT, GET_STARTED } from '@/data/site';
 						</svg>
 						<div>
 							<h3 class="h-sub"><span class="sr-only">Step {i + 1}: </span>{step.title}</h3>
-							<p class="body-copy mt-3 max-w-md text-ink-soft">{step.body}</p>
+							<p class="body-copy mt-3 max-w-md text-ink-soft">{prose(step.body).map(({ part, code }) => (code ? <code class="code-chip">{part}</code> : part))}</p>
 						</div>
 					</div>
 					<div class="plate self-start">
-						<div class="px-5 py-4">
+						<div class="overflow-x-auto px-5 py-4">
 							{step.commands.map((command) => (
 								<p><span class="prompt">$ </span>{command}</p>
 							))}
 							{step.output ? (
-								<p class="pt-2"><span class="ok">{step.output.status}</span> <span class="muted">{step.output.detail}</span></p>
+								<div class="pt-1 [&>p]:whitespace-pre">
+									<p><span class={MARK[step.output.mark]}>{step.output.mark}</span> <span class="font-semibold text-white">{step.output.status}</span>{step.output.note ? <span class="muted">{` ${step.output.note}`}</span> : null}</p>
+									{step.output.rows.map(([label, value]) => (
+										<p>{'  '}<span class="muted">{label.padEnd(8)}</span>{value}</p>
+									))}
+								</div>
 							) : null}
 						</div>
 					</div>

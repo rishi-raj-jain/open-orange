@@ -1,0 +1,47 @@
+---
+title: Debugging
+description: Find the Rivet Actor behind a Durable Object, read its logs, and check it through the Rivet API.
+---
+
+# Debugging
+
+A Durable Object on OpenOrange is a Rivet Actor, so you debug it with Rivet's tools: logs,
+the Rivet dashboard, and the Rivet API.
+
+## Start on your machine
+
+1. Run `orange doctor` to check the project.
+2. Run `orange dev --log-level debug` to see RivetKit's logs next to your Worker's output.
+3. Check the symptom table in [Debug an object](../modules/durable-objects#debug-an-object).
+   It covers the common cases, such as an object that never sleeps or an RPC call that is too
+   large.
+
+## Find an object's actor
+
+| Durable Object | Rivet Actor |
+|---|---|
+| Class | Actor name: the class in kebab case and a short hash, such as `greeter-5c8cd02c` |
+| ID | Actor key |
+
+On Rivet Cloud, the Rivet dashboard lists the actors of your cluster. Anywhere, the Rivet API
+lists them. `<engine-host>`, `<namespace>`, and the token are the parts of `RIVET_ENDPOINT`:
+
+```sh
+curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors/names?namespace=<namespace>"
+curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/actors?namespace=<namespace>&name=<actor-name>"
+curl -H "authorization: Bearer $RIVET_TOKEN" "https://<engine-host>/gateway/<actor-id>/health"
+```
+
+## Read the logs
+
+- Rivet Cloud shows the runners' output on your cluster's Logs page in the Rivet dashboard.
+  Self-hosted, read the container's output.
+- Deploy with `--var RIVET_LOG_LEVEL:info` to add RivetKit's info logs, such as the lines
+  that show [what keeps an object awake](../modules/durable-objects#find-what-keeps-an-object-awake).
+- A Rivet error has a ray ID, such as `actor.not_found#<ray id>`. Search the logs for it.
+- For traces and metrics, see [Monitoring](./monitoring).
+
+## Learn more
+
+- [Debugging](https://rivet.dev/docs/debugging/): list, sleep, and destroy actors, and check nodes
+- [Debugging actors](https://rivet.dev/actors/docs/debugging/): the gateway endpoints of one actor

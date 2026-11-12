@@ -8,7 +8,7 @@ export const SITE = {
 	domain: 'openorange.dev',
 	tagline: 'Your Cloudflare project. Region: your datacenter.',
 	description:
-		'OpenOrange runs your Cloudflare Workers, Durable Objects, KV, Queues and Workflows unchanged on AWS, GCP, Azure or your own servers. Open source. wrangler dev becomes openorange dev.',
+		'OpenOrange runs your Cloudflare Workers, Durable Objects, KV, Queues and Workflows unchanged on AWS, GCP, Azure or your own servers. Open source, Apache 2.0.',
 	github: 'https://github.com/rivet-dev/open-orange',
 	// /docs/ renders the repository's docs/*.mdx.
 	docs: '/docs/',
@@ -21,6 +21,14 @@ export const SITE = {
 	talkToEngineer: 'https://rivet.dev/talk-to-an-engineer/',
 	verified: '2026-10-08',
 } as const;
+
+// Comparison pages that are still placeholders (src/pages/vs-[competitor].astro).
+// They are noindex and left out of the sitemap until written.
+export const PLACEHOLDER_COMPARISONS = [
+	{ slug: 'celld', name: 'celld' },
+	{ slug: 'miniflare', name: 'Miniflare' },
+	{ slug: 'rivet', name: 'Rivet' },
+] as const;
 
 export const NAV = [
 	{ label: 'Documentation', href: SITE.docs },
@@ -38,62 +46,69 @@ export const HERO = {
 } as const;
 
 export type LimitRow = {
+	id: string;
 	limit: string;
 	cloudflare: string;
 	openorange: string;
-	/** The full limit, shown on hover. */
-	detail: string;
+	/** A qualifier shown under the OpenOrange value. */
+	note?: string;
 	source?: string;
 };
 
-// Workers Paid plan values. Free plan values are stricter.
+// Workers Paid plan values. Free plan values are stricter. The OpenOrange
+// values come from the runtime: it sets no CPU, wall-time, bundle or Durable
+// Object storage cap (docs/modules/durable-objects.mdx, Limits), and the
+// runtime process is plain Node.js, whose heap is the one default ceiling.
 export const LIMITS: LimitRow[] = [
 	{
-		limit: 'Memory',
+		id: 'memory',
+		limit: 'Memory per Worker or Durable Object',
 		cloudflare: '128 MB',
-		openorange: 'Your instance',
-		detail: 'Memory per Worker isolate. Each Durable Object has the same 128 MB cap.',
+		openorange: "Up to your machine's memory",
+		note: 'Node.js heap: up to about 4 GB by default, configurable',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#memory',
 	},
 	{
-		limit: 'CPU time',
-		cloudflare: '5 min',
-		openorange: 'No limit',
-		detail: 'CPU time per request: 30 seconds by default, 5 minutes at most.',
+		id: 'cpu',
+		limit: 'CPU time per request',
+		cloudflare: '30 s default, 5 min max',
+		openorange: 'No cap',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#cpu-time',
 	},
 	{
-		limit: 'Connections',
-		cloudflare: '6',
-		openorange: 'OS limits',
-		detail: 'Simultaneous outgoing connections per request. Extra fetch() calls wait for a free one.',
-		source: 'https://developers.cloudflare.com/workers/platform/limits/#simultaneous-open-connections',
-	},
-	{
-		limit: 'Wall time',
-		cloudflare: '15 min',
-		openorange: 'No limit',
-		detail: 'Cron, queue and alarm handlers stop after 15 minutes of wall time.',
+		id: 'wall-time',
+		limit: 'Cron, queue and alarm handlers',
+		cloudflare: '15 min wall time',
+		openorange: 'No cap',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#duration',
 	},
 	{
-		limit: 'Bundle size',
+		id: 'connections',
+		limit: 'Open connections per request',
+		cloudflare: '6 at once',
+		openorange: 'OS limits',
+		source: 'https://developers.cloudflare.com/workers/platform/limits/#simultaneous-open-connections',
+	},
+	{
+		id: 'storage',
+		limit: 'Storage per Durable Object',
+		cloudflare: '10 GB',
+		openorange: 'No cap',
+		source: 'https://developers.cloudflare.com/durable-objects/platform/limits/',
+	},
+	{
+		id: 'bundle',
+		limit: 'Worker bundle',
 		cloudflare: '64 MiB',
-		openorange: 'No limit',
-		detail: 'The largest Worker bundle Cloudflare accepts.',
+		openorange: 'No cap',
 		source: 'https://developers.cloudflare.com/workers/platform/limits/#worker-size',
 	},
 	{
+		id: 'nodejs',
 		limit: 'Node.js',
-		cloudflare: 'A subset',
+		cloudflare: 'nodejs_compat subset',
 		openorange: 'Stock Node.js',
-		detail: 'Cloudflare runs part of the Node.js API behind nodejs_compat. OpenOrange runs stock Node.js, with a few node: modules swapped for workerd-shaped versions so Workers code behaves the same.',
-	},
-	{
-		limit: 'p99 latency',
-		cloudflare: 'Edge ↔ DB',
-		openorange: 'Next to DB',
-		detail: 'Run next to your database instead of crossing the internet on every query. No CPU cap cuts a slow request short, and no memory ceiling evicts a busy object, so p99s stay steady.',
+		source: 'https://developers.cloudflare.com/workers/runtime-apis/nodejs/',
 	},
 ];
 
@@ -279,7 +294,7 @@ export const PROVIDERS: Record<string, { hosted: Provider[]; local: Provider[]; 
 		],
 		local: [
 			{ name: 'agentOS VM', href: 'https://github.com/rivet-dev/agentos' },
-			{ name: 'Local directory', href: 'https://github.com/rivet-dev/open-orange/blob/main/docs/modules/sandbox.mdx' },
+			{ name: 'Local directory', href: '/docs/bindings/sandbox/' },
 		],
 		note: 'Pick one with ORANGE_SANDBOX_PROVIDER.',
 	},
@@ -304,7 +319,7 @@ export const PROVIDERS: Record<string, { hosted: Provider[]; local: Provider[]; 
 			{ name: 'Backblaze B2', href: 'https://www.backblaze.com/cloud-storage' },
 		],
 		local: [
-			{ name: 'Actor storage', href: 'https://github.com/rivet-dev/open-orange/blob/main/docs/modules/r2.mdx' },
+			{ name: 'Actor storage', href: '/docs/bindings/r2/' },
 			{ name: 'MinIO', href: 'https://min.io/' },
 		],
 		note: 'Any S3-compatible store, set per bucket with ORANGE_R2_<BUCKET>_S3_*.',
@@ -445,13 +460,14 @@ export const GET_STARTED = [
 		title: 'Run your Worker',
 		body: 'Reads your Wrangler configuration. Each Durable Object runs as a Rivet Actor with its own SQLite database.',
 		commands: ['orange dev'],
-		output: { status: 'ready', detail: 'http://127.0.0.1:8787' },
+		// As the CLI prints it: a status line, then labeled rows.
+		output: { mark: '●', status: 'Ready', note: 'in 0.9s', rows: [['Local', 'http://127.0.0.1:8787']] },
 	},
 	{
 		title: 'Deploy',
 		body: 'Builds an image of your Worker and rolls it out to your own cloud (AWS, GCP, Azure) or on-prem servers. Or use Rivet Cloud: fully managed, on a dedicated cluster in the provider and region you choose.',
 		commands: ['orange login', 'orange link --cluster <name>', 'orange deploy'],
-		output: { status: 'live', detail: 'https://api.example.com' },
+		output: { mark: '✓', status: 'Deployed my-worker', note: '', rows: [['URL', 'https://api.example.com']] },
 	},
 ] as const;
 

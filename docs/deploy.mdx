@@ -5,30 +5,247 @@ description: Deploy a Worker to a Rivet cluster with orange deploy, or build the
 
 # Deploy
 
-`orange deploy` builds a Docker image that runs `orange serve`, uploads it to a
-Rivet cluster through the [Rivet Cloud API](https://cloud-api.rivet.dev/v2/openapi.json),
-and rolls a runner pool out to it. It deploys one Worker at a time.
+`orange deploy` builds your Worker into a Docker image, uploads it to a Rivet
+cluster, and rolls a runner pool out to it. To run the same image on your own
+Rivet Engine, see [Self-host](#self-host).
+
+## Quickstart
+
+You need:
+
+- A Worker project. These steps deploy
+  [`examples/hello-durable-object`](../examples/hello-durable-object).
+- Docker, running on this machine.
+- The Worker's packages, installed. Orange bundles them on this machine.
+- A Rivet Cloud cluster.
+
+<Steps>
+
+<Step title="Sign in">
 
 ```sh
 orange login
-orange link --cluster acme
+```
+
+Approve the code in the browser that opens.
+
+```text
+Your one-time code: ABCD-EFGH
+Opened https://… in your browser.
+Waiting for approval…
+Signed in as you@example.com.
+Next: orange link --cluster <name>
+```
+
+</Step>
+
+<Step title="Link the cluster">
+
+Run this in the Worker's directory. Commands in it and below it use this
+cluster.
+
+```sh
+orange link --cluster my-cluster
+```
+
+```text
+Linked cluster my-cluster in /home/me/hello-durable-object/.rivet/project.json.
+Next: orange deploy
+Run orange mcp to connect your coding agent to the Rivet MCP for cluster my-cluster.
+```
+
+The last line shows until an agent configuration has the Rivet MCP.
+
+</Step>
+
+<Step title="Deploy">
+
+```sh
 orange deploy
 ```
 
-`openorange` and `open-orange` are the same command as `orange`.
+After Docker's build output, it prints each stage. Rivet Cloud prepares a
+build in 3 to 5 minutes.
 
-## Before you start
+```text
+Deploying hello-durable-object to cluster my-cluster, region <region>, pool default
+Building hello-durable-object:20261112-093000 for linux/amd64…
+Uploading build <build-id> (427.8 MiB)…
+Preparing build <build-id>. This takes a few minutes…
+✓ Build <build-id> ready
+Creating pool default with build <build-id>…
+✓ Deployed hello-durable-object:20261112-093000 to pool default in <region>
+  Build   <build-id>
+  URL     <pool URL>
+```
 
-- [ ] Docker runs on the machine that deploys. `orange deploy` uses it to build the image.
-- [ ] The packages of the Worker are installed. Orange bundles them on this machine.
-- [ ] You are signed in, or you have a token. See [Sign in](#sign-in).
-- [ ] You know the cluster. Pass `--cluster`, set `RIVET_CLUSTER`, or run `orange link`.
+</Step>
 
-## Sign in
+<Step title="Call the Worker">
+
+The pool's URL serves your Worker.
+
+```sh
+curl <pool URL>/alice
+```
+
+```json
+{"greeting":"Hello, alice!","visits":1}
+```
+
+</Step>
+
+</Steps>
+
+## Deploy to Rivet Cloud
+
+Every later `orange deploy` rolls the same pool out to a new build, and says
+`Rolling out pool default` instead of `Creating`. `orange deploy --dry-run`
+writes the build and prints the plan without calling any API.
+
+### Variables and secrets
+
+| Source | Reaches the deployed Worker |
+|---|---|
+| `vars` in the Wrangler configuration | Yes, inside the image |
+| `--var NAME:value` | Yes, in the runner pool's environment. Replaces a `vars` entry of the same name. |
+| `--secrets-file <path>` | Yes. Orange rolls each entry out as a cluster secret, and the pool's environment names it. The file is a JSON object or `.env` lines, as for `wrangler secret bulk`. |
+| `--secret KEY[=SECRET_NAME]` | Yes. `env.KEY` reads a secret the cluster already holds, named `KEY` unless you give `SECRET_NAME`, as with `rivet deploy --secret`. |
+| `.dev.vars` and `.env` entries | Only through `--secrets-file .dev.vars`. They never enter the image. |
+
+```sh
+orange deploy --secrets-file .dev.vars --var LOG_LEVEL:debug
+
+# A secret managed with the rivet CLI
+rivet cluster secret set DATABASE_URL
+orange deploy --secret DATABASE_URL
+```
+
+The Worker reads them from `env`, as `env.API_KEY`. A deploy without these
+flags leaves the pool's variables as they are.
+
+**Do not put a secret in `vars`.** Everything in `vars` is part of the image.
+
+### Deploy from CI
+
+Use a cluster token from the dashboard in `RIVET_CLOUD_TOKEN`, and name the
+cluster with `--cluster` or `RIVET_CLUSTER`:
+
+```sh
+RIVET_CLOUD_TOKEN=<cluster token> orange deploy --cluster my-cluster
+```
+
+| Token scope | When |
+|---|---|
+| Read and Deploy | Always |
+| Secrets write (`rivet:cluster:secrets:write`) | When the deploy passes `--var`, `--secret`, or `--secrets-file` |
+
+### Roll back
+
+Every deploy prints its build ID. To roll a pool back, pass an earlier build.
+Orange builds and uploads nothing.
+
+```sh
+orange deploy --cluster my-cluster --pool default --build <build-id>
+```
+
+### Fix a failed deploy
+
+| Response | Meaning |
+|---|---|
+| 401 | The token is missing, invalid, or expired. |
+| 403 | The token's organization does not own the cluster. |
+| 404, cluster not found | The cluster does not exist, or the token belongs to another organization. |
+| 402 | The organization's plan or payment method does not cover the pool. |
+| 400 | A value is invalid. Orange prints each field error. |
+
+When the pool goes `degraded` or `down` during a rollout, the deploy stops and
+prints the pool's reason and the command that rolls it back.
+
+## Self-host
+
+Run the image as a runner of your own Rivet Engine. The runner connects out to
+the Engine, so the Engine does not need to reach the container.
+
+You need Docker and the endpoint of your Rivet Engine, with its namespace and
+token.
+
+<Steps>
+
+<Step title="Write the build">
+
+```sh
+orange deploy --dry-run --outdir out
+```
+
+It calls no API, so it needs no sign-in. It ends with the two commands for the
+next steps:
+
+```text
+Self-host
+  docker build --platform linux/amd64 -f /home/me/hello-durable-object/out/Dockerfile -t hello-durable-object:20261112-093000 /home/me/hello-durable-object/out/context
+  docker run --rm -p 8080:8080 -e 'RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host>' hello-durable-object:20261112-093000
+```
+
+</Step>
+
+<Step title="Build the image">
+
+Run the `docker build` command from the output. The image name is the
+Worker's name, and the tag is the UTC time.
+
+```sh
+docker build --platform linux/amd64 -f out/Dockerfile -t hello-durable-object:20261112-093000 out/context
+```
+
+Docker's last step tags the image `hello-durable-object:20261112-093000`.
+
+</Step>
+
+<Step title="Run it">
+
+Fill in your Engine's endpoint in the `docker run` command:
+
+```sh
+docker run --rm -p 8080:8080 \
+  -e 'RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host>' \
+  hello-durable-object:20261112-093000
+```
+
+```text
+orange serve listening on http://0.0.0.0:8080
+```
+
+</Step>
+
+<Step title="Call the Worker" id="call-the-self-hosted-worker">
+
+```sh
+curl localhost:8080/alice
+```
+
+```json
+{"greeting":"Hello, alice!","visits":1}
+```
+
+</Step>
+
+</Steps>
+
+`orange serve` also reads `RIVET_TOKEN` and `RIVET_NAMESPACE` when the
+endpoint URL does not carry them, and `RIVET_POOL`, which defaults to
+`default`. A dry run with `--var` or `--secrets-file` adds each one to the
+`docker run` command, and passes each secret as a bare `-e NAME`, so Docker
+reads the value from your shell.
+
+<AiContext summary="Sign-in files, every flag, what goes into the image, secret rules, and refused values">
+
+#### Sign in
 
 `orange login`, `logout`, `whoami`, `link`, and `unlink` work like the same
 [Rivet CLI](https://rivet.dev/docs/cli/) commands and use the same files, so a
 `rivet login` session and a `rivet link --cluster` link work with Orange too.
+`openorange` and `open-orange` are the same command as `orange`.
 
 | File | What it holds |
 |---|---|
@@ -47,16 +264,9 @@ Orange finds credentials in this order:
 3. The login session
 4. A Cloud API token in `~/.rivet/credentials`
 
-Use `--token` or `RIVET_CLOUD_TOKEN` in CI. A cluster token from the dashboard needs these scopes:
-
-| Scope | When |
-|---|---|
-| Read and Deploy | Always |
-| Secrets write (`rivet:cluster:secrets:write`) | When the deploy passes `--var`, `--secret`, or `--secrets-file` |
-
 A BYOC cluster is a cluster too, so deploy to it with `--cluster` or a link.
 
-## What happens
+#### What happens during a deploy
 
 1. Orange reads the cluster's regions. This checks the token and the cluster
    before anything is built.
@@ -82,7 +292,7 @@ A BYOC cluster is a cluster too, so deploy to it with `--cluster` or a link.
 
 `--build <id>` builds nothing, so it skips steps 2 to 4.
 
-## What goes into the image
+#### What goes into the image
 
 - The project directory, without `.git`, `node_modules`, `.open-orange`, `.rivet`,
   `.wrangler`, `.dev.vars*`, `.env`, and `.env.*`.
@@ -98,25 +308,7 @@ and `orange serve` connects to the cluster as a runner.
 
 The build goes to `.open-orange/deploy/`, or to `--outdir <dir>`.
 
-## Variables and secrets
-
-| Source | Reaches the deployed Worker |
-|---|---|
-| `vars` in the Wrangler configuration | Yes, inside the image |
-| `--var NAME:value` | Yes, in the runner pool's environment. Replaces a `vars` entry of the same name. |
-| `--secrets-file <path>` | Yes. Orange rolls each entry out as a cluster secret, and the pool's environment names it. The file is a JSON object or `.env` lines, as for `wrangler secret bulk`. |
-| `--secret KEY[=SECRET_NAME]` | Yes. `env.KEY` reads a secret the cluster already holds, named `KEY` unless you give `SECRET_NAME`, as with `rivet deploy --secret`. |
-| `.dev.vars` and `.env` entries | Only through `--secrets-file .dev.vars`. They never enter the image. |
-
-```sh
-orange deploy --secrets-file .dev.vars --var LOG_LEVEL:debug
-
-# A secret managed with the rivet CLI
-rivet cluster secret set DATABASE_URL
-orange deploy --secret DATABASE_URL
-```
-
-The Worker reads them from `env`, as `env.API_KEY`.
+#### Variables and secrets in detail
 
 **Where a secret's value goes**
 
@@ -126,8 +318,8 @@ The Worker reads them from `env`, as `env.API_KEY`.
 
 **What a deploy changes**
 
-- These flags add to the pool's variables and keep the rest, as `rivet deploy --env` does.
-- A deploy without these flags leaves the pool's variables as they are.
+- `--var`, `--secret`, and `--secrets-file` add to the pool's variables and keep the rest, as
+  `rivet deploy --env` does.
 - To remove a variable, run `rivet cluster env unset KEY`.
 
 **How `--secrets-file` names secrets**
@@ -140,7 +332,7 @@ The Worker reads them from `env`, as `env.API_KEY`.
   running build one time with the new value, then rolls to the new build.
 - An unchanged value rolls nothing.
 
-### Values that Orange refuses
+##### Values that Orange refuses
 
 Orange refuses these before it builds or writes anything:
 
@@ -155,18 +347,13 @@ Orange refuses these before it builds or writes anything:
 | `RIVET_ENDPOINT`, `RIVET_TOKEN`, `PORT`, `RIVET_USER_DATA_*`, and the other names Rivet sets | Rivet sets them on every runner. |
 | A name already used by another binding, such as a KV namespace | A variable cannot replace a binding. |
 
-Do not put a secret in `vars`. Everything in `vars` is part of the image.
-
-To self-host, `orange deploy --dry-run` prints a `docker run` command with these variables. It
-passes each secret as a bare `-e NAME`, so Docker reads the value from your shell.
-
-### `-e` selects a Wrangler environment
+##### `-e` selects a Wrangler environment
 
 `orange deploy -e staging` works as `wrangler deploy -e staging`: it selects the
 `env.staging` block of the configuration. It does not set a variable. Orange
 rejects an `-e` value that contains `=`.
 
-## Options
+#### Options
 
 | Flag | Meaning |
 |---|---|
@@ -191,25 +378,7 @@ rejects an `-e` value that contains `=`.
 
 A new pool without `--machine-type` and `--node-count` gets the Rivet Cloud defaults. Orange sends neither value.
 
-## Errors
-
-| Response | Meaning |
-|---|---|
-| 401 | The token is missing, invalid, or expired. |
-| 403 | The token's organization does not own the cluster. |
-| 404, cluster not found | The cluster does not exist, or the token belongs to another organization. |
-| 402 | The organization's plan or payment method does not cover the pool. |
-| 400 | A value is invalid. Orange prints each field error. |
-
-## Roll back
-
-Every deploy prints its build ID. To roll a pool back, pass an earlier build:
-
-```sh
-orange deploy --cluster acme --pool default --build <build-id>
-```
-
-## Dry run and `--outdir`
+#### Dry run and `--outdir`
 
 `--dry-run` writes the build and prints the resolved cluster, region, pool, and
 image, and the `docker` commands for a self-hosted run. It prints the token as
@@ -221,31 +390,4 @@ Orange refuses a directory that holds files it did not write, because a build
 context with stale files would go into the image. A later run replaces its own
 `Dockerfile` and `context/`.
 
-## Self-host
-
-Run the image as a runner of your own Rivet Engine.
-
-1. Write the build:
-
-   ```sh
-   orange deploy --dry-run --outdir out
-   ```
-
-2. Build the image. The dry run prints this command with absolute paths.
-
-   ```sh
-   docker build --platform linux/amd64 -f out/Dockerfile -t my-worker out/context
-   ```
-
-3. Run it. The runner connects out to the Engine, so the Engine does not need
-   to reach the container.
-
-   ```sh
-   docker run --rm -p 8080:8080 \
-     -e RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> \
-     my-worker
-   ```
-
-   `orange serve` also reads `RIVET_TOKEN` and `RIVET_NAMESPACE` when the
-   endpoint URL does not carry them, and `RIVET_POOL`, which defaults to
-   `default`.
+</AiContext>

@@ -2,12 +2,18 @@
 import Base from '@/layouts/Base.astro';
 import Sidebar from '@/components/docs/Sidebar.astro';
 import { docsNav, flattenNav } from '@/components/docs/nav';
+import { docsOgImage } from '@/og/paths';
+import { breadcrumbs } from '@/data/structured-data';
 import '@/components/docs/prose.css';
 import type { MarkdownHeading } from 'astro';
 
 interface Props {
 	title: string;
 	description: string;
+	/** The search-result description, when `description` (shown under the title) runs past about 160 characters. */
+	metaDescription?: string;
+	/** The browser tab title, when `<title> — OpenOrange docs` reads badly. */
+	headTitle?: string;
 	/** The page's own route, e.g. `/docs/bindings/kv/`. */
 	href: string;
 	headings?: MarkdownHeading[];
@@ -19,7 +25,7 @@ interface Props {
 	wide?: boolean;
 }
 
-const { title, description, href, headings = [], source, prose = true, wide = false } = Astro.props;
+const { title, description, metaDescription, headTitle, href, headings = [], source, prose = true, wide = false } = Astro.props;
 const { groups } = await docsNav();
 
 const links = flattenNav(groups);
@@ -28,9 +34,23 @@ const current = links[index];
 const prev = index > 0 ? links[index - 1] : undefined;
 const next = index !== -1 ? links[index + 1] : undefined;
 const toc = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+
+// OpenOrange › Docs › Bindings › KV. Only pages with a URL are crumbs, so sidebar groups such as "Storage" are not.
+const trail = [
+	{ name: 'OpenOrange', path: '/' },
+	{ name: 'Docs', path: '/docs/' },
+	...(href.startsWith('/docs/bindings/') && href !== '/docs/bindings/' ? [{ name: 'Bindings', path: '/docs/bindings/' }] : []),
+	...(href === '/docs/' ? [] : [{ name: title, path: href }]),
+];
 ---
 
-<Base title={`${title} — OpenOrange docs`} description={description}>
+<Base
+	title={headTitle ?? `${title} — OpenOrange docs`}
+	description={metaDescription ?? description}
+	image={docsOgImage(href)}
+	type="article"
+	structuredData={[breadcrumbs(trail)]}
+>
 	<div class="container-x">
 		<div class:list={['lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-12', !wide && 'xl:grid-cols-[13.5rem_minmax(0,1fr)_11.5rem]']}>
 			<aside class="hidden lg:block">

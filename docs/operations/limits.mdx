@@ -1,0 +1,39 @@
+---
+title: Limits
+description: Which Rivet limits apply to Durable Objects on OpenOrange, and how they compare to Cloudflare's.
+---
+
+# Limits
+
+OpenOrange does not copy Cloudflare's quotas. Your Durable Objects get the memory and CPU of
+the machine they run on, and Rivet's limits apply.
+
+| Limit | Cloudflare | OpenOrange |
+|---|---|---|
+| Memory | 128 MB per isolate | The runner's memory |
+| CPU time per request | 30 seconds by default, up to 5 minutes | No limit |
+| Storage per object | 10 GB | No fixed limit |
+| One storage write | Key and value together up to 8 MB | 128 MiB of changed SQLite pages in one commit |
+| One RPC call | 32 MiB serialized | 32 MiB on the wire. Binary data counts 4/3 of its size. |
+| Outgoing connections per request | 6 at a time | Your operating system's limit |
+| Awake objects on one machine | None | 4,000 per runner by default |
+
+Cloudflare's values are for the Workers Paid plan, from its
+[Durable Objects limits](https://developers.cloudflare.com/durable-objects/platform/limits/)
+and [Workers limits](https://developers.cloudflare.com/workers/platform/limits/) in November 2026.
+
+- A write or an RPC call over its limit throws a `RangeError` that names the limit. Split a large
+  write, and send large data with `stub.fetch()`, which streams.
+- OpenOrange also does not copy Cloudflare's limits on WebSocket tags, sockets per object,
+  attachment size, or automatic responses.
+- On a self-hosted Rivet Engine, raise the awake-object limit with `pegboard.sqlite_sessions`.
+  See [One runner holds at most 4,000 awake objects](../modules/durable-objects#one-runner-holds-at-most-4000-awake-objects).
+
+The full list of OpenOrange's own limits is on the
+[Durable Objects](../modules/durable-objects#limits) page.
+
+## Rivet's limits
+
+Rivet sets the rest, such as how long a request waits for an object to start, how many requests
+can wait for one object, and the size of one WebSocket message. See
+[Rivet Actor limits](https://rivet.dev/actors/docs/limits/).

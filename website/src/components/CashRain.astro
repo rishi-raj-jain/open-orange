@@ -34,8 +34,8 @@ const bills = Array.from({ length: count }, () => ({
 			style={`left:${b.x}%;--delay:${b.delay}s;--fall:${b.fall}s;--spin:${b.spin}s;--sway:${b.sway}px;--scale:${b.scale}`}
 		>
 			<span class="cash-spin cash-note block w-28">
-				<img src="/images/dollar.png" alt="" width="112" height="43" class="cash-face" loading="eager" decoding="async" draggable="false" />
-				<img src="/images/dollar-back.png" alt="" width="112" height="43" class="cash-face cash-face-back" loading="eager" decoding="async" draggable="false" />
+				<img src="/images/dollar.webp" alt="" width="112" height="43" class="cash-face" loading="eager" decoding="async" draggable="false" />
+				<img src="/images/dollar-back.webp" alt="" width="112" height="43" class="cash-face cash-face-back" loading="eager" decoding="async" draggable="false" />
 			</span>
 		</span>
 	))}
@@ -139,8 +139,8 @@ const bills = Array.from({ length: count }, () => ({
 			note.className = 'cash-burst cash-note';
 			note.setAttribute('aria-hidden', 'true');
 			for (const [src, cls] of [
-				['/images/dollar.png', 'cash-face'],
-				['/images/dollar-back.png', 'cash-face cash-face-back'],
+				['/images/dollar.webp', 'cash-face'],
+				['/images/dollar-back.webp', 'cash-face cash-face-back'],
 			]) {
 				const img = document.createElement('img');
 				img.src = src;

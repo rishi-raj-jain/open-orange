@@ -1,11 +1,19 @@
 ---
 // "In case of emergency, break glass" box.
 //
-// Three images of the same 760x1013 photograph:
-//   break-glass.webp       the box, glass intact (shown until it breaks)
-//   break-glass-open.webp  the same box with the glass gone
-//   break-glass-pane.webp  only the glass: the printed text and the reflection,
-//                          as white with alpha, so open + pane = intact
+// Images of the same 760x1013 photograph:
+//   break-glass.webp         the box, glass intact (shown until it breaks)
+//   break-glass-open.webp    the same box with the glass gone
+//   break-glass-pane.webp    only the glass: the printed text and the reflection,
+//                            as white with alpha, so open + pane = intact
+//   break-glass-plate.webp   the open box with the orange painted out: the wall
+//                            and shelf behind it, filled in from around it
+//   break-glass-orange.webp  only the orange, cut from the open box, opaque over
+//                            every pixel the plate changed, so plate + orange = open
+// The rest are made from break-glass-open.webp (lossy WebP at quality 92), so
+// the orange is the same pixels before and after the break, and its hop shows
+// the wall behind it rather than a second orange. break-glass.webp is the pane
+// drawn over the open box (alpha "over"). Remake them whenever it changes.
 //
 // Clicking breaks the pane where it was hit. Cracks run out from the impact as a
 // spider web, the web's cells come loose and fall as 3D shards (with the printed
@@ -32,8 +40,8 @@ const { class: className = '' } = Astro.props;
 		<span class="tilt relative block" data-tilt>
 			<!-- Shadow under the frame, so the box sits off the page. -->
 			<span class="frame-shadow pointer-events-none absolute" aria-hidden="true"></span>
-			<img src="/images/break-glass-open.webp" alt="" width="760" height="1013" class="block h-auto w-full" draggable="false" />
-			<!-- The orange, cut out so it can react when it is freed. -->
+			<img src="/images/break-glass-plate.webp" alt="" width="760" height="1013" class="block h-auto w-full" draggable="false" />
+			<!-- The orange, cut out so it can react when it is freed; the plate under it has no orange. -->
 			<span class="fruit pointer-events-none absolute inset-0" aria-hidden="true" data-fruit></span>
 			<canvas class="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true" data-rest></canvas>
 			<img src="/images/break-glass.webp" alt="" width="760" height="1013" class="intact absolute inset-0 block h-auto w-full" draggable="false" />
@@ -83,9 +91,8 @@ const { class: className = '' } = Astro.props;
 	}
 
 	.fruit {
-		background: url(/images/break-glass-open.webp) 0 0 / 100% 100%;
-		/* The orange: centre (330, 495), radius 119 in the photo. */
-		clip-path: circle(13.3% at 43.4% 48.9%);
+		background: url(/images/break-glass-orange.webp) 0 0 / 100% 100%;
+		/* The orange's base in the photo (330, 608), so it squashes on the shelf. */
 		transform-origin: 43.4% 60%;
 	}
 
@@ -555,7 +562,8 @@ const { class: className = '' } = Astro.props;
 		const button = root.querySelector<HTMLButtonElement>('[data-glass]')!;
 		const tilt = root.querySelector<HTMLElement>('[data-tilt]')!;
 		const pane = loadImage('/images/break-glass-pane.webp');
-		loadImage('/images/break-glass-open.webp');
+		loadImage('/images/break-glass-plate.webp');
+		loadImage('/images/break-glass-orange.webp');
 
 		// Hover: the box tilts towards the pointer and the light follows it.
 		root.addEventListener('pointermove', (e) => {
@@ -612,7 +620,7 @@ const { class: className = '' } = Astro.props;
 		section.append(canvas);
 		const ctx = canvas.getContext('2d')!;
 		const img = new Image();
-		img.src = '/images/hammer.png';
+		img.src = '/images/hammer.webp';
 
 		type P = { x: number; y: number; px: number; py: number; w: number };
 		const LINKS = 12;
