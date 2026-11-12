@@ -551,7 +551,7 @@ const durableObjects: Comparison = {
 			items: [
 				'Your database runs in AWS, GCP or Azure, and p99s matter.',
 				'You’ve outgrown 128 MB of memory, 5 minutes of CPU or 10 GB per object.',
-				'Your data has to stay in your cloud account or on your own servers.',
+				'Your data has to stay in your cloud account, on your own servers or air-gapped.',
 				'You want to own your uptime, deploys and redundancy.',
 				'Your npm packages need stock Node.js.',
 				'You’re moving a live app off Cloudflare, with zero downtime.',
@@ -576,13 +576,13 @@ const durableObjects: Comparison = {
 			},
 			{
 				label: 'Where it runs',
-				them: { text: 'Cloudflare’s network only', mark: 'no', note: 'Not on-prem, and not in your cloud account.' },
+				them: { text: 'Cloudflare’s network only', mark: 'no', note: 'Not on-prem, not in your cloud account, not air-gapped.' },
 				us: { text: 'Rivet Cloud, your AWS, GCP or Azure account, or your own servers', mark: 'yes' },
 			},
 			{
 				label: 'Data residency',
-				them: { text: 'EU, US or FedRAMP jurisdictions', mark: 'partial', note: 'Object IDs are still logged outside the jurisdiction.' },
-				us: { text: 'The region and account you choose', mark: 'yes' },
+				them: { text: 'EU, US or FedRAMP jurisdictions, on Cloudflare only', mark: 'partial', note: 'Object IDs are still logged outside the jurisdiction.' },
+				us: { text: 'Your cloud account, your own servers, or air-gapped', mark: 'yes', note: 'Air-gapped: build the image once and ship it into your network.' },
 			},
 			{
 				label: 'Uptime',
