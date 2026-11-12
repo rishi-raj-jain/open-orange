@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/images/hero.png" width="560" alt="A Cloudflare Worker and its bindings run on Rivet Actors">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png">
+    <img src="docs/images/hero.png" width="560" alt="A Cloudflare Worker and its bindings run on Rivet Actors">
+  </picture>
 </p>
 
 <h1 align="center">OpenOrange</h1>
