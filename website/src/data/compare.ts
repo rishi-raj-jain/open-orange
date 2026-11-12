@@ -1,15 +1,17 @@
-// Copy for the comparison pages /vs-celld/, /vs-rivet/ and /vs-miniflare/,
-// rendered by src/pages/vs-[competitor].astro. /vs-workerd/ has its own page
-// and its data lives in site.ts.
+// Copy for the comparison pages /vs-durable-objects/, /vs-celld/, /vs-rivet/
+// and /vs-miniflare/, rendered by src/pages/vs-[competitor].astro.
+// /vs-workerd/ has its own page and its data lives in site.ts.
 //
 // Every claim about another project is sourced, and the page lists its
-// sources. celld claims come from celld v0.6.3 (8702f6d, 2026-10-21), its
-// docs, issues and releases, and press coverage of the acquisition, as read on
-// 2026-11-12. Miniflare claims come from Cloudflare's Miniflare docs, read on
-// 2026-11-12. Rivet claims come from rivet.dev. Re-check them before changing
-// AS_OF.
+// sources. Durable Objects claims come from Cloudflare's docs and its June 12,
+// 2025 incident report, read on 2026-11-12; the limit values are LIMITS in
+// site.ts. celld claims come from celld v0.6.3 (8702f6d, 2026-10-21), its
+// docs, source, issues and releases, and press coverage of the acquisition, as
+// read on 2026-11-12. Miniflare claims come from Cloudflare's Miniflare docs,
+// read on 2026-11-12. Rivet claims come from rivet.dev. Re-check them before
+// changing AS_OF.
 
-import { MODULES, SITE } from './site';
+import { LIMITS, MODULES, SITE } from './site';
 
 export const AS_OF = { label: 'November 12, 2026', iso: '2026-11-12' } as const;
 
@@ -39,6 +41,8 @@ export type Pick = {
 
 export type TimelineEvent = { date: string; iso: string; text: string; href?: string };
 export type Stat = { value: string; label: string; body: string };
+/** A sentence quoted from the other product's docs, with when it applies. */
+export type Quote = { quote: string; when: string; href: string };
 export type Link = { label: string; href: string };
 
 export type Comparison = {
@@ -55,6 +59,7 @@ export type Comparison = {
 	matrix: { title: string; rows: MatrixRow[]; caption?: string };
 	timeline?: { title: string; lede: string; events: TimelineEvent[] };
 	stats?: { title: string; lede: string; items: Stat[]; caption?: string };
+	quotes?: { title: string; lede: string; items: Quote[] };
 	sources: Link[];
 	cta: { title: string; body: string; primary?: Link; secondary?: Link };
 };
@@ -68,6 +73,16 @@ const WARPDRIVE = {
 
 const DEPLOY = 'Rivet Cloud, BYOC or self-hosted';
 const MIGRATE = { text: 'orange migrate moves Durable Objects live, with no downtime', mark: 'yes' } as const;
+
+// Cloudflare's limits and OpenOrange's, as the landing page's limits table states them.
+const limit = (id: string) => {
+	const row = LIMITS.find((r) => r.id === id);
+	if (!row) throw new Error(`No LIMITS row named ${id}`);
+	return row;
+};
+const MEMORY = { text: limit('memory').openorange, note: limit('memory').note, mark: 'yes' } as const;
+const NODE = { text: 'Stock Node.js 22 or later', mark: 'yes' } as const;
+const NEXT_TO_DB = { text: 'In your VPC, next to it', mark: 'yes' } as const;
 
 const CELLD_DOCS = 'https://github.com/denoland/celld/blob/8702f6d186c77698dbfb30cf29e3b1922a88f008/docs';
 
@@ -96,6 +111,7 @@ const celld: Comparison = {
 				'You run Cloudflare code in production.',
 				'You need storage that’s fast, bottomless and online through S3 outages.',
 				'You want a maintained project with support behind it.',
+				'You run untrusted code in sandboxes on E2B, Daytona, Freestyle or agentOS.',
 				'You’re live-migrating an app off Cloudflare, or between OpenOrange clusters.',
 			],
 		},
@@ -113,12 +129,13 @@ const celld: Comparison = {
 		rows: [
 			{
 				label: 'Maintained',
-				them: {
-					text: 'No release, commit or maintainer reply since Oct 21, 2026',
-					mark: 'no',
-					note: 'Only the latest release gets security fixes.',
-				},
+				them: { text: 'No release, commit or maintainer reply since Oct 21, 2026', mark: 'no' },
 				us: { text: 'Yes, by Rivet, with paid support', mark: 'yes', note: 'Rivet has invested in this platform since December 2024.' },
+			},
+			{
+				label: 'Security fixes',
+				them: { text: 'Latest release only, and none since Oct 21', mark: 'no', note: '“Only the latest release receives security fixes.”' },
+				us: { text: 'Yes, from Rivet', mark: 'yes' },
 			},
 			{
 				label: 'Production-ready',
@@ -133,6 +150,26 @@ const celld: Comparison = {
 					note: 'No Workers AI, Hyperdrive, Browser Rendering or Email.',
 				},
 				us: { text: `${CLOUDFLARE_APIS} Cloudflare APIs`, mark: 'yes', note: 'Workers AI, Hyperdrive, Browser Rendering and Email run on providers you choose.' },
+			},
+			{
+				label: 'Node.js',
+				them: { text: 'A listed subset of node: modules', mark: 'partial', note: 'Other node: modules import, then throw on first call.' },
+				us: NODE,
+			},
+			{
+				label: 'Sandboxes for untrusted code',
+				them: { text: 'Docker or Podman on each node', mark: 'partial', note: 'By default a container shares the node’s kernel. Experimental.' },
+				us: { text: 'E2B, Daytona, Freestyle or agentOS', mark: 'yes', note: 'E2B, Freestyle and agentOS run each sandbox in a VM.' },
+			},
+			{
+				label: 'Memory',
+				them: { text: '128 MB heap per isolate by default', mark: 'partial', note: 'Configurable. Over 90%, new hibernatable WebSockets are refused.' },
+				us: MEMORY,
+			},
+			{
+				label: 'CPU and alarm time',
+				them: { text: 'Not documented' },
+				us: { text: 'No cap', mark: 'yes' },
 			},
 			{
 				label: 'Durable Objects across machines',
@@ -159,8 +196,13 @@ const celld: Comparison = {
 				us: { text: WARPDRIVE.latency, mark: 'yes' },
 			},
 			{
+				label: 'Latency to your database',
+				them: { text: 'On your servers, without Hyperdrive', mark: 'partial', note: 'Workers that reach their database through Hyperdrive need changes.' },
+				us: { ...NEXT_TO_DB, note: 'Hyperdrive works unchanged.' },
+			},
+			{
 				label: 'Database size',
-				them: { text: 'Each active cell’s SQLite file sits on the node’s disk', mark: 'partial', note: 'No per-cell quota.' },
+				them: { text: 'Bound by the node’s disk', mark: 'partial', note: 'No per-cell quota.' },
 				us: { text: 'Not capped by host disk', mark: 'yes' },
 			},
 			{
@@ -253,6 +295,8 @@ const celld: Comparison = {
 		{ label: 'celld limitations', href: `${CELLD_DOCS}/limitations.md` },
 		{ label: 'celld guarantees', href: `${CELLD_DOCS}/guarantees.md` },
 		{ label: 'celld Cloudflare compatibility', href: `${CELLD_DOCS}/cloudflare-compat.md` },
+		{ label: 'celld containers', href: `${CELLD_DOCS}/services/containers.md` },
+		{ label: 'celld README: memory limits', href: `${CELLD_DOCS.replace(/\/docs$/, '')}/README.md#operate-a-fleet` },
 		{ label: 'celld v0.6.0 release', href: 'https://github.com/denoland/celld/releases/tag/v0.6.0' },
 		{ label: 'Rivet: forking', href: `${SITE.rivet}/actors/docs/forking/` },
 		{ label: 'OpenOrange: migrate from Cloudflare', href: SITE.docsMigrate },
@@ -477,5 +521,167 @@ const miniflare: Comparison = {
 	},
 };
 
+// Cloudflare's docs, as read on 2026-11-12.
+const CF_DOCS = 'https://developers.cloudflare.com';
+const DO_LIMITS = `${CF_DOCS}/durable-objects/platform/limits/`;
+const DO_ERRORS = `${CF_DOCS}/durable-objects/observability/troubleshooting/`;
+const DO_LOCATION = `${CF_DOCS}/durable-objects/reference/data-location/`;
+
+const durableObjects: Comparison = {
+	slug: 'durable-objects',
+	name: 'Durable Objects',
+	title: `${SITE.name} vs Cloudflare Durable Objects`,
+	description:
+		'OpenOrange runs your Cloudflare Durable Objects in your own cloud, next to your database, without the 128 MB memory, CPU or 10 GB storage caps, and live-migrates them off Cloudflare with zero downtime.',
+	headline: 'OpenOrange runs Durable Objects in your cloud, without Cloudflare’s limits.',
+	lede: 'Same code. OpenOrange runs it in your VPC, next to your database, on infrastructure you control.',
+	them: {
+		name: 'Durable Objects',
+		badge: { text: 'Runs only on Cloudflare', tone: 'muted' },
+		body: 'Cloudflare’s stateful Workers. Each object runs on one thread on Cloudflare’s network, with 128 MB of memory and up to 10 GB of SQLite storage. Cloudflare picks the data center and updates the runtime on its own schedule.',
+	},
+	us: {
+		name: SITE.name,
+		body: 'The same Durable Objects, on your own cloud. Rivet places each object across your machines, next to your database, with your machine’s memory and no CPU or storage cap. Cloudflare locks your data in. OpenOrange opens it up and live-migrates it, with zero downtime.',
+	},
+	picks: [
+		{
+			title: 'Use OpenOrange when…',
+			highlight: true,
+			items: [
+				'Your database runs in AWS, GCP or Azure, and p99s matter.',
+				'You’ve outgrown 128 MB of memory, 5 minutes of CPU or 10 GB per object.',
+				'Your data has to stay in your cloud account or on your own servers.',
+				'You want to own your uptime, deploys and redundancy.',
+				'Your npm packages need stock Node.js.',
+				'You’re moving a live app off Cloudflare, with zero downtime.',
+			],
+		},
+		{
+			title: 'Use Durable Objects when…',
+			items: [
+				'You have no infrastructure of your own, and don’t want any.',
+				'Your objects fit in 128 MB of memory and 10 GB of storage.',
+				'You have no strict latency, uptime or data-residency needs.',
+			],
+		},
+	],
+	matrix: {
+		title: 'Side by side',
+		rows: [
+			{
+				label: 'Latency to your database',
+				them: { text: 'Every query crosses the internet', mark: 'no', note: 'Location hints are “best effort and not a guarantee.”' },
+				us: { ...NEXT_TO_DB, note: 'No trip across the internet, so p99s stay steady.' },
+			},
+			{
+				label: 'Where it runs',
+				them: { text: 'Cloudflare’s network only', mark: 'no', note: 'Not on-prem, and not in your cloud account.' },
+				us: { text: 'Rivet Cloud, your AWS, GCP or Azure account, or your own servers', mark: 'yes' },
+			},
+			{
+				label: 'Data residency',
+				them: { text: 'EU, US or FedRAMP jurisdictions', mark: 'partial', note: 'Object IDs are still logged outside the jurisdiction.' },
+				us: { text: 'The region and account you choose', mark: 'yes' },
+			},
+			{
+				label: 'Uptime',
+				them: { text: 'Tied to Cloudflare’s platform', note: 'In its June 12, 2025 outage, SQLite-backed objects’ errors peaked at 22%.' },
+				us: { text: 'Your infrastructure, your redundancy', mark: 'yes' },
+			},
+			{
+				label: 'Runtime updates',
+				them: { text: 'On Cloudflare’s schedule', mark: 'no', note: 'Open connections get up to 20 minutes, then close.' },
+				us: { text: 'When you deploy', mark: 'yes' },
+			},
+			{
+				label: 'Object resets',
+				them: { text: 'On code updates, slow storage and overload', mark: 'no', note: 'Cloudflare’s own wording is below.' },
+				us: { text: 'On your machines, on your schedule', mark: 'yes' },
+			},
+			{
+				label: 'Memory per object',
+				them: { text: limit('memory').cloudflare, mark: 'partial' },
+				us: MEMORY,
+			},
+			{
+				label: 'CPU time per request',
+				them: { text: limit('cpu').cloudflare, mark: 'partial' },
+				us: { text: limit('cpu').openorange, mark: 'yes' },
+			},
+			{
+				label: 'Storage per object',
+				them: { text: limit('storage').cloudflare, mark: 'partial', note: 'Writes then fail with SQLITE_FULL.' },
+				us: { text: limit('storage').openorange, mark: 'yes' },
+			},
+			{
+				label: 'Requests per object',
+				them: { text: 'About 1,000 per second, a soft limit', mark: 'partial', note: 'Past it, the object returns “overloaded” errors.' },
+				us: { text: 'No set limit', mark: 'yes' },
+			},
+			{
+				label: 'Alarm wall time',
+				them: { text: '15 minutes', mark: 'partial' },
+				us: { text: limit('wall-time').openorange, mark: 'yes' },
+			},
+			{
+				label: 'Node.js',
+				them: { text: 'The nodejs_compat subset', mark: 'partial', note: 'Some modules are shims that throw when called.' },
+				us: NODE,
+			},
+			{
+				label: 'Live migration of your data',
+				them: { text: 'Locked in to Cloudflare', mark: 'no' },
+				us: { ...MIGRATE, note: 'SQLite-backed objects, straight off Cloudflare.' },
+			},
+			{ label: 'Your code', same: 'Your Durable Object classes and wrangler config, unchanged' },
+		],
+		caption: 'Cloudflare figures are for the Workers Paid plan, from Cloudflare’s docs.',
+	},
+	quotes: {
+		title: 'Cloudflare resets your objects.',
+		lede: 'Its own docs say when. On OpenOrange, you control the machines and when deploys happen.',
+		items: [
+			{
+				quote: 'Durable Object reset because its code was updated.',
+				when: 'A deploy lands before the object hibernates.',
+				href: `${DO_ERRORS}#durable-object-reset-because-its-code-was-updated`,
+			},
+			{
+				quote: 'Durable Object storage operation exceeded timeout which caused object to be reset.',
+				when: 'A storage call runs too long.',
+				href: `${DO_ERRORS}#durable-object-storage-operation-exceeded-timeout-which-caused-object-to-be-reset`,
+			},
+			{
+				quote: 'Durable Object is overloaded. Too many requests queued.',
+				when: 'One object gets more work than one thread can do.',
+				href: `${DO_ERRORS}#durable-object-is-overloaded`,
+			},
+			{
+				quote: '…there is a heightened chance that the individual Durable Object is evicted and reset.',
+				when: 'It uses more than 30 seconds of CPU between requests.',
+				href: DO_LIMITS,
+			},
+		],
+	},
+	sources: [
+		{ label: 'Cloudflare: Durable Objects limits', href: DO_LIMITS },
+		{ label: 'Cloudflare: Workers limits', href: `${CF_DOCS}/workers/platform/limits/` },
+		{ label: 'Cloudflare: Durable Objects troubleshooting', href: DO_ERRORS },
+		{ label: 'Cloudflare: Durable Objects data location', href: DO_LOCATION },
+		{ label: 'Cloudflare: Node.js compatibility', href: `${CF_DOCS}/workers/runtime-apis/nodejs/` },
+		{ label: 'Cloudflare: June 12, 2025 service outage', href: 'https://blog.cloudflare.com/cloudflare-service-outage-june-12-2025/' },
+		{ label: 'Cloudflare status', href: 'https://www.cloudflarestatus.com/' },
+		{ label: 'OpenOrange: deploy and self-host', href: SITE.docsDeploy },
+		{ label: 'OpenOrange: migrate from Cloudflare', href: SITE.docsMigrate },
+	],
+	cta: {
+		title: 'Same Durable Objects. Next to your database.',
+		body: 'Run orange dev in your Worker project.',
+		primary: { label: 'Get started', href: SITE.docs },
+		secondary: { label: 'Migrate from Cloudflare', href: SITE.docsMigrate },
+	},
+};
+
 // Footer order.
-export const COMPARISONS: Comparison[] = [celld, miniflare, rivet];
+export const COMPARISONS: Comparison[] = [durableObjects, celld, miniflare, rivet];

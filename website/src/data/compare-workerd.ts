@@ -15,6 +15,9 @@
 //   application server", "Serving in production", "Local Worker development
 //   with wrangler".
 // - Wrangler fields: README "Configuring workerd".
+// - Memory, CPU and alarms: worker-factory.c++ NullIsolateLimitEnforcer
+//   ("Single-tenant policy: no limits"), getAlarmLimit() returns 15 minutes.
+//   No Durable Object storage size is documented.
 // - No tooling moves data into or out of workerd.
 // - License: Apache 2.0 (LICENSE).
 // OpenOrange claims come from site.ts (SERVICE_MAP, DEPLOY_TARGETS, FAQ),
@@ -84,6 +87,16 @@ export const WORKERD_MATRIX: MatrixRow[] = [
 		openorange: { mark: 'yes', text: "Rivet's durable store, in the region you choose." },
 	},
 	{
+		label: 'Database size',
+		workerd: { text: 'Not documented.' },
+		openorange: { mark: 'yes', text: 'Not capped by host disk.' },
+	},
+	{
+		label: 'Latency to your database',
+		workerd: { mark: 'partial', text: 'The Worker can sit next to it. Storage and services are yours to build.' },
+		openorange: { mark: 'yes', text: 'In your VPC, next to it, with Durable Objects and storage.' },
+	},
+	{
 		label: 'KV, D1, R2, Queues, Workflows',
 		workerd: { mark: 'no', text: 'Bindings only. You build the services.' },
 		openorange: { mark: 'yes', text: 'Built in. R2 can use any S3-compatible store.' },
@@ -97,6 +110,16 @@ export const WORKERD_MATRIX: MatrixRow[] = [
 		label: 'Node.js',
 		workerd: { mark: 'no', text: 'The `nodejs_compat` subset.' },
 		openorange: { mark: 'yes', text: 'Stock Node.js 22 or later.' },
+	},
+	{
+		label: 'Memory',
+		workerd: { mark: 'partial', text: 'No cap, but one process holds every Durable Object.' },
+		openorange: { mark: 'yes', text: "Up to your machine's memory. The Node.js heap is configurable." },
+	},
+	{
+		label: 'CPU and alarm time',
+		workerd: { mark: 'partial', text: 'No CPU cap. Alarms stop at 15 minutes, hard-coded.' },
+		openorange: { mark: 'yes', text: 'No CPU cap. Alarms run past 15 minutes.' },
 	},
 	{
 		label: 'Wrangler config',

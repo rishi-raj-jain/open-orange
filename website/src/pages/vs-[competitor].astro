@@ -1,6 +1,6 @@
 ---
-// /vs-celld/, /vs-rivet/ and /vs-miniflare/. All copy lives in
-// src/data/compare.ts. /vs-workerd/ has its own page.
+// /vs-durable-objects/, /vs-celld/, /vs-rivet/ and /vs-miniflare/. All copy
+// lives in src/data/compare.ts. /vs-workerd/ has its own page.
 import Base from '@/layouts/Base.astro';
 import Cta from '@/components/Cta.astro';
 import { AS_OF, COMPARISONS, type Comparison, type Mark, type Product } from '@/data/compare';
@@ -189,6 +189,28 @@ const pickGrid = page.picks.length === 3 ? 'lg:grid-cols-3' : 'md:grid-cols-2';
 					))}
 				</ul>
 				{page.stats.caption ? <p class="caption mt-4">{page.stats.caption}</p> : null}
+			</div>
+		</section>
+	) : null}
+
+	{page.quotes ? (
+		<section id="quotes" class="scroll-mt-20 rule">
+			<div class="container-x section">
+				<div class="split-head">
+					<h2 class="h-section">{page.quotes.title}</h2>
+					<p class="lede">{page.quotes.lede}</p>
+				</div>
+				<ul class="mt-12 grid gap-4 md:grid-cols-2">
+					{page.quotes.items.map((item) => (
+						<li class="card flex flex-col p-6 md:p-7">
+							<blockquote cite={item.href} class="text-[17px] font-medium leading-snug tracking-[-0.01em]">“{item.quote}”</blockquote>
+							<p class="mt-4 text-[14px] leading-snug text-ink-soft">
+								{item.when}{' '}
+								<a href={item.href} class="link whitespace-nowrap text-[13px]" rel="noopener">source</a>
+							</p>
+						</li>
+					))}
+				</ul>
 			</div>
 		</section>
 	) : null}

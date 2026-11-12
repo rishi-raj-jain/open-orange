@@ -642,7 +642,7 @@ export const WORKERD_SERVICES: WorkerdServiceRow[] = [
 			detail: 'SQLite on local disk, marked experimental. One process owns every object.',
 			source: `${WORKERD.schema}#L1031-L1058`,
 		},
-		openorange: { status: 'partial', detail: 'Rivet Actors, spread across your instances. WebSocket hibernation is emulated.' },
+		openorange: { status: 'partial', detail: 'Rivet Actors, spread across your instances.' },
 	},
 	{
 		service: 'Workers KV',
