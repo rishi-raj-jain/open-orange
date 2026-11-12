@@ -15,7 +15,28 @@
   <a href="https://rivet.dev/discord">Discord</a>
 </p>
 
-OpenOrange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a [Rivet Actor](https://rivet.dev/docs/actors/) with its own SQLite database. Full docs: [openorange.dev/docs](https://openorange.dev/docs).
+## Use a coding agent
+
+Paste this into your coding agent (Claude Code, Codex, Cursor, …) from your Worker project:
+
+```text
+Move this Cloudflare Worker to Rivet with OpenOrange.
+
+1. Install the CLI with `pnpm add -g open-orange`, run `orange doctor` here,
+   and show me what needs setup.
+2. Read https://github.com/rivet-dev/open-orange/blob/main/skills/rivet-open-orange/SKILL.md
+   and follow it. Ask me before each step that deploys or moves data.
+```
+
+## What it does
+
+OpenOrange reads your Wrangler configuration and runs the same Worker on Node.js. Each Durable Object runs as a [Rivet Actor](https://rivet.dev/docs/actors/) with its own SQLite database.
+
+- **Run.** `orange dev` runs your Worker on your machine.
+- **Deploy.** `orange deploy` rolls it out to a Rivet cluster. `orange serve` runs it on your own Rivet Engine.
+- **Migrate.** `orange migrate` moves your Durable Objects and D1 databases from Cloudflare while your app serves.
+
+See [openorange.dev/docs](https://openorange.dev/docs) for the full docs.
 
 ## What runs where
 
@@ -145,7 +166,7 @@ docker build --platform linux/amd64 -f out/Dockerfile -t my-worker out/context
 docker run --rm -p 8080:8080 -e RIVET_ENDPOINT=https://<namespace>:<token>@<engine-host> my-worker
 ```
 
-## Connect your coding agent
+## Add the Rivet MCP
 
 Add the Rivet MCP to your agent, then approve the Rivet sign-in.
 
@@ -264,11 +285,15 @@ Durable Objects that use the older key-value storage (`new_classes`) cannot move
 
 If a step fails before the switch, the freeze opens, Cloudflare takes writes again, and nothing is lost.
 
-## Compatibility
+## Caveats
 
-- **Upstream workerd tests:** 1,602 of 1,774 pass (90.3%). OpenOrange also runs 77 Durable Object tests that it ports from workerd's C++ tests, and 68 of them pass. The score counts only the upstream tests. See the [report](packages/cloudflare-conformance/README.md).
+- **Not every binding runs.** Vectorize, Images, Media, Stream, Pipelines, AI Search, mTLS certificates, and VPC throw on each call. Analytics Engine drops its writes. Some bindings need a service you supply. See [What runs where](#what-runs-where).
 - **WebSocket hibernation is emulated.** The Durable Object leaves memory and its sockets stay open, but its Rivet Actor stays running.
 - **Compatibility dates do not apply.** OpenOrange runs one profile and ignores `compatibility_date`. It warns about each flag in `compatibility_flags` that it does not apply.
+- **KV-backed Durable Objects cannot move.** Only SQLite Durable Objects (`new_sqlite_classes`) move with `orange migrate`.
+- **A D1 database takes no writes while it moves,** about 3 minutes per GB in a test.
+- **Cloudflare keeps your data.** OpenOrange never deletes anything on Cloudflare. Delete the Worker and its data yourself after the move.
+- **Upstream workerd tests:** 1,602 of 1,774 pass (90.3%). See the [report](packages/cloudflare-conformance/README.md).
 
 Each [module page](docs/modules/index.mdx) lists every known difference from Cloudflare.
 
@@ -301,3 +326,18 @@ Run `orange <command> --help` for the flags of one command.
 - [Examples](examples/): Workers that you can copy, with no OpenOrange imports.
 - [Real projects](packages/cloudflare-conformance/real-projects): open-source Workers run through `orange dev`, with what works and what does not.
 - [Discord](https://rivet.dev/discord): questions and support.
+
+## Contributing
+
+```sh
+git clone https://github.com/rivet-dev/open-orange
+cd open-orange
+pnpm install
+pnpm orange --help   # runs the CLI from source
+pnpm typecheck
+pnpm test
+```
+
+## License
+
+[Apache-2.0](LICENSE)
