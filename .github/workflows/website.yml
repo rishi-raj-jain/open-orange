@@ -63,3 +63,5 @@ jobs:
           domain: ${{ vars.WEBSITE_DOMAIN }}
           preview-domain: ${{ vars.WEBSITE_PREVIEW_DOMAIN }}
           directory: website/dist
+          # Routing config: production aliases (see deploy-to-bucket's RoutingConfig).
+          config: website/deploy.json
