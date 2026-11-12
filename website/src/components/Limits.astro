@@ -10,7 +10,7 @@ const memory = LIMITS.find((row) => row.id === 'memory')!;
 <section id="limits" class="scroll-mt-20 rule">
 	<div class="container-x section">
 		<div class="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-end lg:gap-12">
-			<p class="strike relative justify-self-start whitespace-nowrap font-medium leading-[0.9] tracking-[-0.05em] text-ink-faint tabular-nums" aria-hidden="true" data-strike>{memory.cloudflare}</p>
+			<p class="strike relative justify-self-start whitespace-nowrap font-medium leading-[0.9] tracking-[-0.05em] text-ink-faint" aria-hidden="true" data-strike>{memory.cloudflare}</p>
 			<div class="lg:pb-1.5">
 				<h2 class="h-section">No runtime limits.</h2>
 				<p class="lede mt-4 max-w-xl">{memory.cloudflare} is all the memory a Cloudflare Worker gets. OpenOrange runs your Workers and Durable Objects on machines you choose, so the limits are your hardware's.</p>
@@ -48,25 +48,27 @@ const memory = LIMITS.find((row) => row.id === 'memory')!;
 	.strike {
 		font-size: clamp(4.5rem, 16vw, 9.5rem);
 	}
+	/* Centered on the digits' ink, which starts 0.02em inside the box and ends
+	   0.02em past it (the last letter's negative tracking), with 0.06em of
+	   bar past each end. 50% is the middle of the digits at this line height. */
 	.strike::after {
 		content: '';
 		position: absolute;
-		left: -2%;
-		right: -2%;
-		top: 52%;
+		left: -0.04em;
+		right: -0.08em;
+		top: 50%;
 		height: 0.075em;
 		border-radius: 999px;
 		background: var(--color-orange);
-		transform: rotate(-4deg);
-		transform-origin: left center;
+		transform: translateY(-50%) rotate(-4deg);
 	}
-	/* Armed on load and drawn once the number is on screen. */
+	/* Armed on load and drawn left to right once the number is on screen. */
 	.strike[data-armed]::after {
-		transform: rotate(-4deg) scaleX(0);
+		clip-path: inset(0 100% 0 0);
 	}
 	.strike[data-armed][data-go]::after {
-		transform: rotate(-4deg) scaleX(1);
-		transition: transform 0.55s 0.15s cubic-bezier(0.6, 0, 0.2, 1);
+		clip-path: inset(0 0 0 0);
+		transition: clip-path 0.55s 0.15s cubic-bezier(0.6, 0, 0.2, 1);
 	}
 
 	.limits th {
