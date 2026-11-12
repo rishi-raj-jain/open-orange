@@ -1,32 +1,46 @@
 ---
-// The launch walkthrough. A poster with our own frame and play button stands
-// in for YouTube until someone clicks it; then the player loads and starts.
-// Without JS the button is a plain link to the video on YouTube.
+// The launch walkthrough. A poster (a frame of the video, a play button and the
+// title) stands in for YouTube until someone clicks it; then the player loads
+// and starts. Without JS the poster is a plain link to the video on YouTube.
 const VIDEO_ID = 'ykeVET4LtA4';
 const watch = `https://www.youtube.com/watch?v=${VIDEO_ID}`;
+const TITLE = 'Introducing OpenOrange';
+const DURATION = '7:18';
 ---
 
 <section id="walkthrough" class="scroll-mt-20 rule">
 	<div class="container-x section-tight">
 		<div class="video-frame rounded-[22px] bg-paper-mid p-2 ring-1 ring-line md:p-3">
 			<div class="relative aspect-video w-full overflow-hidden rounded-2xl bg-plate" data-video={VIDEO_ID}>
-				<a href={watch} class="group absolute inset-0 block focus-visible:outline-none" aria-label="Play the OpenOrange walkthrough" data-play>
+				<a href={watch} class="group absolute inset-0 block focus-visible:outline-none" aria-label={`Play ${TITLE}, a 7 minute walkthrough`} data-play>
+					<!-- A frame from the video, extended on the left so the face sits right of the play button. -->
 					<img
-						src={`https://i.ytimg.com/vi/${VIDEO_ID}/maxresdefault.jpg`}
+						src="/images/walkthrough-poster.webp"
 						alt=""
-						class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.015] motion-reduce:transition-none"
+						width="1600"
+						height="900"
+						class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02] motion-reduce:transition-none"
 						loading="lazy"
 						decoding="async"
-						onerror={`this.onerror=null;this.src='https://i.ytimg.com/vi/${VIDEO_ID}/hqdefault.jpg'`}
 					/>
-					<span class="absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/[0.04] motion-reduce:transition-none" aria-hidden="true"></span>
-					<!-- In the strip under the poster's headline, left edge on the headline's (6.2% in), clear of the title and the box. -->
-					<span class="play absolute bottom-[8%] left-[6.2%] flex items-center gap-1.5 rounded-full bg-orange py-[3px] pl-[3px] pr-2.5 text-[10px] leading-none font-semibold text-white shadow-[0_4px_12px_rgb(242_107_29/0.35)] ring-2 ring-orange/20 transition-transform duration-200 group-hover:scale-[1.04] group-focus-visible:scale-[1.04] group-focus-visible:ring-orange/50 motion-reduce:transition-none md:bottom-[10%] md:gap-3 md:py-2.5 md:pl-2.5 md:pr-6 md:text-[16px] md:shadow-[0_8px_24px_rgb(242_107_29/0.35)] md:ring-4" aria-hidden="true">
-						<span class="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white text-orange md:h-9 md:w-9">
-							<svg class="ml-px h-2 w-2 md:ml-0.5 md:h-4 md:w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z" /></svg>
-						</span>
-						Watch the walkthrough
+					<!-- Shade the bottom and left, where the title sits, and dim a little more on hover. -->
+					<span class="absolute inset-0 bg-[linear-gradient(to_top,rgb(0_0_0/0.75),rgb(0_0_0/0.25)_42%,rgb(0_0_0/0.1))]" aria-hidden="true"></span>
+					<span class="absolute inset-0 bg-[linear-gradient(to_right,rgb(0_0_0/0.3),transparent_55%)]" aria-hidden="true"></span>
+					<span class="absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/10 motion-reduce:transition-none" aria-hidden="true"></span>
+
+					<span class="absolute top-1/2 left-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-orange text-white shadow-[0_0_0_5px_rgb(255_255_255/0.22),0_8px_24px_rgb(0_0_0/0.35)] transition-[scale,box-shadow] duration-200 group-hover:scale-110 group-hover:shadow-[0_0_0_7px_rgb(255_255_255/0.3),0_10px_30px_rgb(242_107_29/0.45)] group-focus-visible:scale-110 group-focus-visible:shadow-[0_0_0_4px_rgb(255_255_255/1),0_0_0_8px_rgb(242_107_29/0.9)] motion-reduce:transition-none md:h-22 md:w-22 md:shadow-[0_0_0_10px_rgb(255_255_255/0.22),0_16px_44px_rgb(0_0_0/0.35)] md:group-hover:shadow-[0_0_0_12px_rgb(255_255_255/0.3),0_18px_50px_rgb(242_107_29/0.45)] md:group-focus-visible:shadow-[0_0_0_5px_rgb(255_255_255/1),0_0_0_10px_rgb(242_107_29/0.9)]" aria-hidden="true">
+						<svg class="ml-0.5 h-5 w-5 md:ml-1.5 md:h-9 md:w-9" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l12-7.2a1 1 0 0 0 0-1.72l-12-7.2A1 1 0 0 0 7 4.8z" /></svg>
 					</span>
+
+					<span class="absolute right-[4%] bottom-[6%] left-[4.5%] flex items-end justify-between gap-3 text-white" aria-hidden="true">
+						<span class="min-w-0">
+							<span class="block text-[15px] leading-tight font-semibold tracking-[-0.01em] [text-shadow:0_1px_12px_rgb(0_0_0/0.35)] md:text-[30px] md:tracking-[-0.02em]">{TITLE}</span>
+							<span class="mt-0.5 block text-[11px] leading-snug text-white/80 md:mt-1.5 md:text-[16px]">Watch the walkthrough</span>
+						</span>
+						<span class="shrink-0 rounded-[5px] bg-black/75 px-1.5 py-0.5 font-mono text-[10px] leading-none tabular-nums md:rounded-md md:px-2 md:py-1 md:text-[13px]">{DURATION}</span>
+					</span>
+					<!-- Keyboard focus: a ring around the whole card, drawn above the image. -->
+					<span class="pointer-events-none absolute inset-0 rounded-2xl ring-orange ring-inset group-focus-visible:ring-4" aria-hidden="true"></span>
 				</a>
 			</div>
 		</div>
