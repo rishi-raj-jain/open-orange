@@ -61,25 +61,25 @@ See [openorange.dev/docs](https://openorange.dev/docs) for the full docs.
 
 ## What runs where
 
-| Cloudflare binding | Runs on | You set |
-|---|---|---|
-| [Durable Objects](docs/modules/durable-objects.mdx) | One Rivet Actor for each object, with its own SQLite database | Nothing |
-| [KV](docs/modules/kv.mdx), [D1](docs/modules/d1.mdx), [Rate Limiting](docs/modules/rate-limiting.mdx), [Cache](docs/modules/cache.mdx) | Rivet Actors | Nothing |
-| [Queues](docs/modules/queues.mdx) | One Rivet Actor for each queue | Nothing |
-| [Workflows](docs/modules/workflows.mdx) | Cloudflare's own Workflows engine, with one Rivet Actor for each instance | Nothing |
-| [Cron Triggers](docs/modules/cron-triggers.mdx) | A Rivet Actor | Nothing |
-| [Tail Workers](docs/modules/tail-workers.mdx) | Rivet Durable Streams | Nothing |
-| [R2](docs/modules/r2.mdx) | A Rivet Actor, or your S3-compatible store | Nothing, or `ORANGE_R2_<BUCKET>_S3_ENDPOINT` and its access keys for Amazon S3, Cloudflare R2, Google Cloud Storage, or Backblaze B2 |
-| [Worker Loader](docs/modules/worker-loader.mdx) | A separate process in an agentOS VM | Nothing |
-| [Workers AI](docs/modules/workers-ai.mdx) | An OpenAI-compatible provider | `OPENROUTER_API_KEY`, or `ORANGE_AI_BASE_URL` and `ORANGE_AI_API_KEY` for OpenAI, Groq, Together AI, or Fireworks AI |
-| [Send Email](docs/modules/email.mdx) | Your SMTP server | `ORANGE_EMAIL_SMTP_URL`: Amazon SES, Resend, Postmark, SendGrid, or Mailgun |
-| [Browser Rendering](docs/modules/browser-rendering.mdx) | A hosted browser, or your Chrome | `ORANGE_BROWSER_CDP_URL`: Browserbase, Browserless, or Steel |
-| [Hyperdrive](docs/modules/hyperdrive.mdx) | Your database, with a direct connection | The connection string, as for `wrangler dev`: PlanetScale, Amazon RDS, Neon, or Supabase |
-| [Sandbox](docs/modules/sandbox.mdx) | A sandbox provider | `ORANGE_SANDBOX_PROVIDER`: `e2b`, `daytona`, `freestyle`, `agentos`, or `local` (default) |
-| Analytics Engine | Nothing. `writeDataPoint()` drops each data point | |
-| Vectorize, Images, Media, Stream, Pipelines, AI Search, mTLS certificates, VPC, and legacy blobs | Not supported. Calls throw | |
+| Cloudflare binding | Runs on |
+|---|---|
+| [Durable Objects](docs/modules/durable-objects.mdx) | One Rivet Actor for each object, with its own SQLite database |
+| [KV](docs/modules/kv.mdx), [D1](docs/modules/d1.mdx), [Rate Limiting](docs/modules/rate-limiting.mdx), [Cache](docs/modules/cache.mdx) | Rivet Actors |
+| [Queues](docs/modules/queues.mdx) | One Rivet Actor for each queue |
+| [Workflows](docs/modules/workflows.mdx) | Cloudflare's own Workflows engine, with one Rivet Actor for each instance |
+| [Cron Triggers](docs/modules/cron-triggers.mdx) | A Rivet Actor |
+| [Tail Workers](docs/modules/tail-workers.mdx) | Rivet Durable Streams |
+| [R2](docs/modules/r2.mdx) | A Rivet Actor, or your S3-compatible store |
+| [Worker Loader](docs/modules/worker-loader.mdx) | A separate process in an agentOS VM |
+| [Workers AI](docs/modules/workers-ai.mdx) | An OpenAI-compatible provider |
+| [Send Email](docs/modules/email.mdx) | Your SMTP server |
+| [Browser Rendering](docs/modules/browser-rendering.mdx) | A hosted browser, or your Chrome |
+| [Hyperdrive](docs/modules/hyperdrive.mdx) | Your database, with a direct connection |
+| [Sandbox](docs/modules/sandbox.mdx) | A sandbox provider |
+| Analytics Engine | Nothing. `writeDataPoint()` drops each data point |
+| Vectorize, Images, Media, Stream, Pipelines, AI Search, mTLS certificates, VPC, and legacy blobs | Not supported. Calls throw |
 
-See the [compatibility matrix](docs/modules/bindings.mdx) for every binding and Wrangler key.
+See the [compatibility matrix](docs/modules/bindings.mdx) for every binding, Wrangler key, and the variables each service needs.
 
 ## Quickstart
 
