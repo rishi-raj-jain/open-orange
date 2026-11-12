@@ -88,7 +88,6 @@ export async function docsNav(): Promise<{ groups: DocGroup[]; entries: Collecti
 		title: section.title,
 		links: links(section.ids),
 		collapsed: section.collapsed,
-		collapsed: section.collapsed,
 		groups: section.groups?.map((g) => ({ title: g.title, links: links(g.ids) })).filter((g) => g.links.length),
 	}));
 	const unlisted = entries.filter((entry) => !listed.has(entry.id) && !NO_PAGE.has(entry.id)).sort((a, b) => a.data.title.localeCompare(b.data.title));
