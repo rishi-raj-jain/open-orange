@@ -5,21 +5,76 @@ description: Your Worker gets Cloudflare's globals on Node.js, such as fetch(), 
 
 # Runtime globals
 
+<BindingStatus
+  binding="workers"
+  works="`fetch()`, `Request`, `Response`, `Headers`, `URL`, streams, `crypto`, timers, `WebSocket`, and `WebSocketPair`"
+  differs="One fixed compatibility profile: Orange ignores your `compatibility_date` and most `compatibility_flags`"
+  missing="`URL.createObjectURL()`, custom fetchers, and some Cloudflare crypto algorithms"
+/>
+
 Your Worker sees the same globals as on Cloudflare, such as `fetch()`,
 `Request`, `Response`, `crypto`, streams, timers, and `WebSocket`. Orange
-installs them on Node.js before your Worker's module loads, so you configure
-nothing.
+installs them on Node.js before your Worker's module loads.
 
-## Compatibility date and flags
+## Quickstart
 
-Keep your `compatibility_date` and `compatibility_flags` as they are. Orange
-runs one profile, `2026-09-03` with `nodejs_compat`, and `orange dev` warns
-about each flag that it does not apply:
+<Steps>
+
+<Step title="Keep your Wrangler file">
+
+Leave `compatibility_date` and `compatibility_flags` as they are. Orange always
+runs `2026-09-03` with `nodejs_compat`.
+
+```jsonc
+{
+  "name": "hash",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"]
+}
+```
+
+</Step>
+
+<Step title="Use the globals">
+
+Call `crypto`, `TextEncoder`, and `Response` as on Cloudflare.
+
+```ts
+export default {
+  async fetch(request): Promise<Response> {
+    const data = new TextEncoder().encode(await request.text());
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return Response.json({ sha256: hex });
+  },
+} satisfies ExportedHandler;
+```
+
+</Step>
+
+<Step title="Run it">
+
+`orange dev` warns about each flag that it does not need:
+
+```sh
+orange dev
+```
 
 ```text
 ! Orange always has Node.js APIs, so it does not need compatibility_flags ["nodejs_compat"]
-! Orange ignores compatibility_flags ["streams_enable_constructors"]
 ```
+
+Hash a string:
+
+```sh
+curl -d hello localhost:8787
+# {"sha256":"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}
+```
+
+</Step>
+
+</Steps>
 
 ## How it works
 
@@ -30,23 +85,27 @@ about each flag that it does not apply:
 - `console` writes to the `orange dev` output. An unhandled rejection or an
   exception in a timer is printed there, and the Worker keeps running.
 
-<AiContext summary="Every global's status, the flags Orange applies, HTTP, stream, WebSocket, crypto and timer details, every deviation, and the test coverage">
+<AiContext summary="Compatibility, limits and details">
 
-#### Global status
+#### Compatibility
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `atob`, `btoa`, `ByteLengthQueuingStrategy`, `CountQueuingStrategy`, `CustomEvent`, `queueMicrotask`, `TextDecoder`, `TextEncoder`, and `WebSocketRequestResponsePair` | Supported | |
+| The other 68 globals, such as `fetch`, `Headers`, `Request`, `Response`, `URL`, `URLSearchParams`, `Blob`, `FormData`, `DOMException`, `Event`, the streams, `crypto`, `console`, `performance`, `structuredClone`, `WebAssembly`, `WebSocket`, `WebSocketPair`, `caches`, `HTMLRewriter`, `scheduler`, and the four timer functions | Partial | Each family has its own section below. |
+| `Body`, `ExtendableEvent`, `FetchEvent`, `origin`, `ScheduledEvent`, and `TailEvent` | Not supported | See [The global manifest](#the-global-manifest). |
+| `URL.createObjectURL()` | Not supported | See [Deviations](#deviations). |
+| `compatibility_date` and `compatibility_flags` | Partial | One fixed profile. See [Compatibility date and flags](#compatibility-date-and-flags). |
+
+#### The global manifest
 
 Orange intersects the value-bearing declarations with the globals exposed
 across the pinned workerd global prototype chain. The current profile has 83
 Cloudflare global names. Before it loads the Worker entrypoint, the runtime
 installs a manifest with exactly those names.
 
-| Status | Globals |
-| --- | --- |
-| Implemented | `atob`, `btoa`, `ByteLengthQueuingStrategy`, `CountQueuingStrategy`, `CustomEvent`, `queueMicrotask`, `TextDecoder`, `TextEncoder`, and `WebSocketRequestResponsePair` |
-| Partial | The other 68, such as `fetch`, `Headers`, `Request`, `Response`, `URL`, `URLSearchParams`, `Blob`, `FormData`, `DOMException`, `Event`, the streams, `crypto`, `console`, `performance`, `structuredClone`, `WebAssembly`, `WebSocket`, `WebSocketPair`, `caches`, `HTMLRewriter`, `scheduler`, and the four timer functions |
-| Not implemented | `Body`, `ExtendableEvent`, `FetchEvent`, `origin`, `ScheduledEvent`, and `TailEvent` |
-
 - `packages/runtime-node/src/globals/implementations.ts` holds the status of
-  each name.
+  each name: implemented, partial, or not implemented.
 - A partial value must be assignable to the complete Cloudflare contract. An
   implemented value also needs exact inferred types.
 - A global that Orange does not implement keeps the Node.js value of that name
@@ -65,10 +124,16 @@ installs a manifest with exactly those names.
 - Node.js globals without a Cloudflare counterpart stay available at runtime,
   but the generated Worker types leave them out.
 
-#### Compatibility profile
+#### Compatibility date and flags
 
-Worker code should behave as it does on Node.js, so Orange does not switch
-runtime behavior by date or flag.
+Orange runs one profile, `2026-09-03` with `nodejs_compat`. Worker code should
+behave as it does on Node.js, so Orange does not switch runtime behavior by
+date or flag. `orange dev` warns about each flag that it does not apply:
+
+```text
+! Orange always has Node.js APIs, so it does not need compatibility_flags ["nodejs_compat"]
+! Orange ignores compatibility_flags ["streams_enable_constructors"]
+```
 
 | In `wrangler.jsonc` | On Orange |
 | --- | --- |
@@ -186,5 +251,7 @@ digests through `crypto.DigestStream`.
   module evaluates.
 - `src/config/load-wrangler.test.ts` checks that another compatibility date
   loads, and the two warnings for ignored flags.
+
+<BindingEvidence bindings={["workers"]} />
 
 </AiContext>

@@ -11,14 +11,31 @@ which case it loads and its calls throw.
 
 ## Quickstart
 
-You need a Worker project with a `wrangler.jsonc`, and the `orange` CLI.
+You need the `orange` CLI.
 
 <Steps>
 
-<Step title="Check your bindings">
+<Step title="Add the bindings">
 
-Run `orange doctor` in the project. It lists each binding, what it runs on,
-and what it needs from you.
+Use the same keys as on Cloudflare.
+
+```jsonc
+{
+  "name": "my-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03",
+  "kv_namespaces": [{ "binding": "CACHE", "id": "cache" }],
+  "ai": { "binding": "AI" },
+  "images": { "binding": "IMAGES" }
+}
+```
+
+</Step>
+
+<Step title="Check them">
+
+`orange doctor` lists each binding, what it runs on, and what it needs from
+you.
 
 ```sh
 orange doctor
@@ -74,17 +91,9 @@ orange dev
 ## Replace a binding that is not supported
 
 The Worker still starts, and only the calls to that binding throw. Move those
-calls to a service that the Worker reaches with `fetch()`:
-
-| Binding | Use instead | How the Worker reaches it |
-| --- | --- | --- |
-| Vectorize | [pgvector](https://github.com/pgvector/pgvector) on [Neon](https://neon.com/docs/extensions/pgvector) or [Supabase](https://supabase.com/docs/guides/database/extensions/pgvector) | A [Hyperdrive](./hyperdrive) binding and a Postgres driver |
-| Vectorize | [Qdrant Cloud](https://qdrant.tech/documentation/cloud/authentication/) | `fetch()` to `https://<cluster host>:6333`, with the `api-key` header |
-| Vectorize | [Pinecone](https://docs.pinecone.io/guides/get-started/quickstart) | `fetch()` to the index host, with the `Api-Key` header |
-| Vectorize, a few thousand vectors | SQLite in a [Durable Object](./durable-objects) | Store the embeddings, and rank them by cosine similarity in JavaScript |
-| Images | [Cloudinary](https://cloudinary.com/documentation/image_transformations) | `fetch()` to its upload and transformation URLs |
-| Images | [imgproxy](https://imgproxy.net/) that you run | `fetch()` to its processing URLs |
-| Analytics Engine | Your analytics store | `fetch()` to its ingest API |
+calls to a service that the Worker reaches with `fetch()`. The reference below
+names one for [Vectorize](#vectorize), [Images](#images), and
+[Analytics Engine](#analytics-engine).
 
 ## Set the variables on a deploy
 
@@ -95,9 +104,9 @@ instead. See [Variables and secrets](../deploy#variables-and-secrets).
 orange deploy --secrets-file .dev.vars
 ```
 
-<AiContext summary="Every binding and what it runs on, the configuration that stops orange dev, how stubs behave, and how variables load">
+<AiContext summary="Compatibility, limits and details">
 
-#### Matrix
+#### Compatibility
 
 | Binding | Wrangler key | Kind | Runs on | Notes |
 | --- | --- | --- | --- | --- |
@@ -124,14 +133,14 @@ orange deploy --secrets-file .dev.vars
 | Send Email | `send_email` | Needs a service | Your SMTP server | Set `ORANGE_EMAIL_SMTP_URL` to Amazon SES, Resend, Postmark, SendGrid, or Mailgun. Without it, the binding throws. See [Email](./email). |
 | Browser Rendering | `browser` | Needs a service | A hosted browser or your Chrome, through its DevTools Protocol endpoint | Set `ORANGE_BROWSER_CDP_URL` to Browserbase, Browserless, or Steel. Without it, the binding throws. See [Browser Rendering](./browser-rendering). |
 | Hyperdrive | `hyperdrive` | Needs a service | Your database, with a direct connection | Set the local connection string, as for `wrangler dev`, such as PlanetScale, Amazon RDS, Neon, or Supabase. No pooling or query cache. See [Hyperdrive](./hyperdrive). |
-| Analytics Engine | `analytics_engine_datasets` | Not supported | Nothing | `writeDataPoint()` accepts data points and drops them, as `wrangler dev` does. |
-| Vectorize | `vectorize` | Not supported | Nothing | See [What to use instead](#replace-a-binding-that-is-not-supported). |
-| Images, Media, Stream | `images`, `media`, `stream` | Not supported | Nothing | See [What to use instead](#replace-a-binding-that-is-not-supported). |
-| Pipelines | `pipelines` | Not supported | Nothing | |
-| AI Search | `ai_search` | Not supported | Nothing | |
-| mTLS certificates | `mtls_certificates` | Not supported | Nothing | |
-| VPC | `vpc_networks`, `vpc_services` | Not supported | Nothing | Use `fetch()` to reach the host network directly. |
-| Legacy blobs | `text_blobs`, `data_blobs`, `wasm_modules` | Not supported | Nothing | Import the file from the Worker source instead. |
+| Analytics Engine | `analytics_engine_datasets` | Not supported | Nothing | See [Analytics Engine](#analytics-engine). |
+| Vectorize | `vectorize` | Not supported | Nothing | See [Vectorize](#vectorize). |
+| Images, Media, Stream | `images`, `media`, `stream` | Not supported | Nothing | See [Images](#images). |
+| Pipelines | `pipelines` | Not supported | Nothing | See [Pipelines](#pipelines). |
+| AI Search | `ai_search`, `ai_search_namespaces` | Not supported | Nothing | See [AI Search](#ai-search). |
+| mTLS certificates | `mtls_certificates` | Not supported | Nothing | See [mTLS certificates](#mtls-certificates). |
+| VPC | `vpc_networks`, `vpc_services` | Not supported | Nothing | See [VPC](#vpc). |
+| Legacy blobs | `text_blobs`, `data_blobs`, `wasm_modules` | Not supported | Nothing | See [Legacy blobs](#legacy-blobs). |
 | Other binding types | | Not supported | Nothing | Includes other `unsafe` binding types. |
 
 #### Kinds
@@ -142,9 +151,8 @@ orange deploy --secrets-file .dev.vars
   to it.
 - **Not supported:** Orange has no backend for the binding. The Worker loads,
   and `env.NAME` exists. Each method call throws an error that names the
-  binding and suggests an alternative. Analytics Engine is the exception:
-  `writeDataPoint()` accepts data points and drops them, as `wrangler dev`
-  does. `orange doctor` shows it as `drops writes`.
+  binding and suggests an alternative. [Analytics Engine](#analytics-engine)
+  is the exception: it accepts writes and drops them.
 
 `orange doctor` reports each binding of your project as one of these kinds. It
 does not list variables (`vars`, `.dev.vars`, and `.env`), because they need
@@ -216,5 +224,104 @@ as a vector database for Vectorize, or an import for a Wasm module.
 - A `.dev.vars` entry named after another binding, such as a Secrets Store
   binding, stays that binding's local value and does not replace it.
 - Secret values never become part of the version metadata ID.
+
+#### Bindings without a page
+
+Orange has no backend for these bindings. Each card's status, migration path,
+and checks come from the conformance data.
+
+##### Vectorize
+
+<BindingStatus
+  binding="vectorize"
+  works="The configuration loads, and `env.NAME` is a stub that the Worker can pass around"
+  missing="Every method. Each call throws, and the error names a vector database to use instead."
+/>
+
+The error's alternative reads: `Call a vector database, such as Qdrant Cloud
+or Pinecone, with fetch(), or use pgvector through Hyperdrive. For a few
+thousand vectors, store the embeddings in SQLite and rank them by cosine
+similarity in JavaScript.`
+
+| Use instead | How the Worker reaches it |
+| --- | --- |
+| [pgvector](https://github.com/pgvector/pgvector) on [Neon](https://neon.com/docs/extensions/pgvector) or [Supabase](https://supabase.com/docs/guides/database/extensions/pgvector) | A [Hyperdrive](./hyperdrive) binding and a Postgres driver |
+| [Qdrant Cloud](https://qdrant.tech/documentation/cloud/authentication/) | `fetch()` to `https://<cluster host>:6333`, with the `api-key` header |
+| [Pinecone](https://docs.pinecone.io/guides/get-started/quickstart) | `fetch()` to the index host, with the `Api-Key` header |
+| SQLite in a [Durable Object](./durable-objects), for a few thousand vectors | Store the embeddings, and rank them by cosine similarity in JavaScript |
+
+##### Images
+
+<BindingStatus
+  binding="images"
+  works="The `images`, `media`, and `stream` configuration loads, and each binding is a stub"
+  missing="Every method of Images, Media Transformations, and Stream. Each call throws."
+/>
+
+| Use instead | How the Worker reaches it |
+| --- | --- |
+| [Cloudinary](https://cloudinary.com/documentation/image_transformations) | `fetch()` to its upload and transformation URLs |
+| [imgproxy](https://imgproxy.net/) that you run | `fetch()` to its processing URLs |
+
+##### Pipelines
+
+<BindingStatus
+  binding="pipelines"
+  works="The configuration loads, and the binding is a stub"
+  missing="`send()` and every other method. Each call throws."
+/>
+
+##### AI Search
+
+<BindingStatus
+  binding="ai-search"
+  works="The `ai_search` and `ai_search_namespaces` configuration loads, and each binding is a stub"
+  missing="Every method, and `env.AI.autorag()` and `env.AI.aiSearch()` on the Workers AI binding. Each call throws."
+/>
+
+##### Analytics Engine
+
+<BindingStatus
+  binding="analytics-engine"
+  works="`writeDataPoint()` accepts data points, as `wrangler dev` does"
+  differs="Orange stores nothing. It drops every data point, and `orange doctor` shows the binding as `drops writes`."
+  missing="The SQL API that queries a dataset"
+/>
+
+To keep the data, send each data point to your own analytics store with
+`fetch()` to its ingest API.
+
+##### mTLS certificates
+
+<BindingStatus
+  binding="mtls-certificates"
+  works="The configuration loads, and the binding is a stub"
+  missing="`fetch()` with the certificate. Each call throws."
+/>
+
+##### VPC
+
+<BindingStatus
+  binding="vpc"
+  works="The `vpc_networks` and `vpc_services` configuration loads, and each binding is a stub"
+  missing="Every call through a VPC network or service. Each call throws."
+/>
+
+Use `fetch()` to reach the host network directly.
+
+##### Legacy blobs
+
+<BindingStatus
+  binding="legacy-blobs"
+  works="The `text_blobs`, `data_blobs`, and `wasm_modules` configuration loads, and each binding is a stub"
+  missing="The file contents. `env.NAME` is a stub, and each call on it throws."
+/>
+
+Import the file from the Worker source instead. For a Wasm module, the error
+reads `Import the WebAssembly module from the Worker source instead.`
+
+#### Conformance
+
+<BindingEvidence bindings={["vectorize", "images", "pipelines", "ai-search", "analytics-engine", "mtls-certificates", "vpc", "legacy-blobs"]} />
 
 </AiContext>

@@ -5,14 +5,38 @@ description: Your Worker's fetch() handler runs unchanged on OpenOrange, with a 
 
 # Fetch events
 
+<BindingStatus
+  binding="workers"
+  works="`fetch(request, env, ctx)`, `ctx.waitUntil()`, `ctx.props`, `ctx.exports`, `WorkerEntrypoint`, and `env` and `exports` from `cloudflare:workers`"
+  differs="`passThroughOnException()` does nothing, `ctx.abort()` cannot stop running code, and `request.cf` holds placeholder values"
+  missing="`ctx.cache`, `ctx.access`, and real trace spans in `ctx.tracing`"
+/>
+
 Your Worker's `fetch(request, env, ctx)` handler runs unchanged on OpenOrange.
 Orange calls it once for each request, with a new `ctx` each time, as
 Cloudflare does.
 
-## Write the handler
+## Quickstart
 
-Export `fetch` on the default object, as on Cloudflare. A default class that
-extends `WorkerEntrypoint` works too, and gets a new instance for each request.
+<Steps>
+
+<Step title="Configure the Worker">
+
+Point `main` at the file that exports the handler.
+
+```jsonc
+{
+  "name": "hello",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-03"
+}
+```
+
+</Step>
+
+<Step title="Write the handler">
+
+Export `fetch` on the default object, as on Cloudflare.
 
 ```ts
 export default {
@@ -24,33 +48,42 @@ export default {
 } satisfies ExportedHandler<Env>;
 ```
 
-Run it with `orange dev`, and call it on port 8787:
+</Step>
+
+<Step title="Run it">
 
 ```sh
 orange dev
-curl localhost:8787/hello
 ```
 
-## What `ctx` gives you
+Call it on port 8787:
 
-- **`ctx.waitUntil(promise)`** keeps work running after the response. Orange
-  waits for every promise, and `orange dev` prints each one that rejects.
-- **`ctx.props`** holds the `props` of the service binding that called this
-  entrypoint. See [Multiple Workers](./multi-worker).
-- **`ctx.exports`** holds this Worker's entrypoints as service stubs and its
-  Durable Object classes as namespaces. `exports` from `cloudflare:workers` is
-  the same object, and `env` from it works even while the module loads.
+```sh
+curl localhost:8787/hello   # Hello from /hello
+```
+
+</Step>
+
+</Steps>
+
+## How it works
+
+- **`ctx.waitUntil(promise)`** keeps work running after the response.
+  `orange dev` prints each promise that rejects.
+- **`ctx.props` and `ctx.exports`** work as on Cloudflare. A default class that
+  extends `WorkerEntrypoint` gets a new instance for each request.
 - **`request.url`** is the URL the client used, built from its `Host` header.
 
-<AiContext summary="Every ctx member, request and response rules, the dev process, every deviation, and the test coverage">
+<AiContext summary="Compatibility, limits and details">
 
-#### Context API
+#### Compatibility
 
-| Member | Status | Notes |
+| Feature | Status | Notes |
 | --- | --- | --- |
-| `ctx.waitUntil(promise)` | Supported | Orange drains every registered promise, including work registered while an earlier promise is settling, and keeps both fulfilled and rejected outcomes. |
-| `ctx.props` | Supported | An empty object when the caller passes no `props`, as in workerd. |
-| `ctx.exports` | Supported | Named `WorkerEntrypoint` classes and handler objects become service stubs. Durable Object classes appear as their namespaces. |
+| The `fetch` event | Partial | The handler runs unchanged. The context members below that are Partial or Not supported make the event Partial. |
+| `ctx.waitUntil(promise)` | Supported | Orange waits for every registered promise, including work registered while an earlier promise is settling, and keeps both fulfilled and rejected outcomes. |
+| `ctx.props` | Supported | The `props` of the service binding that called this entrypoint. See [Multiple Workers](./multi-worker). An empty object when the caller passes no `props`, as in workerd. |
+| `ctx.exports` | Supported | This Worker's named `WorkerEntrypoint` classes and handler objects become service stubs. Durable Object classes appear as their namespaces. |
 | `ctx.passThroughOnException()` | Partial | A no-op. See [Deviations](#deviations). |
 | `ctx.abort(reason)` | Partial | Releases the context's I/O objects, then throws. See [Deviations](#deviations). |
 | `ctx.tracing` | Partial | No-op spans. See [Deviations](#deviations). |
@@ -163,7 +196,7 @@ and a thrown error keeps its name, message, and own properties, such as `code`.
 - `tests/execution-context.test.ts` runs Workers under `orange dev` and checks
   a missing, throwing, or non-`Response` handler, `passThroughOnException()`,
   `ctx.props` with and without `props`, and copying every `ctx` property.
-- The feature matrix rows for the Workers runtime are in the Compatibility
-  section below.
+
+<BindingEvidence bindings={["workers"]} />
 
 </AiContext>

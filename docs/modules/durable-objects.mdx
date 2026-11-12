@@ -478,6 +478,8 @@ The object's storage survived each event. A client must connect again after
 any close that it did not ask for. It must wait a random time before each
 attempt, so that the clients of a stopped runner do not all return at once.
 
+<a id="durable-object-facets" />
+
 #### Facets
 
 `ctx.facets` runs child objects that have their own SQLite storage. Orange
